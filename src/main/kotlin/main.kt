@@ -23,8 +23,8 @@ import java.util.*
  */
 
 fun main(args: Array<String>) {
-    val source = Paths.get("/home/aleksyuk/Compile/revapi-0.4.2/spark1/src/main/java/Main.java");
-    val destination = Paths.get("/home/aleksyuk/Compile/revapi-0.4.2/spark2/src/main/java/Main.java");
+    val source = Paths.get("../spark1/src/main/java/Main.java");
+    val destination = Paths.get("../spark2/src/main/java/Main.java");
 
 //    val lib_src = Paths.get("src.java")
 //    val lib_dst = Paths.get("dst.java")
