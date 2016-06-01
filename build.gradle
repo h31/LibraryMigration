@@ -1,0 +1,43 @@
+apply plugin: 'java'
+apply plugin: 'idea'
+apply plugin: "kotlin"
+
+version = '1.0'
+
+buildscript {
+   ext.kotlin_version = "1.0.2"
+
+   repositories {
+     mavenCentral()
+   }
+
+   dependencies {
+     classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
+   }
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    compile "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
+    compile group: 'junit', name: 'junit', version: '4.12'
+    compile 'com.github.javaparser:javaparser-core:2.4.0'
+    //compile 'org.antlr:antlr4-runtime:4.5.2-1'
+    //compile 'org.antlr:antlr4:4.5.2-1'
+    //compile 'org.antlr:antlr:3.5.2'
+    //compile 'ch.qos.logback:logback-classic:1.1.5'
+    //compile 'org.slf4j:log4j-over-slf4j:1.7.16'
+}
+
+idea {
+    module {
+        downloadJavadoc = true
+        downloadSources = true
+    }
+}
+
+compileJava {
+    sourceCompatibility = '1.8'
+}
