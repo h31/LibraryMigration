@@ -1,5 +1,3 @@
-package main
-
 import com.github.javaparser.ASTHelper
 import com.github.javaparser.JavaParser
 import com.github.javaparser.ast.CompilationUnit
@@ -12,7 +10,18 @@ import com.github.javaparser.ast.expr.MethodCallExpr
 import com.github.javaparser.ast.expr.ObjectCreationExpr
 import com.github.javaparser.ast.stmt.Statement
 import com.github.javaparser.ast.visitor.VoidVisitorAdapter
+import org.jgrapht.DirectedGraph
+import org.jgrapht.Graph
+import org.jgrapht.ext.DOTExporter
+import org.jgrapht.ext.IntegerNameProvider
+import org.jgrapht.ext.VertexNameProvider
+import org.jgrapht.graph.DefaultEdge
+import org.jgrapht.graph.DirectedSubgraph
+import org.jgrapht.graph.SimpleDirectedGraph
+import java.io.File
 import java.io.FileInputStream
+import java.io.FileWriter
+import java.io.StringWriter
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
@@ -53,6 +62,9 @@ fun main(args: Array<String>) {
 
     val spark1 = makeSpark1(entityMap)
     val spark2 = makeSpark2(entityMap)
+
+    makeGraph(spark1, Paths.get("graph1.dot"))
+    makeGraph(spark2, Paths.get("graph2.dot"))
 
     for (machineNum in 0..spark1.stateMachines.size - 1) {
         val machine1 = spark1.stateMachines[machineNum]
@@ -429,6 +441,40 @@ fun findAnnotationsPairs(src: List<MethodDeclaration>, dst: List<MethodDeclarati
     return pairs;
 }
 
+fun makeLabel(v: State): String {
+    "%s(%s: %s)".format(v.methodName, v.params.first().entity.name, v.params.first().entity.type)
+    val arg = v.params.first()
+    val previousArgs = "..., ".repeat(arg.pos)
+    val args = "(%s%s: %s)".format(previousArgs, arg.entity.name, arg.entity.type)
+    when (v.action) {
+        Action.CONSTRUCTOR -> return "new " + v.methodName + args
+        Action.METHOD_CALL -> return v.methodName + args
+        Action.STATIC_CALL -> return v.methodName + args
+    }
+}
+
+fun makeGraph(library: Library, filePath: Path) {
+    val graph = SimpleDirectedGraph<State, DefaultEdge>(DefaultEdge::class.java)
+    val exporter = DOTExporter<State, DefaultEdge>(VertexNameProvider { v -> v.name + "_" + v.methodName},
+            VertexNameProvider { v -> makeLabel(v)}, null)
+
+    for (fsm in library.stateMachines) {
+        for (state in fsm.states) {
+            graph.addVertex(state)
+            for (dependency in state.before) {
+                graph.addVertex(dependency)
+                graph.addEdge(dependency, state)
+            }
+        }
+        val subgraph = DirectedSubgraph(graph, fsm.states.toSet(), null)
+
+//        exporter.export(FileWriter(filePath.toFile(), true), subgraph)
+    }
+//    val edge = graph.edgeSet().first()
+//    val vertex = graph.vertexSet().first()
+    exporter.export(FileWriter(filePath.toFile(), false), graph)
+}
+
 fun findAnnotatedParam(method: ConstructorDeclaration, tag: String): IndexedValue<Parameter>? {
     for (param in method.parameters.withIndex()) {
         if (param.value.annotations.any { ann -> ann.name.name == tag }) {
@@ -479,8 +525,8 @@ data class Param(val entity: Entity,
 
 fun makeSpark1(entities: Map<String, Entity>): Library {
     val registerPathGet = State("registerPathGet", listOf(),
-            Action.CONSTRUCTOR, "", listOf(Param(entities["path"]!!, 0)))
-    val registerPathFilter = registerPathGet.copy(name = "registerPathFilter")
+            Action.CONSTRUCTOR, "Route", listOf(Param(entities["path"]!!, 0)))
+    val registerPathFilter = registerPathGet.copy(name = "registerPathFilter", methodName = "Filter")
 
 //    val registerPathGetType = registerPathGet.copy()
 //    val registerPathType = registerPathGet.copy(params =  listOf(Param(entities["acceptType"]!!, 1)))
@@ -505,7 +551,7 @@ fun makeSpark1(entities: Map<String, Entity>): Library {
             params = listOf(Param(entities["route"]!!, 0)))
 
     val before = State(name = "before",
-            before = listOf(registerPathGet),
+            before = listOf(registerPathFilter),
             action = Action.STATIC_CALL,
             methodName = "before",
             params = listOf(Param(entities["filter"]!!, 0)))
