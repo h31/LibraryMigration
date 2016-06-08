@@ -216,8 +216,8 @@ fun makeLabel(v: State): String {
 
 fun makeGraph(library: Library, filePath: Path) {
     val graph = SimpleDirectedGraph<State, DefaultEdge>(DefaultEdge::class.java)
-    val exporter = DOTExporter<State, DefaultEdge>(VertexNameProvider { v -> v.name + "_" + v.methodName},
-            VertexNameProvider { v -> makeLabel(v)}, null)
+    val exporter = DOTExporter<State, DefaultEdge>(VertexNameProvider { v -> v.name + "_" + v.methodName },
+            VertexNameProvider { v -> makeLabel(v) }, null)
 
     for (fsm in library.stateMachines) {
         for (state in fsm.states) {
@@ -227,7 +227,7 @@ fun makeGraph(library: Library, filePath: Path) {
                 graph.addEdge(dependency, state)
             }
         }
-        val subgraph = DirectedSubgraph(graph, fsm.states.toSet(), null)
+//        val subgraph = DirectedSubgraph(graph, fsm.states.toSet(), null)
 
 //        exporter.export(FileWriter(filePath.toFile(), true), subgraph)
     }
