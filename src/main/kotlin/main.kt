@@ -4,7 +4,6 @@ import com.github.javaparser.ast.ImportDeclaration
 import com.github.javaparser.ast.Node
 import com.github.javaparser.ast.body.*
 import com.github.javaparser.ast.expr.*
-import com.github.javaparser.ast.stmt.Statement
 import com.github.javaparser.ast.visitor.VoidVisitorAdapter
 import org.jgrapht.ext.DOTExporter
 import org.jgrapht.ext.VertexNameProvider
@@ -109,103 +108,6 @@ fun main(args: Array<String>) {
         }
     }
 
-//    val classDiff = diffClasses(srcElements.classes.first { it -> it.name == "src" },
-//            dstElements.classes.first { it -> it.name == "dst" })
-//    println(classDiff)
-//
-//    for (method in classDiff.methodsChanged) {
-//        val missingDstParams = method.value.newInDst
-//        for (param in missingDstParams) {
-//            assert(param.value.annotations.size > 0);
-//            val tag = param.value.annotations.first().name.name
-//            for (constructor in srcElements.constructors) {
-//                val srcParam = findAnnotatedParam(constructor, tag)
-//                if (srcParam != null) {
-//                    val new = codeElements.objectCreation
-//                            .filter { it -> it.type.name == constructor.name }
-//                            .filter { it -> it.args != null }
-//                            .filter { it -> it.args.size > srcParam.index }
-//                    val arg = new.first().args.get(srcParam.index)
-//                    codeElements.methodCalls
-//                            .filter { it -> it.name == method.key.name }
-//                            .forEach { it -> it.args.add(srcParam.index, arg) }
-//                    break
-//                }
-//            }
-//        }
-//    }
-//
-//    val srcClasses = srcElements.classes.filter { it -> it.name != "src" }
-//    val dstClasses = dstElements.classes.filter { it -> it.name != "dst" }
-//    val classPairs = findTagPairs(srcClasses, dstClasses)
-//    for (entry in classPairs) {
-//        val diff = diffClasses(entry.value as ClassOrInterfaceDeclaration,
-//                entry.key as ClassOrInterfaceDeclaration) // TODO: src, dst order
-//        for (method in diff.constructorsChanged) {
-//            for (param in method.value.newInSrc) {
-//                codeElements.objectCreation
-//                        .filter { it -> it.type.name == method.key.name }
-//                        .filter { it -> it.args != null }
-//                        .filter { it -> it.args.size > param.index }
-//                        .forEach { it -> it.args.removeAt(param.index) }
-//            }
-//        }
-//    }
-//    println(classPairs)
-//
-//    //    println(srcElements.constructors)
-//    println(cu);
-//    return;
-//    println(srcElements.methodDecls)
-//    println(dstElements.methodDecls)
-//
-//    val pairs = findTagPairs(srcElements.methodDecls, dstElements.methodDecls)
-//
-//    for (pair in pairs.entries.withIndex()) {
-//        println("Pair " + pair.index)
-//        val diff = diffMethods(pair.value.key as MethodDeclaration, pair.value.value as MethodDeclaration)
-//        println(diff)
-//    }
-//
-//    println("Hello World!");
-//    // visit and print the methods names
-//    val acceptedNames = listOf("get", "before", "after", "post", "put", "delete");
-//
-//    val methods = codeElements.methodCalls.filter {
-//        p ->
-//        acceptedNames.contains(p.name)
-//    }
-//
-//    for (node in methods) {
-//        val objectCreation = node.args.first()
-//        if (objectCreation !is ObjectCreationExpr) {
-//            continue
-//        }
-//        val path = if (objectCreation.args?.isEmpty() == false) {
-//            objectCreation.args.first()
-//        } else {
-//            null
-//        };
-//        val method = objectCreation.anonymousClassBody.first({ p -> p is MethodDeclaration });
-//        if (method !is MethodDeclaration) {
-//            continue
-//        }
-//        val params = method.parameters;
-//        val body = method.body;
-//
-//        node.args.clear();
-//        if (path != null) {
-//            node.args.add(path);
-//        }
-//        val lambda = wrapInLambda(params, body)
-//        node.args.add(lambda);
-//        if (objectCreation.type.name == "JsonTransformer") {
-//            val obj = ObjectCreationExpr();
-//            obj.type = objectCreation.type;
-//            node.args.add(obj)
-//        }
-//    }
-
     println(cu);
     Files.write(destination, cu.toString().toByteArray());
 }
@@ -231,19 +133,6 @@ fun isChildOf(parent: Node, child: Node): Boolean {
     return false;
 }
 
-//fun diffStates(old: State, new: State) {
-//    val srcList = src.parameters.withIndex().toMutableList()
-//    srcList.removeAll { it -> dst.parameters.contains(it.value) }
-//
-//    val dstList = dst.parameters.withIndex().toMutableList()
-//    dstList.removeAll { it -> src.parameters.contains(it.value) }
-//
-//    return MethodDiff(methodName = src.name,
-//            newInSrc = srcList,
-//            newInDst = dstList)
-//
-//}
-
 fun findEntityUsers(library: Library, entity: Entity): List<State> {
     val users = mutableListOf<State>();
     for (machine in library.stateMachines) {
@@ -261,31 +150,6 @@ fun findEntityUsers(library: Library, entity: Entity): List<State> {
 fun readLib(path: Path): CompilationUnit {
     val fis = FileInputStream(path.toFile())
     return JavaParser.parse(fis);
-}
-
-fun checkMethodArgType(method: MethodCallExpr, i: Int, arg: Class<Expression>): Boolean {
-    if (method.args == null) {
-        return false
-    }
-    if (method.args.size < i) {
-        return false
-    }
-    if (arg.isInstance(method.args[i]) == false) {
-        return false
-    }
-    return true
-}
-
-fun getIthArg() {
-
-}
-
-fun wrapInLambda(parameters: List<Parameter>, body: Statement): LambdaExpr {
-    val lambda = LambdaExpr()
-    lambda.isParametersEnclosed = true
-    lambda.parameters = parameters
-    lambda.body = body
-    return lambda
 }
 
 data class SplittedImport(val className: String,
@@ -329,30 +193,6 @@ data class CodeElements(val classes: MutableList<ClassOrInterfaceDeclaration> = 
                         val methodCalls: MutableList<MethodCallExpr> = mutableListOf(),
                         val objectCreation: MutableList<ObjectCreationExpr> = mutableListOf())
 
-fun diffMethods(src: MethodDeclaration, dst: MethodDeclaration): MethodDiff {
-    val srcList = src.parameters.withIndex().toMutableList()
-    srcList.removeAll { it -> dst.parameters.contains(it.value) }
-
-    val dstList = dst.parameters.withIndex().toMutableList()
-    dstList.removeAll { it -> src.parameters.contains(it.value) }
-
-    return MethodDiff(methodName = src.name,
-            newInSrc = srcList,
-            newInDst = dstList)
-}
-
-fun diffConstructors(src: ConstructorDeclaration, dst: ConstructorDeclaration): MethodDiff {
-    val srcList = src.parameters.withIndex().toMutableList()
-    srcList.removeAll { it -> dst.contains(it.value) }
-
-    val dstList = dst.parameters.withIndex().toMutableList()
-    dstList.removeAll { it -> src.contains(it.value) }
-
-    return MethodDiff(methodName = src.name,
-            newInSrc = srcList,
-            newInDst = dstList)
-}
-
 data class MethodDiff(val methodName: String,
                       val newInSrc: List<IndexedValue<Parameter>>,
                       val newInDst: List<IndexedValue<Parameter>>) {
@@ -361,86 +201,6 @@ data class MethodDiff(val methodName: String,
 
 data class ClassDiff(val name: String,
                      val methodsChanged: Map<MethodDeclaration, MethodDiff>)
-
-//fun diffClasses(src: ClassOrInterfaceDeclaration, dst: ClassOrInterfaceDeclaration): ClassDiff {
-//    val srcMethods: List<MethodOrConstructor> = src.members.flatMap {
-//        it ->
-//        if (isMethodOrConstructor(it)) listOf(MethodOrConstructor(it)) else listOf()
-//    }
-//    val dstMethods: List<MethodOrConstructor> = dst.members.flatMap {
-//        it ->
-//        if (isMethodOrConstructor(it)) listOf(MethodOrConstructor(it)) else listOf()
-//    }
-//    val changedMethods = mutableMapOf<MethodOrConstructor, MethodDiff>()
-//    for (method in srcMethods) {
-//        val changed = dstMethods
-//                .filter { it -> (it.name == method.name) && diffMethods(method, it).methodChanged() }
-//                .map { it -> Pair(it, diffMethods(method, it)) }
-//        changedMethods.putAll(changed)
-//    }
-//
-////    val srcConstructors: List<ConstructorDeclaration> = src.members.flatMap {
-////        it ->
-////        if (it is ConstructorDeclaration) listOf(it) else listOf()
-////    }
-////    val dstConstructors: List<ConstructorDeclaration> = dst.members.flatMap {
-////        it ->
-////        if (it is ConstructorDeclaration) listOf(it) else listOf()
-////    }
-////    val changedConstructors = mutableMapOf<ConstructorDeclaration, MethodDiff>()
-////    for (constructor in dstConstructors) {
-////        val changed = srcConstructors
-////                .filter { it -> (it.name == constructor.name) && diffConstructors(constructor, it).methodChanged() }
-////                .map { it -> Pair(it, diffConstructors(constructor, it)) }
-////        changedConstructors.putAll(changed)
-////    }
-//
-//    return ClassDiff(src.name, changedMethods)
-//}
-
-//fun diffClasses(src: ClassOrInterfaceDeclaration, dst: ClassOrInterfaceDeclaration): Boolean {
-//    return src.isInterface == dst.isInterface && src.name == dst.name;
-//}
-
-fun findTagPairs(src: List<AnnotableNode>, dst: List<AnnotableNode>): Map<AnnotableNode, AnnotableNode> {
-    val pairs = mutableMapOf<AnnotableNode, AnnotableNode>()
-    for (srcMethod in src) {
-        for (srcTag in srcMethod.annotations) {
-            val sameTag = dst.filter { it -> it.annotations.first().name == srcTag.name }
-            if (sameTag.isNotEmpty()) {
-                pairs.put(srcMethod, sameTag.first())
-            }
-        }
-    }
-
-    return pairs;
-}
-
-//fun findClassPairs(src: List<ClassOrInterfaceDeclaration>, dst: List<ClassOrInterfaceDeclaration>):
-//        Map<ClassOrInterfaceDeclaration, ClassOrInterfaceDeclaration> {
-//    val pairs = mutableMapOf<ClassOrInterfaceDeclaration, ClassOrInterfaceDeclaration>()
-//    for (srcClass in src) {
-//        val sameName = dst.firstOrNull { it -> it.name == srcClass.name }
-//        if (sameName != null) {
-//            pairs.put(srcClass, sameName)
-//        }
-//    }
-//
-//    return pairs;
-//}
-
-fun findAnnotationsPairs(src: List<MethodDeclaration>, dst: List<MethodDeclaration>): Set<Pair<MethodDeclaration, MethodDeclaration>> {
-    val pairs = mutableSetOf<Pair<MethodDeclaration, MethodDeclaration>>()
-    for (srcMethod in src) {
-        val srcName = srcMethod.name
-        val sameName = dst.filter { it -> it.name == srcName }
-        if (sameName.isNotEmpty()) {
-            pairs.add(Pair(srcMethod, sameName.first()))
-        }
-    }
-
-    return pairs;
-}
 
 fun makeLabel(v: State): String {
     "%s(%s: %s)".format(v.methodName, v.params.first().entity.name, v.params.first().entity.type)
@@ -476,21 +236,9 @@ fun makeGraph(library: Library, filePath: Path) {
     exporter.export(FileWriter(filePath.toFile(), false), graph)
 }
 
-fun findAnnotatedParam(method: ConstructorDeclaration, tag: String): IndexedValue<Parameter>? {
-    for (param in method.parameters.withIndex()) {
-        if (param.value.annotations.any { ann -> ann.name.name == tag }) {
-            return param
-        }
-    }
-    return null
-}
-
 class MethodOrConstructor(var node: BodyDeclaration) {
     fun get() = node
 }
-
-fun isMethodOrConstructor(node: BodyDeclaration) = node is MethodDeclaration || node is ConstructorDeclaration
-
 
 enum class Action {
     CONSTRUCTOR, METHOD_CALL, STATIC_CALL
