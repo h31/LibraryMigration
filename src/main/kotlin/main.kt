@@ -1,31 +1,21 @@
-import com.github.javaparser.ASTHelper
 import com.github.javaparser.JavaParser
 import com.github.javaparser.ast.CompilationUnit
-import com.github.javaparser.ast.NamedNode
+import com.github.javaparser.ast.ImportDeclaration
 import com.github.javaparser.ast.Node
 import com.github.javaparser.ast.body.*
-import com.github.javaparser.ast.expr.Expression
-import com.github.javaparser.ast.expr.LambdaExpr
-import com.github.javaparser.ast.expr.MethodCallExpr
-import com.github.javaparser.ast.expr.ObjectCreationExpr
+import com.github.javaparser.ast.expr.*
 import com.github.javaparser.ast.stmt.Statement
 import com.github.javaparser.ast.visitor.VoidVisitorAdapter
-import org.jgrapht.DirectedGraph
-import org.jgrapht.Graph
 import org.jgrapht.ext.DOTExporter
-import org.jgrapht.ext.IntegerNameProvider
 import org.jgrapht.ext.VertexNameProvider
 import org.jgrapht.graph.DefaultEdge
 import org.jgrapht.graph.DirectedSubgraph
 import org.jgrapht.graph.SimpleDirectedGraph
-import java.io.File
 import java.io.FileInputStream
 import java.io.FileWriter
-import java.io.StringWriter
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
-import java.util.*
 
 /**
  * Created by aleksyuk on 4/7/16.
@@ -45,6 +35,8 @@ fun main(args: Array<String>) {
 
     val codeElements = CodeElements();
     CodeElementsVisitor().visit(cu, codeElements);
+
+    parseImports(cu.imports)
 
 //    val srcElements = CodeElements();
 //    CodeElementsVisitor().visit(srcLib, srcElements);
@@ -294,6 +286,15 @@ fun wrapInLambda(parameters: List<Parameter>, body: Statement): LambdaExpr {
     lambda.parameters = parameters
     lambda.body = body
     return lambda
+}
+
+data class SplittedImport(val className: String,
+                          val packageName: String)
+
+fun parseImports(imports: List<ImportDeclaration>) = imports.map { x ->
+    val name = x.name
+    val packageName = if (name is QualifiedNameExpr) name.qualifier.toString() else ""
+    SplittedImport(name.name, packageName)
 }
 
 private class CodeElementsVisitor : VoidVisitorAdapter<CodeElements>() {
