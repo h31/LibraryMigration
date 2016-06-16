@@ -5,6 +5,7 @@ import com.github.javaparser.ast.Node
 import com.github.javaparser.ast.body.*
 import com.github.javaparser.ast.expr.*
 import com.github.javaparser.ast.visitor.VoidVisitorAdapter
+import org.jgrapht.alg.DijkstraShortestPath
 import org.jgrapht.ext.DOTExporter
 import org.jgrapht.ext.EdgeNameProvider
 import org.jgrapht.ext.VertexNameProvider
@@ -66,8 +67,20 @@ fun main(args: Array<String>) {
     graphvizRender(graphviz1, "graph1")
     graphvizRender(graphviz2, "graph2")
 
-    val graph = toJGrapht(graph2)
+    val jgraph2 = toJGrapht(graph2)
+    val src = graph2.stateMachines.first { m -> m.entity == Entities.node }.getConstructedState()
+    val dst = graph2.stateMachines.first { m -> m.entity == Entities.node }.getInitState()
 
+    val route = DijkstraShortestPath.findPathBetween(jgraph2, src, dst)
+    println("Route: ")
+    for (state in route.withIndex()) {
+        val action = if (state.value.action.type() == ActionType.LINKED) {
+            (state.value.action as LinkedAction).edge.action
+        } else {
+            state.value.action
+        }
+        println("%d: %s".format(state.index, action.label()))
+    }
 //    println(cu);
 //    Files.write(destination, cu.toString().toByteArray());
 }

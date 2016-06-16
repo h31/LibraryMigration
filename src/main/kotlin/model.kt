@@ -46,6 +46,9 @@ data class State(val name: String,
         }
         throw Exception()
     }
+
+    fun name() = name + "_" + machine.entity.name
+    fun label() = machine.entity.name + ": " + name
 }
 
 fun makeInitState(machine: StateMachine) = State("Init", machine)
@@ -79,7 +82,7 @@ class ConstructorAction(val className: String) : Action {
 }
 
 class LinkedAction(val edge: Edge) : Action {
-    override fun label() = edge.action.label()
+    override fun label() = "new " + edge.createdMachine?.entity?.name + "()"
     override fun type() = ActionType.LINKED
 }
 

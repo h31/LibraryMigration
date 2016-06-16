@@ -12,8 +12,6 @@ import java.nio.file.Paths
  * Created by artyom on 16.06.16.
  */
 
-fun stateName(v: State) = v.name + "_" + v.machine.entity.name
-fun stateLabel(v: State) = v.machine.entity.name + ": " + v.name
 fun edgeLabel(v: Edge) = v.action.label()
 
 fun toGraphviz(library: Library, isSrc: Boolean, rankLR: Boolean): String {
@@ -30,21 +28,21 @@ fun toGraphviz(library: Library, isSrc: Boolean, rankLR: Boolean): String {
         System.out.println("FSM: " + fsm.toString())
         for (state in fsm.states) {
             System.out.println("Vertex: " + state.toString())
-            storage.append("  %s [ label=\"%s\" ];\n".format(stateName(state), stateLabel(state)))
+            storage.append("  %s [ label=\"%s\" ];\n".format(state.name(), state.label()))
         }
         for (edge in fsm.edges) {
             System.out.println("Edge: " + edge.toString())
             val createdMachine = edge.createdMachine
             if (createdMachine != null) {
                 storage.append("  virtual%d [ shape = point ];\n".format(counter))
-                storage.append("  %s -> virtual%d [ label=\"%s\" ];\n".format(stateName(edge.src), counter, edgeLabel(edge)))
-                storage.append("  virtual%d -> %s;\n".format(counter, stateName(edge.dst)))
+                storage.append("  %s -> virtual%d [ label=\"%s\" ];\n".format(edge.src.name(), counter, edgeLabel(edge)))
+                storage.append("  virtual%d -> %s;\n".format(counter, edge.dst.name()))
                 val newEdge = edge.copy(action = LinkedAction(edge))
                 System.out.println("Link: " + newEdge.toString())
-                storage.append("  virtual%d -> %s [ label=\"%s\" ];\n".format(counter, stateName(createdMachine.getInitState()), edgeLabel(newEdge)))
+                storage.append("  virtual%d -> %s [ label=\"%s\" ];\n".format(counter, createdMachine.getInitState().name(), edgeLabel(newEdge)))
                 counter++
             } else {
-                storage.append("  %s -> %s [ label=\"%s\" ];\n".format(stateName(edge.src), stateName(edge.dst), edgeLabel(edge)))
+                storage.append("  %s -> %s [ label=\"%s\" ];\n".format(edge.src.name(), edge.dst.name(), edgeLabel(edge)))
             }
         }
     }
@@ -67,8 +65,8 @@ fun toJGrapht(library: Library): DirectedPseudograph<State, Edge> {
     System.out.println("Start")
     val graph = DirectedPseudograph<State, Edge>(Edge::class.java)
 
-    val exporter = DOTExporter<State, Edge>(VertexNameProvider { stateName(it) },
-            VertexNameProvider { stateLabel(it) }, EdgeNameProvider { edgeLabel(it) })
+    val exporter = DOTExporter<State, Edge>(VertexNameProvider { it.name },
+            VertexNameProvider { it.label() }, EdgeNameProvider { edgeLabel(it) })
 
     for (fsm in library.stateMachines) {
         System.out.println("FSM: " + fsm.toString())
