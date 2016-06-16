@@ -2,8 +2,8 @@
  * Created by artyom on 16.06.16.
  */
 
-enum class Action {
-    CONSTRUCTOR, METHOD_CALL, STATIC_CALL, AUTO
+enum class ActionType {
+    CONSTRUCTOR, METHOD_CALL, STATIC_CALL, AUTO, LINKED
 }
 
 data class Entity(val name: String,
@@ -23,9 +23,7 @@ data class StateMachine(val entity: Entity) {
                 machine = this,
                 src = getInitState(),
                 dst = getConstructedState(),
-                action = Action.AUTO,
-                methodName = "auto",
-                params = listOf())
+                action = AutoAction())
     }
 
     fun getInitState() = states.first { state -> state.name == "Init" }
@@ -53,14 +51,46 @@ data class State(val name: String,
 fun makeInitState(machine: StateMachine) = State("Init", machine)
 fun makeConstructedState(machine: StateMachine) = State("Constructed", machine)
 
+interface Action {
+    fun type(): ActionType
+    fun label(): String
+}
+
+class CallAction(val methodName: String,
+                 val param: Param) : Action {
+    override fun label() = methodName + param.label()
+    override fun type() = ActionType.METHOD_CALL
+}
+
+class StaticCallAction(val methodName: String,
+                       val param: Param) : Action {
+    override fun label() = methodName + param.label()
+    override fun type() = ActionType.STATIC_CALL
+}
+
+class AutoAction : Action {
+    override fun label() = ""
+    override fun type() = ActionType.AUTO
+}
+
+class ConstructorAction(val className: String) : Action {
+    override fun label() = "new " + className
+    override fun type() = ActionType.CONSTRUCTOR
+}
+
+class LinkedAction(val edge: Edge) : Action {
+    override fun label() = edge.action.label()
+    override fun type() = ActionType.LINKED
+}
+
 data class Edge(val machine: StateMachine,
                 val src: State = makeConstructedState(machine),
                 val dst: State = makeConstructedState(machine),
-                val action: Action,
-                val methodName: String,
-                val params: List<Param>) {
+                val action: Action) {
     var createdMachine: StateMachine? = null
 }
 
 data class Param(val entity: Entity,
-                 val pos: Int)
+                 val pos: Int) {
+    fun label() = "(%s%s)".format("..., ".repeat(pos), entity.name)
+}

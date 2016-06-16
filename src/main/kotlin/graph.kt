@@ -10,10 +10,16 @@ object Entities {
 
 fun makeGraph1(): Library {
     val node = StateMachine(entity = Entities.node)
-    val getNode = Edge(machine = node,
-            action = Action.METHOD_CALL,
-            methodName = "getNode",
-            params = listOf(Param(entity = Entities.num, pos = 0)))
+    val getNode = Edge(
+            machine = node,
+            action = CallAction(
+                    methodName = "getNode",
+                    param = Param(
+                            entity = Entities.num,
+                            pos = 0
+                    )
+            )
+    )
     node.edges += getNode
 
     getNode.createdMachine = node
@@ -24,20 +30,32 @@ fun makeGraph1(): Library {
 fun makeGraph2(): Library {
     val list = StateMachine(entity = Entities.nodeList)
 
-    val listGet = Edge(machine = list,
-            action = Action.METHOD_CALL,
-            methodName = "get",
-            params = listOf(Param(entity = Entities.num, pos = 0)))
+    val listGet = Edge(
+            machine = list,
+            action = CallAction(
+                    methodName = "get",
+                    param = Param(
+                            entity = Entities.num,
+                            pos = 0
+                    )
+            )
+    )
 
     list.edges += listGet
 
 
     val node = StateMachine(entity = Entities.node)
 
-    val getNode = Edge(machine = node,
-            action = Action.METHOD_CALL,
-            methodName = "getNodeList",
-            params = listOf(Param(entity = Entities.num, pos = 0)))
+    val getNode = Edge(
+            machine = node,
+            action = CallAction(
+                    methodName = "getNodeList",
+                    param = Param(
+                            entity = Entities.num,
+                            pos = 0
+                    )
+            )
+    )
 
     node.edges += getNode
 

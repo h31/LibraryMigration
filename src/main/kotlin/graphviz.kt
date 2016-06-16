@@ -2,6 +2,7 @@ import org.jgrapht.ext.DOTExporter
 import org.jgrapht.ext.EdgeNameProvider
 import org.jgrapht.ext.VertexNameProvider
 import org.jgrapht.graph.DirectedPseudograph
+import java.io.File
 import java.io.FileWriter
 import java.nio.file.Files
 import java.nio.file.Path
@@ -13,25 +14,7 @@ import java.nio.file.Paths
 
 fun stateName(v: State) = v.name + "_" + v.machine.entity.name
 fun stateLabel(v: State) = v.machine.entity.name + ": " + v.name
-
-
-fun edgeLabel(v: Edge, isSrc: Boolean): String {
-//    "%s(%s: %s)".format(v.methodName, v.params.first().entity.name, type)
-    val args = if (v.params.isNotEmpty()) {
-        val arg = v.params.first()
-        val previousArgs = "..., ".repeat(arg.pos)
-        val argType = if (isSrc) arg.entity.srcType else arg.entity.dstType
-        "(%s%s: %s)".format(previousArgs, arg.entity.name, argType)
-    } else {
-        "()"
-    }
-    when (v.action) {
-        Action.CONSTRUCTOR -> return "new " + v.methodName + args
-        Action.METHOD_CALL -> return v.methodName + args
-        Action.STATIC_CALL -> return v.methodName + args
-        Action.AUTO -> return ""
-    }
-}
+fun edgeLabel(v: Edge) = v.action.label()
 
 fun toGraphviz(library: Library, isSrc: Boolean, rankLR: Boolean): String {
     val storage = StringBuilder()
@@ -54,16 +37,14 @@ fun toGraphviz(library: Library, isSrc: Boolean, rankLR: Boolean): String {
             val createdMachine = edge.createdMachine
             if (createdMachine != null) {
                 storage.append("  virtual%d [ shape = point ];\n".format(counter))
-                storage.append("  %s -> virtual%d [ label=\"%s\" ];\n".format(stateName(edge.src), counter, edgeLabel(edge, isSrc)))
+                storage.append("  %s -> virtual%d [ label=\"%s\" ];\n".format(stateName(edge.src), counter, edgeLabel(edge)))
                 storage.append("  virtual%d -> %s;\n".format(counter, stateName(edge.dst)))
-                val newEdge = edge.copy(action = Action.CONSTRUCTOR,
-                        methodName = createdMachine.entity.name,
-                        params = listOf())
+                val newEdge = edge.copy(action = LinkedAction(edge))
                 System.out.println("Link: " + newEdge.toString())
-                storage.append("  virtual%d -> %s [ label=\"%s\" ];\n".format(counter, stateName(createdMachine.getInitState()), edgeLabel(newEdge, isSrc)))
+                storage.append("  virtual%d -> %s [ label=\"%s\" ];\n".format(counter, stateName(createdMachine.getInitState()), edgeLabel(newEdge)))
                 counter++
             } else {
-                storage.append("  %s -> %s [ label=\"%s\" ];\n".format(stateName(edge.src), stateName(edge.dst), edgeLabel(edge, isSrc)))
+                storage.append("  %s -> %s [ label=\"%s\" ];\n".format(stateName(edge.src), stateName(edge.dst), edgeLabel(edge)))
             }
         }
     }
@@ -86,6 +67,9 @@ fun toJGrapht(library: Library): DirectedPseudograph<State, Edge> {
     System.out.println("Start")
     val graph = DirectedPseudograph<State, Edge>(Edge::class.java)
 
+    val exporter = DOTExporter<State, Edge>(VertexNameProvider { stateName(it) },
+            VertexNameProvider { stateLabel(it) }, EdgeNameProvider { edgeLabel(it) })
+
     for (fsm in library.stateMachines) {
         System.out.println("FSM: " + fsm.toString())
         for (state in fsm.states) {
@@ -103,14 +87,14 @@ fun toJGrapht(library: Library): DirectedPseudograph<State, Edge> {
         for (edge in fsm.edges) {
             val createdMachine = edge.createdMachine
             if (createdMachine != null) {
-                val newEdge = edge.copy(action = Action.CONSTRUCTOR,
-                        methodName = createdMachine.entity.name,
-                        params = listOf())
+                val newEdge = edge.copy(action = LinkedAction(edge))
                 System.out.println("Link: " + newEdge.toString())
                 graph.addEdge(edge.src, createdMachine.getInitState(), newEdge)
             }
         }
     }
+
+    exporter.export(FileWriter(File("graph_debug.dot"), false), graph)
 
     return graph
 }

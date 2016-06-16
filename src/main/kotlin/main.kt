@@ -66,6 +66,7 @@ fun main(args: Array<String>) {
     graphvizRender(graphviz1, "graph1")
     graphvizRender(graphviz2, "graph2")
 
+    val graph = toJGrapht(graph2)
 
 //    println(cu);
 //    Files.write(destination, cu.toString().toByteArray());
@@ -147,19 +148,19 @@ fun isChildOf(parent: Node, child: Node): Boolean {
     return false;
 }
 
-fun findEntityUsers(library: Library, entity: Entity): List<Edge> {
-    val users = mutableListOf<Edge>();
-    for (machine in library.stateMachines) {
-        for (edge in machine.edges) {
-            for (param in edge.params) {
-                if (param.entity == entity) {
-                    users.add(edge)
-                }
-            }
-        }
-    }
-    return users;
-}
+//fun findEntityUsers(library: Library, entity: Entity): List<Edge> {
+//    val users = mutableListOf<Edge>();
+//    for (machine in library.stateMachines) {
+//        for (edge in machine.edges) {
+//            for (param in edge.params) {
+//                if (param.entity == entity) {
+//                    users.add(edge)
+//                }
+//            }
+//        }
+//    }
+//    return users;
+//}
 
 fun readLib(path: Path): CompilationUnit {
     val fis = FileInputStream(path.toFile())
