@@ -6,10 +6,9 @@ import com.github.javaparser.ast.body.*
 import com.github.javaparser.ast.expr.*
 import com.github.javaparser.ast.visitor.VoidVisitorAdapter
 import org.jgrapht.ext.DOTExporter
+import org.jgrapht.ext.EdgeNameProvider
 import org.jgrapht.ext.VertexNameProvider
-import org.jgrapht.graph.DefaultEdge
-import org.jgrapht.graph.DirectedSubgraph
-import org.jgrapht.graph.SimpleDirectedGraph
+import org.jgrapht.graph.*
 import java.io.FileInputStream
 import java.io.FileWriter
 import java.nio.file.Files
@@ -43,74 +42,89 @@ fun main(args: Array<String>) {
 //    val dstElements = CodeElements();
 //    CodeElementsVisitor().visit(dstLib, dstElements);
 
-    val path = Entity("path", "String")
-    val route = Entity("route", "Route")
-    val filter = Entity("filter", "Filter")
-    val server = Entity("server", "static")
-    val acceptType = Entity("acceptType", "String")
-    val transformer = Entity("transformer", "JsonTransformer")
-    val entityMap = listOf(path, route, filter, server, acceptType, transformer).map { it -> it.name to it }.toMap()
+//    val path = Entity("path", "String")
+//    val route = Entity("route", "Route")
+//    val filter = Entity("filter", "Filter")
+//    val server = Entity("server", "static")
+//    val acceptType = Entity("acceptType", "String")
+//    val transformer = Entity("transformer", "JsonTransformer")
+//    val entityMap = listOf(path, route, filter, server, acceptType, transformer).map { it -> it.name to it }.toMap()
 
-    val spark1 = makeSpark1(entityMap)
-    val spark2 = makeSpark2(entityMap)
+//    val spark1 = makeSpark1(entityMap)
+//    val spark2 = makeSpark2(entityMap)
 
-    makeGraph(spark1, Paths.get("graph1.dot"))
-    makeGraph(spark2, Paths.get("graph2.dot"))
+//    makeGraph(spark1, Paths.get("graph1.dot"))
+//    makeGraph(spark2, Paths.get("graph2.dot"))
 
-    for (machineNum in 0..spark1.stateMachines.size - 1) {
-        val machine1 = spark1.stateMachines[machineNum]
-        val machine2 = spark2.stateMachines[machineNum]
-        val diff = diffStateMachines(machine1, machine2)
-        val (newInSrc, newInDst) = diff;
-        for (state in newInDst) {
-            println(state)
-            val param = state.params.first()
-            println(param)
-            val userStates = findEntityUsers(spark1, param.entity)
-            val grouped = userStates.groupBy { it -> it.findInLibrary(spark1).entity }.map { it -> it.value.first() }
-            for (userState in grouped) {
-                val userMachine = userState.findInLibrary(spark1);
-                println(userState)
-                val type = userMachine.entity.type;
-                if (userState.action == Action.CONSTRUCTOR) {
-                    if (state.action == Action.STATIC_CALL) {
-                        val calls = codeElements.methodCalls
-                                .filter { it -> it.scope == null }
-                                .filter { it -> it.name == state.methodName }
-                        for (call in calls) {
-                            val creationNodes = codeElements.objectCreation
-                                    .filter { it -> it.type.name == type }
-                                    .filter { it -> isChildOf(call, it) }
-                            if (creationNodes.isNotEmpty()) {
-                                val node = creationNodes.first()
-                                if (node.args != null) {
-                                    val paramValue = node.args.get(param.pos)
-                                    call.args.add(param.pos, paramValue)
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        for (state in newInSrc) {
-            println(state)
-            val param = state.params.first()
-            println(param)
-            if (state.action == Action.CONSTRUCTOR) {
-                val creationNodes = codeElements.objectCreation.filter { it -> it.type.name == machine1.entity.type }
-                for (node in creationNodes) {
-                    if (node.args != null && node.args.size > param.pos) {
-                        node.args.removeAt(param.pos)
-                    }
-                }
-            }
-        }
-    }
+    val graph1 = makeGraph1()
+    val graph2 = makeGraph2()
+//    makeGraph(graph1, Paths.get("graph1.dot"), true)
+//    makeGraph(graph2, Paths.get("graph2.dot"), false)
 
-    println(cu);
-    Files.write(destination, cu.toString().toByteArray());
+    val graphviz1 = toGraphviz(graph1, true, false)
+    val graphviz2 = toGraphviz(graph2, false, false)
+    graphvizRender(graphviz1, "graph1")
+    graphvizRender(graphviz2, "graph2")
+
+
+//    println(cu);
+//    Files.write(destination, cu.toString().toByteArray());
 }
+
+//fun doMigration(srcLib: Library, dstLib: Library) {
+//    assert(srcLib.stateMachines.size == dstLib.stateMachines.size)
+//
+//    for (machines in srcLib.stateMachines.zip(dstLib.stateMachines)) {
+//        val machine1 = machines.first
+//        val machine2 = machines.second
+//        val diff = diffStateMachines(machine1, machine2)
+//        val (newInSrc, newInDst) = diff;
+//        for (state in newInDst) {
+//            println(state)
+//            val param = state.params.first()
+//            println(param)
+//            val userStates = findEntityUsers(srcLib, param.entity)
+//            val grouped = userStates.groupBy { it -> it.findInLibrary(srcLib).entity }.map { it -> it.value.first() }
+//            for (userState in grouped) {
+//                val userMachine = userState.findInLibrary(srcLib);
+//                println(userState)
+//                val type = userMachine.entity.type;
+//                if (userState.action == Action.CONSTRUCTOR) {
+//                    if (state.action == Action.STATIC_CALL) {
+//                        val calls = codeElements.methodCalls
+//                                .filter { it -> it.scope == null }
+//                                .filter { it -> it.name == state.methodName }
+//                        for (call in calls) {
+//                            val creationNodes = codeElements.objectCreation
+//                                    .filter { it -> it.type.name == type }
+//                                    .filter { it -> isChildOf(call, it) }
+//                            if (creationNodes.isNotEmpty()) {
+//                                val node = creationNodes.first()
+//                                if (node.args != null) {
+//                                    val paramValue = node.args.get(param.pos)
+//                                    call.args.add(param.pos, paramValue)
+//                                }
+//                            }
+//                        }
+//                    }
+//                }
+//            }
+//        }
+//        for (state in newInSrc) {
+//            println(state)
+//            val param = state.params.first()
+//            println(param)
+//            if (state.action == Action.CONSTRUCTOR) {
+//                val creationNodes = codeElements.objectCreation.filter { it -> it.type.name == machine1.entity.type }
+//                for (node in creationNodes) {
+//                    if (node.args != null && node.args.size > param.pos) {
+//                        node.args.removeAt(param.pos)
+//                    }
+//                }
+//            }
+//        }
+//    }
+//}
 
 fun diffStateMachines(src: StateMachine, dst: StateMachine): Pair<List<State>, List<State>> {
     val srcList = src.states.toMutableList()
@@ -133,13 +147,13 @@ fun isChildOf(parent: Node, child: Node): Boolean {
     return false;
 }
 
-fun findEntityUsers(library: Library, entity: Entity): List<State> {
-    val users = mutableListOf<State>();
+fun findEntityUsers(library: Library, entity: Entity): List<Edge> {
+    val users = mutableListOf<Edge>();
     for (machine in library.stateMachines) {
-        for (state in machine.states) {
-            for (param in state.params) {
+        for (edge in machine.edges) {
+            for (param in edge.params) {
                 if (param.entity == entity) {
-                    users.add(state)
+                    users.add(edge)
                 }
             }
         }
@@ -202,183 +216,120 @@ data class MethodDiff(val methodName: String,
 data class ClassDiff(val name: String,
                      val methodsChanged: Map<MethodDeclaration, MethodDiff>)
 
-fun makeLabel(v: State): String {
-    "%s(%s: %s)".format(v.methodName, v.params.first().entity.name, v.params.first().entity.type)
-    val arg = v.params.first()
-    val previousArgs = "..., ".repeat(arg.pos)
-    val args = "(%s%s: %s)".format(previousArgs, arg.entity.name, arg.entity.type)
-    when (v.action) {
-        Action.CONSTRUCTOR -> return "new " + v.methodName + args
-        Action.METHOD_CALL -> return v.methodName + args
-        Action.STATIC_CALL -> return v.methodName + args
-    }
-}
-
-fun makeGraph(library: Library, filePath: Path) {
-    val graph = SimpleDirectedGraph<State, DefaultEdge>(DefaultEdge::class.java)
-    val exporter = DOTExporter<State, DefaultEdge>(VertexNameProvider { v -> v.name + "_" + v.methodName },
-            VertexNameProvider { v -> makeLabel(v) }, null)
-
-    for (fsm in library.stateMachines) {
-        for (state in fsm.states) {
-            graph.addVertex(state)
-            for (dependency in state.before) {
-                graph.addVertex(dependency)
-                graph.addEdge(dependency, state)
-            }
-        }
-//        val subgraph = DirectedSubgraph(graph, fsm.states.toSet(), null)
-
-//        exporter.export(FileWriter(filePath.toFile(), true), subgraph)
-    }
-//    val edge = graph.edgeSet().first()
-//    val vertex = graph.vertexSet().first()
-    exporter.export(FileWriter(filePath.toFile(), false), graph)
-}
-
 class MethodOrConstructor(var node: BodyDeclaration) {
     fun get() = node
 }
 
-enum class Action {
-    CONSTRUCTOR, METHOD_CALL, STATIC_CALL
-}
-
-data class Entity(val name: String,
-                  val type: String)
-
-data class Library(val stateMachines: List<StateMachine>)
-
-data class StateMachine(val entity: Entity,
-                        val states: List<State>)
-
-data class State(val name: String,
-                 val before: List<State>,
-                 val action: Action,
-                 val methodName: String,
-                 val params: List<Param>) {
-    fun findInLibrary(library: Library): StateMachine {
-        for (machine in library.stateMachines) {
-            for (state in machine.states) {
-                if (state == this) {
-                    return machine;
-                }
-            }
-        }
-        throw Exception()
-    }
-}
-
-data class Param(val entity: Entity,
-                 val pos: Int)
-
-fun makeSpark1(entities: Map<String, Entity>): Library {
-    val registerPathGet = State("registerPathGet", listOf(),
-            Action.CONSTRUCTOR, "Route", listOf(Param(entities["path"]!!, 0)))
-    val registerPathFilter = registerPathGet.copy(name = "registerPathFilter", methodName = "Filter")
-
-//    val registerPathGetType = registerPathGet.copy()
-//    val registerPathType = registerPathGet.copy(params =  listOf(Param(entities["acceptType"]!!, 1)))
-
-    val getHandler = StateMachine(entity = entities["route"]!!,
-            states = listOf(registerPathGet))
-
-    val filter = StateMachine(entity = entities["filter"]!!,
-            states = listOf(registerPathFilter))
-
-    val postHandler = getHandler.copy()
-    val putHandler = getHandler.copy()
-    val deleteHandler = getHandler.copy()
-
-//    val getTypeHandler = StateMachine(entity = entities["transformer"]!!,
-//            states = listOf(registerPathGetType, registerPathType))
-
-    val get = State(name = "get",
-            before = listOf(registerPathGet),
-            action = Action.STATIC_CALL,
-            methodName = "get",
-            params = listOf(Param(entities["route"]!!, 0)))
-
-    val before = State(name = "before",
-            before = listOf(registerPathFilter),
-            action = Action.STATIC_CALL,
-            methodName = "before",
-            params = listOf(Param(entities["filter"]!!, 0)))
-
-    val after = before.copy(name = "after", methodName = "after")
-    val post = get.copy(name = "post", methodName = "post")
-    val put = get.copy(name = "put", methodName = "put")
-    val delete = get.copy(name = "delete", methodName = "delete")
-    val webServer = StateMachine(entity = entities["server"]!!,
-            states = listOf(get, before, after, post, put, delete))
-
-    return Library(listOf(webServer, getHandler, filter, postHandler, putHandler, deleteHandler))
-}
-
-fun makeSpark2(entities: Map<String, Entity>): Library {
-    val handler = StateMachine(entities["route"]!!, listOf())
-
-    val filter = StateMachine(entities["filter"]!!, listOf())
-    val afterHandler = filter.copy()
-
-    val postHandler = handler.copy()
-    val putHandler = handler.copy()
-    val deleteHandler = handler.copy()
-//    val getTypeHandler = StateMachine(entities["transformer"]!!, listOf())
-
-    val registerPathGet = State(name = "registerPathGet",
-            before = listOf(),
-            action = Action.STATIC_CALL,
-            methodName = "get",
-            params = listOf(Param(entities["path"]!!, 0)))
-
-    val registerPathFilter = registerPathGet.copy(name = "registerPathFilter", methodName = "before")
-    val registerPathAfter = registerPathFilter.copy(methodName = "after")
-    val registerPathPost = registerPathGet.copy(methodName = "post")
-    val registerPathPut = registerPathGet.copy(methodName = "put")
-    val registerPathDelete = registerPathGet.copy(methodName = "delete")
-
-//    val registerPathGetType = registerPathGet.copy(name = "registerPathGetType",
-//            methodName = "get", params = listOf(Param(entities["path"]!!, 0)))
-//    val registerPathType = registerPathGet.copy(name = "registerPathType",
-//            methodName = "get", params = listOf(Param(entities["acceptType"]!!, 1)))
-
-    val get = State(name = "get",
-            before = listOf(registerPathGet),
-            action = Action.STATIC_CALL,
-            methodName = "get",
-            params = listOf(Param(entities["route"]!!, 1)))
-
-    val before = State(name = "before",
-            before = listOf(registerPathFilter),
-            action = Action.STATIC_CALL,
-            methodName = "before",
-            params = listOf(Param(entities["filter"]!!, 1)))
-
-    val after = before.copy(name = "after",
-            before = listOf(registerPathAfter),
-            methodName = "after")
-
-    val post = get.copy(name = "post",
-            before = listOf(registerPathPost),
-            methodName = "post")
-
-    val put = get.copy(name = "put",
-            before = listOf(registerPathPut),
-            methodName = "put")
-
-    val delete = get.copy(name = "delete",
-            before = listOf(registerPathDelete),
-            methodName = "delete")
-
-//    val getType = get.copy(name = "get",
-//            before = listOf(registerPathType),
+//fun makeSpark1(entities: Map<String, Entity>): Library {
+//    val init = makeInitState()
+//    val constructed = makeConstructedState()
+//    val registerPathGet = Edge(src = init,
+//            dst = constructed,
+//            action = Action.CONSTRUCTOR,
+//            methodName = "Route",
+//            params = listOf(Param(entities["path"]!!, 0)))
+//    val registerPathFilter = registerPathGet.copy(methodName = "Filter")
+//
+//    val getHandler = StateMachine(entity = entities["route"]!!,
+//            states = listOf(init, constructed),
+//            edges = listOf(registerPathGet))
+//
+//    val filter = getHandler.copy(entity = entities["filter"]!!,
+//            edges = listOf(registerPathFilter))
+//
+//    val postHandler = getHandler.copy()
+//    val putHandler = getHandler.copy()
+//    val deleteHandler = getHandler.copy()
+//
+//    val handlerState = makeInitState()
+//
+//    val get = Edge(src = handlerState,
+//            dst = handlerState,
+//            action = Action.STATIC_CALL,
 //            methodName = "get",
-//            params = listOf(Param(entities["route"]!!, 2)))
+//            params = listOf(Param(entities["route"]!!, 0)))
+//
+//    val before = Edge(src = handlerState,
+//            dst = handlerState,
+//            action = Action.STATIC_CALL,
+//            methodName = "before",
+//            params = listOf(Param(entities["filter"]!!, 0)))
+//
+//    val after = before.copy(methodName = "after")
+//    val post = get.copy(methodName = "post")
+//    val put = get.copy(methodName = "put")
+//    val delete = get.copy(methodName = "delete")
+//    val webServer = StateMachine(entity = entities["server"]!!,
+//            states = listOf(handlerState),
+//            edges = listOf(get, before, after, post, put, delete))
+//
+//    return Library(listOf(webServer, getHandler, filter, postHandler, putHandler, deleteHandler))
+//}
 
-    val webServer = StateMachine(entity = entities["server"]!!,
-            states = listOf(registerPathGet, get, registerPathFilter, before, registerPathAfter, after, registerPathPost,
-                    post, registerPathPut, put, registerPathDelete, delete))
-
-    return Library(listOf(webServer, handler, filter, afterHandler, postHandler, putHandler, deleteHandler))
-}
+//fun makeSpark2(entities: Map<String, Entity>): Library {
+//    val handler = StateMachine(entities["route"]!!, listOf())
+//
+//    val filter = StateMachine(entities["filter"]!!, listOf())
+//    val afterHandler = filter.copy()
+//
+//    val postHandler = handler.copy()
+//    val putHandler = handler.copy()
+//    val deleteHandler = handler.copy()
+////    val getTypeHandler = StateMachine(entities["transformer"]!!, listOf())
+//
+//    val registerPathGet = State(name = "registerPathGet",
+//            before = listOf(),
+//            action = Action.STATIC_CALL,
+//            methodName = "get",
+//            params = listOf(Param(entities["path"]!!, 0)))
+//
+//    val registerPathFilter = registerPathGet.copy(name = "registerPathFilter", methodName = "before")
+//    val registerPathAfter = registerPathFilter.copy(methodName = "after")
+//    val registerPathPost = registerPathGet.copy(methodName = "post")
+//    val registerPathPut = registerPathGet.copy(methodName = "put")
+//    val registerPathDelete = registerPathGet.copy(methodName = "delete")
+//
+////    val registerPathGetType = registerPathGet.copy(name = "registerPathGetType",
+////            methodName = "get", params = listOf(Param(entities["path"]!!, 0)))
+////    val registerPathType = registerPathGet.copy(name = "registerPathType",
+////            methodName = "get", params = listOf(Param(entities["acceptType"]!!, 1)))
+//
+//    val get = State(name = "get",
+//            before = listOf(registerPathGet),
+//            action = Action.STATIC_CALL,
+//            methodName = "get",
+//            params = listOf(Param(entities["route"]!!, 1)))
+//
+//    val before = State(name = "before",
+//            before = listOf(registerPathFilter),
+//            action = Action.STATIC_CALL,
+//            methodName = "before",
+//            params = listOf(Param(entities["filter"]!!, 1)))
+//
+//    val after = before.copy(name = "after",
+//            before = listOf(registerPathAfter),
+//            methodName = "after")
+//
+//    val post = get.copy(name = "post",
+//            before = listOf(registerPathPost),
+//            methodName = "post")
+//
+//    val put = get.copy(name = "put",
+//            before = listOf(registerPathPut),
+//            methodName = "put")
+//
+//    val delete = get.copy(name = "delete",
+//            before = listOf(registerPathDelete),
+//            methodName = "delete")
+//
+////    val getType = get.copy(name = "get",
+////            before = listOf(registerPathType),
+////            methodName = "get",
+////            params = listOf(Param(entities["route"]!!, 2)))
+//
+//    val webServer = StateMachine(entity = entities["server"]!!,
+//            states = listOf(registerPathGet, get, registerPathFilter, before, registerPathAfter, after, registerPathPost,
+//                    post, registerPathPut, put, registerPathDelete, delete))
+//
+//    return Library(listOf(webServer, handler, filter, afterHandler, postHandler, putHandler, deleteHandler))
+//}
