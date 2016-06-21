@@ -3,9 +3,9 @@
  */
 
 object Entities {
-    val node: Entity = Entity(name = "Node", srcType = "Node1", dstType = "Node2")
-    val nodeList: Entity = Entity(name = "NodeList", srcType = "List")
-    val num: Entity = Entity(name = "Number", srcType = "int")
+    val node: Entity = Entity(name = "Node")
+    val nodeList: Entity = Entity(name = "NodeList")
+    val num: Entity = Entity(name = "Number")
 }
 
 fun makeGraph1(): Library {
@@ -23,7 +23,14 @@ fun makeGraph1(): Library {
 
     getNode.createdMachine = node
 
-    return Library(listOf(node))
+    return Library(
+            stateMachines = listOf(node),
+            entityTypes = mapOf(
+                    Entities.node to "Node1",
+                    Entities.nodeList to "List<Node1>",
+                    Entities.num to "int"
+            )
+    )
 }
 
 fun makeGraph2(): Library {
@@ -46,10 +53,7 @@ fun makeGraph2(): Library {
             machine = node,
             action = CallAction(
                     methodName = "getNodeList",
-                    param = Param(
-                            entity = Entities.num,
-                            pos = 0
-                    )
+                    param = null
             )
     )
 
@@ -57,5 +61,12 @@ fun makeGraph2(): Library {
 
     listGet.createdMachine = node
 
-    return Library(listOf(node, list))
+    return Library(
+            stateMachines = listOf(node, list),
+            entityTypes = mapOf(
+                    Entities.node to "Node2",
+                    Entities.nodeList to "List<Node2>",
+                    Entities.num to "int"
+            )
+    )
 }

@@ -6,11 +6,10 @@ enum class ActionType {
     CONSTRUCTOR, METHOD_CALL, STATIC_CALL, AUTO, LINKED
 }
 
-data class Entity(val name: String,
-                  val srcType: String,
-                  val dstType: String = srcType)
+data class Entity(val name: String)
 
-data class Library(val stateMachines: List<StateMachine>)
+data class Library(val stateMachines: List<StateMachine>,
+                   val entityTypes: Map<Entity, String>)
 
 data class StateMachine(val entity: Entity) {
     val states: MutableSet<State> = mutableSetOf()
@@ -47,7 +46,7 @@ data class State(val name: String,
         throw Exception()
     }
 
-    fun name() = name + "_" + machine.entity.name
+    fun id() = name + "_" + machine.entity.name
     fun label() = machine.entity.name + ": " + name
 }
 
@@ -60,8 +59,8 @@ interface Action {
 }
 
 class CallAction(val methodName: String,
-                 val param: Param) : Action {
-    override fun label() = methodName + param.label()
+                 val param: Param?) : Action {
+    override fun label() = methodName + (param?.label() ?: "()")
     override fun type() = ActionType.METHOD_CALL
 }
 

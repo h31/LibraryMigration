@@ -28,21 +28,21 @@ fun toGraphviz(library: Library, isSrc: Boolean, rankLR: Boolean): String {
         System.out.println("FSM: " + fsm.toString())
         for (state in fsm.states) {
             System.out.println("Vertex: " + state.toString())
-            storage.append("  %s [ label=\"%s\" ];\n".format(state.name(), state.label()))
+            storage.append("  %s [ label=\"%s\" ];\n".format(state.id(), state.label()))
         }
         for (edge in fsm.edges) {
             System.out.println("Edge: " + edge.toString())
             val createdMachine = edge.createdMachine
             if (createdMachine != null) {
                 storage.append("  virtual%d [ shape = point ];\n".format(counter))
-                storage.append("  %s -> virtual%d [ label=\"%s\" ];\n".format(edge.src.name(), counter, edgeLabel(edge)))
-                storage.append("  virtual%d -> %s;\n".format(counter, edge.dst.name()))
+                storage.append("  %s -> virtual%d [ label=\"%s\" ];\n".format(edge.src.id(), counter, edgeLabel(edge)))
+                storage.append("  virtual%d -> %s;\n".format(counter, edge.dst.id()))
                 val newEdge = edge.copy(action = LinkedAction(edge))
                 System.out.println("Link: " + newEdge.toString())
-                storage.append("  virtual%d -> %s [ label=\"%s\" ];\n".format(counter, createdMachine.getInitState().name(), edgeLabel(newEdge)))
+                storage.append("  virtual%d -> %s [ label=\"%s\" ];\n".format(counter, createdMachine.getInitState().id(), edgeLabel(newEdge)))
                 counter++
             } else {
-                storage.append("  %s -> %s [ label=\"%s\" ];\n".format(edge.src.name(), edge.dst.name(), edgeLabel(edge)))
+                storage.append("  %s -> %s [ label=\"%s\" ];\n".format(edge.src.id(), edge.dst.id(), edgeLabel(edge)))
             }
         }
     }
