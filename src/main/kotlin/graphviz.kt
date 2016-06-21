@@ -85,7 +85,7 @@ fun toJGrapht(library: Library): DirectedPseudograph<State, Edge> {
         for (edge in fsm.edges) {
             val createdMachine = edge.createdMachine
             if (createdMachine != null) {
-                val newEdge = edge.copy(action = LinkedAction(edge))
+                val newEdge = edge.copy(action = LinkedAction(edge), autoRegister = false)
                 System.out.println("Link: " + newEdge.toString())
                 graph.addEdge(edge.src, createdMachine.getInitState(), newEdge)
             }

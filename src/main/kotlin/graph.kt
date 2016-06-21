@@ -20,7 +20,6 @@ fun makeGraph1(): Library {
                     )
             )
     )
-    node.edges += getNode
 
     getNode.createdMachine = node
 
@@ -41,9 +40,6 @@ fun makeGraph2(): Library {
             )
     )
 
-    list.edges += listGet
-
-
     val node = StateMachine(entity = Entities.node)
 
     val getNode = Edge(
@@ -56,8 +52,6 @@ fun makeGraph2(): Library {
                     )
             )
     )
-
-    node.edges += getNode
 
     getNode.createdMachine = list
 

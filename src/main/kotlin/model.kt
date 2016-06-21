@@ -89,8 +89,15 @@ class LinkedAction(val edge: Edge) : Action {
 data class Edge(val machine: StateMachine,
                 val src: State = makeConstructedState(machine),
                 val dst: State = makeConstructedState(machine),
-                val action: Action) {
+                val action: Action,
+                val autoRegister: Boolean = true) {
     var createdMachine: StateMachine? = null
+
+    init {
+        if (autoRegister) {
+            machine.edges += this
+        }
+    }
 }
 
 data class Param(val entity: Entity,
