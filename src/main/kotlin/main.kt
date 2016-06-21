@@ -87,7 +87,6 @@ fun main(args: Array<String>) {
     }
 
     for (machine in graph1.stateMachines) {
-        println("Machine %s: ".format(machine))
         for (edge in machine.edges) {
             if (edge.action.type() == ActionType.METHOD_CALL) {
                 val action = edge.action as CallAction

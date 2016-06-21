@@ -57,7 +57,6 @@ fun graphvizRender(graph: String, prefix: String) {
     Files.write(dotPath, graph.toByteArray());
     val rt = Runtime.getRuntime();
     val command = "dot -Tpdf %s -o %s".format(dotPath, pdfPath)
-    println(command)
     rt.exec(command)
 }
 
