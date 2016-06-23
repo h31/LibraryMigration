@@ -81,7 +81,7 @@ class ConstructorAction(val className: String) : Action {
 }
 
 class LinkedAction(val edge: Edge) : Action {
-    override fun label() = "new " + edge.createdMachine?.entity?.name + "()"
+    override fun label() = "new " + edge.dst.machine.entity.name + "()"
     override fun type() = ActionType.LINKED
 }
 
@@ -90,13 +90,14 @@ data class Edge(val machine: StateMachine,
                 val dst: State = makeConstructedState(machine),
                 val action: Action,
                 val autoRegister: Boolean = true) {
-    var createdMachine: StateMachine? = null
 
     init {
         if (autoRegister) {
             machine.edges += this
         }
     }
+
+    fun getLinkedEdges() = machine.edges.filter { it -> it.action is LinkedAction && it.action.edge == this }
 }
 
 data class Param(val entity: Entity,

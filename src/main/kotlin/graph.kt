@@ -21,7 +21,13 @@ fun makeGraph1(): Library {
             )
     )
 
-    getNode.createdMachine = node
+    val getNodeCreate = Edge(
+            machine = node,
+            dst = node.getInitState(),
+            action = LinkedAction(
+                    edge = getNode
+            )
+    )
 
     return Library(
             stateMachines = listOf(node),
@@ -57,9 +63,21 @@ fun makeGraph2(): Library {
             )
     )
 
-    getNode.createdMachine = list
+    val listNodeCreate = Edge(
+            machine = node,
+            dst = list.getInitState(),
+            action = LinkedAction(
+                    edge = getNode
+            )
+    )
 
-    listGet.createdMachine = node
+    val nodeCreate = Edge(
+            machine = list,
+            dst = node.getInitState(),
+            action = LinkedAction(
+                    edge = listGet
+            )
+    )
 
     return Library(
             stateMachines = listOf(node, list),

@@ -30,16 +30,17 @@ fun toGraphviz(library: Library, isSrc: Boolean, rankLR: Boolean): String {
             System.out.println("Vertex: " + state.toString())
             storage.append("  %s [ label=\"%s\" ];\n".format(state.id(), state.label()))
         }
-        for (edge in fsm.edges) {
+        for (edge in fsm.edges.filterNot { it -> it.action is LinkedAction }) {
             System.out.println("Edge: " + edge.toString())
-            val createdMachine = edge.createdMachine
-            if (createdMachine != null) {
+            val linkedEdges = edge.getLinkedEdges()
+            if (linkedEdges.isNotEmpty()) {
+                val newEdge = linkedEdges.first()
+                val action = newEdge.action as LinkedAction
                 storage.append("  virtual%d [ shape = point ];\n".format(counter))
                 storage.append("  %s -> virtual%d [ label=\"%s\" ];\n".format(edge.src.id(), counter, edgeLabel(edge)))
                 storage.append("  virtual%d -> %s;\n".format(counter, edge.dst.id()))
-                val newEdge = edge.copy(action = LinkedAction(edge))
                 System.out.println("Link: " + newEdge.toString())
-                storage.append("  virtual%d -> %s [ label=\"%s\" ];\n".format(counter, createdMachine.getInitState().id(), edgeLabel(newEdge)))
+                storage.append("  virtual%d -> %s [ label=\"%s\" ];\n".format(counter, newEdge.dst.machine.getInitState().id(), edgeLabel(newEdge)))
                 counter++
             } else {
                 storage.append("  %s -> %s [ label=\"%s\" ];\n".format(edge.src.id(), edge.dst.id(), edgeLabel(edge)))
@@ -73,7 +74,7 @@ fun toJGrapht(library: Library): DirectedPseudograph<State, Edge> {
             System.out.println("Vertex: " + state.toString())
             graph.addVertex(state)
         }
-        for (edge in fsm.edges) {
+        for (edge in fsm.edges.filterNot { it -> it.action is LinkedAction }) {
             System.out.println("Edge: " + edge.toString())
             graph.addEdge(edge.src, edge.dst, edge)
         }
@@ -82,11 +83,12 @@ fun toJGrapht(library: Library): DirectedPseudograph<State, Edge> {
     }
     for (fsm in library.stateMachines) {
         for (edge in fsm.edges) {
-            val createdMachine = edge.createdMachine
-            if (createdMachine != null) {
-                val newEdge = edge.copy(action = LinkedAction(edge), autoRegister = false)
+            val linkedEdges = edge.getLinkedEdges()
+            if (linkedEdges.isNotEmpty()) {
+                val newEdge = linkedEdges.first()
+                val action = newEdge.action as LinkedAction
                 System.out.println("Link: " + newEdge.toString())
-                graph.addEdge(edge.src, createdMachine.getInitState(), newEdge)
+                graph.addEdge(edge.src, newEdge.dst.machine.getInitState(), newEdge)
             }
         }
     }

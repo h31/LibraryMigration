@@ -92,9 +92,9 @@ fun main(args: Array<String>) {
                 val action = edge.action as CallAction
                 for (methodCall in codeElements.methodCalls) {
                     if (methodCall.name == action.methodName) {
-                        val createdMachine = edge.createdMachine
-                        if (createdMachine != null) {
-                            val newRoute = DijkstraShortestPath.findPathBetween(jgraph2, edge.src, createdMachine.getInitState())
+                        val linkedEdges = edge.getLinkedEdges()
+                        if (linkedEdges.isNotEmpty()) {
+                            val newRoute = DijkstraShortestPath.findPathBetween(jgraph2, edge.src, linkedEdges.first().dst.machine.getInitState())
                             val parent = methodCall.parentNode
                             val newSteps = addSteps(newRoute, methodCall, action)
                             parent.childrenNodes.remove(methodCall)
