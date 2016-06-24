@@ -23,6 +23,14 @@ fun makeGraph1(): Library {
             )
     )
 
+    val getNum = Edge(
+            machine = node,
+            action = CallAction(
+                    methodName = "getNodeNum",
+                    param = null
+            )
+    )
+
     Edge(
             machine = node,
             dst = child.getInitState(),
@@ -47,8 +55,19 @@ fun makeGraph1(): Library {
             )
     )
 
+    val list = StateMachine(entity = Entities.nodeList)
+
+    Edge(
+            machine = node,
+            dst = list.getInitState(),
+            action = MakeArrayAction(
+                    getSize = getNum.action as CallAction,
+                    getItem = getNode.action as CallAction
+            )
+    )
+
     return Library(
-            stateMachines = listOf(node, parent, child),
+            stateMachines = listOf(node, list, parent, child),
             entityTypes = mapOf(
                     Entities.node to "Node1",
                     Entities.nodeList to "List<Node1>",

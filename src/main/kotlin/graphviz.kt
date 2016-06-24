@@ -74,22 +74,12 @@ fun toJGrapht(library: Library): DirectedPseudograph<State, Edge> {
             System.out.println("Vertex: " + state.toString())
             graph.addVertex(state)
         }
-        for (edge in fsm.edges.filterNot { it -> it.action is LinkedAction }) {
-            System.out.println("Edge: " + edge.toString())
-            graph.addEdge(edge.src, edge.dst, edge)
-        }
-
 //        val subgraph = DirectedSubgraph(graph, fsm.states.toSet(), null)
     }
     for (fsm in library.stateMachines) {
         for (edge in fsm.edges) {
-            val linkedEdges = edge.getLinkedEdges()
-            if (linkedEdges.isNotEmpty()) {
-                val newEdge = linkedEdges.first()
-                val action = newEdge.action as LinkedAction
-                System.out.println("Link: " + newEdge.toString())
-                graph.addEdge(newEdge.src, newEdge.dst, newEdge)
-            }
+            System.out.println("Edge: " + edge.toString())
+            graph.addEdge(edge.src, edge.dst, edge)
         }
     }
 

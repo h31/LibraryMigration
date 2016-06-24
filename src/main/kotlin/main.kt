@@ -71,6 +71,7 @@ fun main(args: Array<String>) {
     graphvizRender(graphviz1, "graph1")
     graphvizRender(graphviz2, "graph2")
 
+    val jgraph1 = toJGrapht(graph1)
     val jgraph2 = toJGrapht(graph2)
 
 
@@ -79,15 +80,20 @@ fun main(args: Array<String>) {
 //
 //    makeRoute(src, dst, jgraph2)
 
-    val dst2 = graph2.stateMachines.first { m -> m.name == "parent" }.getInitState()
+//    val dst2 = graph2.stateMachines.first { m -> m.name == "parent" }.getInitState()
+//
+//    makeRoute(src, dst2, jgraph2)
 
-    makeRoute(src, dst2, jgraph2)
+    val src2 = graph1.stateMachines.first { m -> m.name == "Node" }.getConstructedState()
+    val dstList = graph1.stateMachines.first { m -> m.name == "NodeList" }.getInitState()
+
+    makeRoute(src2, dstList, jgraph1)
 
     doMigration(graph1, codeElements, jgraph2)
 
     fixEntityTypes(codeElements, graph1, graph2)
 
-    println(cu);
+//    println(cu);
 //    Files.write(destination, cu.toString().toByteArray());
 }
 
@@ -107,23 +113,33 @@ private fun makeRoute(src: State, dst: State, jgraph2: DirectedPseudograph<State
 private fun addSteps(route: List<Edge>, methodCall: MethodCallExpr, action: CallAction): MutableList<MethodCallExpr> {
     val newSteps = mutableListOf<MethodCallExpr>()
     for (step in route) {
-        val callAction = if (step.action is LinkedAction) {
-            step.action.edge.action as CallAction
-        } else if (step.action is CallAction) {
-            step.action
-        } else {
-            continue
+        newSteps += when (step.action.type()) {
+            ActionType.METHOD_CALL -> makeCallExpression(step, methodCall, action, newSteps.lastOrNull() ?: methodCall.scope)
+            ActionType.CONSTRUCTOR -> TODO()
+            ActionType.STATIC_CALL -> TODO()
+            ActionType.AUTO -> TODO()
+            ActionType.LINKED -> makeCallExpression(step, methodCall, action, newSteps.lastOrNull() ?: methodCall.scope)
+            ActionType.MAKE_ARRAY -> TODO()
         }
-        val args = if (callAction.param != null && callAction.param.entity == action.param?.entity) {
-            listOf(methodCall.args.first())
-        } else {
-            listOf()
-        }
-
-        val callExpression = MethodCallExpr(newSteps.lastOrNull() ?: methodCall.scope, callAction.methodName, args)
-        newSteps += callExpression
     }
     return newSteps
+}
+
+private fun makeCallExpression(step: Edge, methodCall: MethodCallExpr, action: CallAction, prevStep: Expression): MethodCallExpr {
+    val callAction = if (step.action is LinkedAction) {
+        step.action.edge.action as CallAction
+    } else if (step.action is CallAction) {
+        step.action
+    } else {
+        throw Exception()
+    }
+    val args = if (callAction.param != null && callAction.param.entity == action.param?.entity) {
+        listOf(methodCall.args.first())
+    } else {
+        listOf()
+    }
+
+    return MethodCallExpr(prevStep, callAction.methodName, args)
 }
 
 private fun doMigration(graph1: Library, codeElements: CodeElements, jgraph2: DirectedPseudograph<State, Edge>) {
@@ -136,6 +152,7 @@ private fun doMigration(graph1: Library, codeElements: CodeElements, jgraph2: Di
                         val linkedEdges = edge.getLinkedEdges()
                         if (linkedEdges.isNotEmpty()) {
                             val newRoute = DijkstraShortestPath.findPathBetween(jgraph2, edge.src, linkedEdges.first().dst.machine.getInitState())
+                            assert(newRoute != null)
                             val parent = methodCall.parentNode
                             val newSteps = addSteps(newRoute, methodCall, action)
                             parent.childrenNodes.remove(methodCall)

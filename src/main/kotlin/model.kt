@@ -3,7 +3,7 @@
  */
 
 enum class ActionType {
-    CONSTRUCTOR, METHOD_CALL, STATIC_CALL, AUTO, LINKED
+    CONSTRUCTOR, METHOD_CALL, STATIC_CALL, AUTO, LINKED, MAKE_ARRAY
 }
 
 data class Entity(val name: String)
@@ -97,6 +97,12 @@ class ConstructorAction(val className: String) : Action {
 class LinkedAction(val edge: Edge) : Action {
     override fun label() = "new " + edge.dst.machine.entity.name + "()"
     override fun type() = ActionType.LINKED
+}
+
+class MakeArrayAction(val getSize: CallAction,
+                      val getItem: CallAction) : Action {
+    override fun type() = ActionType.MAKE_ARRAY
+    override fun label() = "Array of %s with size %s".format(getItem.toString(), getSize.toString())
 }
 
 data class Edge(val machine: StateMachine,

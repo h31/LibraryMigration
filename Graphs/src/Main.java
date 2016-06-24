@@ -22,6 +22,10 @@ public class Main {
         main.addNode(first);
         main.addNode(second);
         main.addNode(trird);
+        List<Node1> nodes = new ArrayList<>();
+        for (int i = 0; i < nodes.size(); i++) {
+            nodes.set(i, nodes.get(i));
+        }
 
         assert main.getNode(1).equals(second);
         assert !main.getNode(0).equals(second);
@@ -83,6 +87,9 @@ class Node<E> {
 class Node1 extends Node<Node1> {
     Node1 getNode(int i) {
         return subnodes.get(i);
+    }
+    int getNodeNum() {
+        return subnodes.size();
     }
     Node1 getParent() {
         return parent;
