@@ -11,7 +11,11 @@ data class Entity(val name: String)
 data class Library(val stateMachines: List<StateMachine>,
                    val entityTypes: Map<Entity, String>)
 
-data class StateMachine(val entity: Entity) {
+data class Type(val entity: Entity,
+                val type: String)
+
+data class StateMachine(val entity: Entity,
+                        val name: String = entity.name) {
     val states: MutableSet<State> = mutableSetOf()
     val edges: MutableSet<Edge> = mutableSetOf()
 
@@ -27,6 +31,16 @@ data class StateMachine(val entity: Entity) {
 
     fun getInitState() = states.first { state -> state.name == "Init" }
     fun getConstructedState() = states.first { state -> state.name == "Constructed" }
+
+    fun inherit(name: String): StateMachine {
+        val copy = copy(name = name)
+        copy.edges += Edge(
+                machine = copy,
+                dst = getConstructedState(),
+                action = AutoAction()
+        )
+        return copy
+    }
 }
 
 data class State(val name: String,
@@ -46,8 +60,8 @@ data class State(val name: String,
         throw Exception()
     }
 
-    fun id() = name + "_" + machine.entity.name
-    fun label() = machine.entity.name + ": " + name
+    fun id() = name + "_" + machine.name
+    fun label() = machine.name + ": " + name
 }
 
 fun makeInitState(machine: StateMachine) = State("Init", machine)

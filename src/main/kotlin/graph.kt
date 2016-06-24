@@ -10,6 +10,8 @@ object Entities {
 
 fun makeGraph1(): Library {
     val node = StateMachine(entity = Entities.node)
+    val parent = node.inherit(name = "parent")
+    val child = node.inherit(name = "child")
     val getNode = Edge(
             machine = node,
             action = CallAction(
@@ -21,16 +23,32 @@ fun makeGraph1(): Library {
             )
     )
 
-    val getNodeCreate = Edge(
+    Edge(
             machine = node,
-            dst = node.getInitState(),
+            dst = child.getInitState(),
             action = LinkedAction(
                     edge = getNode
             )
     )
 
+    val getParent = Edge(
+            machine = node,
+            action = CallAction(
+                    methodName = "getParent",
+                    param = null
+            )
+    )
+
+    Edge(
+            machine = node,
+            dst = parent.getInitState(),
+            action = LinkedAction(
+                    edge = getParent
+            )
+    )
+
     return Library(
-            stateMachines = listOf(node),
+            stateMachines = listOf(node, parent, child),
             entityTypes = mapOf(
                     Entities.node to "Node1",
                     Entities.nodeList to "List<Node1>",
@@ -54,12 +72,30 @@ fun makeGraph2(): Library {
     )
 
     val node = StateMachine(entity = Entities.node)
+    val parent = node.inherit(name = "parent")
+    val child = node.inherit(name = "child")
 
     val getNode = Edge(
             machine = node,
             action = CallAction(
                     methodName = "getNodeList",
                     param = null
+            )
+    )
+
+    val getParent = Edge(
+            machine = node,
+            action = CallAction(
+                    methodName = "getParentNode",
+                    param = null
+            )
+    )
+
+    Edge(
+            machine = node,
+            dst = parent.getInitState(),
+            action = LinkedAction(
+                    edge = getParent
             )
     )
 
@@ -73,14 +109,14 @@ fun makeGraph2(): Library {
 
     val nodeCreate = Edge(
             machine = list,
-            dst = node.getInitState(),
+            dst = child.getInitState(),
             action = LinkedAction(
                     edge = listGet
             )
     )
 
     return Library(
-            stateMachines = listOf(node, list),
+            stateMachines = listOf(node, list, parent, child),
             entityTypes = mapOf(
                     Entities.node to "Node2",
                     Entities.nodeList to "List<Node2>",

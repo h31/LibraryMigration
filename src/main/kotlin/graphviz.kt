@@ -65,7 +65,7 @@ fun toJGrapht(library: Library): DirectedPseudograph<State, Edge> {
     System.out.println("Start")
     val graph = DirectedPseudograph<State, Edge>(Edge::class.java)
 
-    val exporter = DOTExporter<State, Edge>(VertexNameProvider { it.name },
+    val exporter = DOTExporter<State, Edge>(VertexNameProvider { it.id() },
             VertexNameProvider { it.label() }, EdgeNameProvider { edgeLabel(it) })
 
     for (fsm in library.stateMachines) {
@@ -88,7 +88,7 @@ fun toJGrapht(library: Library): DirectedPseudograph<State, Edge> {
                 val newEdge = linkedEdges.first()
                 val action = newEdge.action as LinkedAction
                 System.out.println("Link: " + newEdge.toString())
-                graph.addEdge(edge.src, newEdge.dst.machine.getInitState(), newEdge)
+                graph.addEdge(newEdge.src, newEdge.dst, newEdge)
             }
         }
     }

@@ -4,6 +4,7 @@ import com.github.javaparser.ast.ImportDeclaration
 import com.github.javaparser.ast.Node
 import com.github.javaparser.ast.body.*
 import com.github.javaparser.ast.expr.*
+import com.github.javaparser.ast.stmt.ExpressionStmt
 import com.github.javaparser.ast.type.ClassOrInterfaceType
 import com.github.javaparser.ast.type.ReferenceType
 import com.github.javaparser.ast.visitor.VoidVisitorAdapter
@@ -24,7 +25,7 @@ import java.nio.file.Paths
 
 fun main(args: Array<String>) {
     // val source = Paths.get("../spark1/src/main/java/Main.java");
-    val source = Paths.get("../Graphs/src/Main.java")
+    val source = Paths.get("Graphs/src/Main.java")
     val destination = Paths.get("../spark2/src/main/java/Main.java");
 
 //    val lib_src = Paths.get("src.java")
@@ -72,11 +73,27 @@ fun main(args: Array<String>) {
 
     val jgraph2 = toJGrapht(graph2)
 
-    val src = graph2.stateMachines.first { m -> m.entity == Entities.node }.getConstructedState()
-    val dst = graph2.stateMachines.first { m -> m.entity == Entities.node }.getInitState()
 
+    val src = graph2.stateMachines.first { m -> m.name == "Node" }.getConstructedState()
+//    val dst = graph2.stateMachines.first { m -> m.name == "child" }.getInitState()
+//
+//    makeRoute(src, dst, jgraph2)
+
+    val dst2 = graph2.stateMachines.first { m -> m.name == "parent" }.getInitState()
+
+    makeRoute(src, dst2, jgraph2)
+
+    doMigration(graph1, codeElements, jgraph2)
+
+    fixEntityTypes(codeElements, graph1, graph2)
+
+    println(cu);
+//    Files.write(destination, cu.toString().toByteArray());
+}
+
+private fun makeRoute(src: State, dst: State, jgraph2: DirectedPseudograph<State, Edge>) {
     val route = DijkstraShortestPath.findPathBetween(jgraph2, src, dst)
-    println("Route from %s to %s: ".format(src.name, dst.name))
+    println("Route from %s to %s: ".format(src.label(), dst.label()))
     for (state in route.withIndex()) {
         val action = if (state.value.action.type() == ActionType.LINKED) {
             (state.value.action as LinkedAction).edge.action
@@ -85,33 +102,6 @@ fun main(args: Array<String>) {
         }
         println("%d: %s".format(state.index, action.label()))
     }
-
-    for (machine in graph1.stateMachines) {
-        for (edge in machine.edges) {
-            if (edge.action.type() == ActionType.METHOD_CALL) {
-                val action = edge.action as CallAction
-                for (methodCall in codeElements.methodCalls) {
-                    if (methodCall.name == action.methodName) {
-                        val linkedEdges = edge.getLinkedEdges()
-                        if (linkedEdges.isNotEmpty()) {
-                            val newRoute = DijkstraShortestPath.findPathBetween(jgraph2, edge.src, linkedEdges.first().dst.machine.getInitState())
-                            val parent = methodCall.parentNode
-                            val newSteps = addSteps(newRoute, methodCall, action)
-                            parent.childrenNodes.remove(methodCall)
-                            if (parent is MethodCallExpr) {
-                                parent.scope = newSteps.last()
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    fixEntityTypes(codeElements, graph1, graph2)
-
-    println(cu);
-//    Files.write(destination, cu.toString().toByteArray());
 }
 
 private fun addSteps(route: List<Edge>, methodCall: MethodCallExpr, action: CallAction): MutableList<MethodCallExpr> {
@@ -134,6 +124,32 @@ private fun addSteps(route: List<Edge>, methodCall: MethodCallExpr, action: Call
         newSteps += callExpression
     }
     return newSteps
+}
+
+private fun doMigration(graph1: Library, codeElements: CodeElements, jgraph2: DirectedPseudograph<State, Edge>) {
+    for (machine in graph1.stateMachines) {
+        for (edge in machine.edges) {
+            if (edge.action.type() == ActionType.METHOD_CALL) {
+                val action = edge.action as CallAction
+                for (methodCall in codeElements.methodCalls) {
+                    if (methodCall.name == action.methodName) {
+                        val linkedEdges = edge.getLinkedEdges()
+                        if (linkedEdges.isNotEmpty()) {
+                            val newRoute = DijkstraShortestPath.findPathBetween(jgraph2, edge.src, linkedEdges.first().dst.machine.getInitState())
+                            val parent = methodCall.parentNode
+                            val newSteps = addSteps(newRoute, methodCall, action)
+                            parent.childrenNodes.remove(methodCall)
+                            if (parent is MethodCallExpr) {
+                                parent.scope = newSteps.last()
+                            } else if (parent is ExpressionStmt) {
+                                parent.expression = newSteps.last()
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
 }
 
 private fun fixEntityTypes(codeElements: CodeElements, graph1: Library, graph2: Library) {
