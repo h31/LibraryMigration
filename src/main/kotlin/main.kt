@@ -1,11 +1,16 @@
+import com.github.javaparser.ASTHelper
 import com.github.javaparser.JavaParser
 import com.github.javaparser.ast.CompilationUnit
 import com.github.javaparser.ast.ImportDeclaration
 import com.github.javaparser.ast.Node
 import com.github.javaparser.ast.body.*
 import com.github.javaparser.ast.expr.*
+import com.github.javaparser.ast.stmt.BlockStmt
 import com.github.javaparser.ast.stmt.ExpressionStmt
+import com.github.javaparser.ast.stmt.ForStmt
+import com.github.javaparser.ast.stmt.Statement
 import com.github.javaparser.ast.type.ClassOrInterfaceType
+import com.github.javaparser.ast.type.PrimitiveType
 import com.github.javaparser.ast.type.ReferenceType
 import com.github.javaparser.ast.visitor.VoidVisitorAdapter
 import org.jgrapht.alg.DijkstraShortestPath
@@ -26,7 +31,8 @@ import java.nio.file.Paths
 fun main(args: Array<String>) {
     // val source = Paths.get("../spark1/src/main/java/Main.java");
     val source = Paths.get("Graphs/src/Main.java")
-    val destination = Paths.get("../spark2/src/main/java/Main.java");
+    val destination = source
+    // val destination = Paths.get("../spark2/src/main/java/Main.java");
 
 //    val lib_src = Paths.get("src.java")
 //    val lib_dst = Paths.get("dst.java")
@@ -89,12 +95,17 @@ fun main(args: Array<String>) {
 
     makeRoute(src2, dstList, jgraph1)
 
-    doMigration(graph1, codeElements, jgraph2)
+    doMigration(graph2, codeElements, jgraph1)
 
-    fixEntityTypes(codeElements, graph1, graph2)
+//    fixEntityTypes(codeElements, graph1, graph2)
+    fixEntityTypes(codeElements, graph2, graph1)
 
-//    println(cu);
-//    Files.write(destination, cu.toString().toByteArray());
+//    doMigration(graph1, codeElements, jgraph2)
+//
+//    fixEntityTypes(codeElements, graph1, graph2)
+
+    println(cu);
+    Files.write(destination, cu.toString().toByteArray());
 }
 
 private fun makeRoute(src: State, dst: State, jgraph2: DirectedPseudograph<State, Edge>) {
@@ -110,38 +121,6 @@ private fun makeRoute(src: State, dst: State, jgraph2: DirectedPseudograph<State
     }
 }
 
-private fun addSteps(route: List<Edge>, methodCall: MethodCallExpr, action: CallAction): MutableList<MethodCallExpr> {
-    val newSteps = mutableListOf<MethodCallExpr>()
-    for (step in route) {
-        newSteps += when (step.action.type()) {
-            ActionType.METHOD_CALL -> makeCallExpression(step, methodCall, action, newSteps.lastOrNull() ?: methodCall.scope)
-            ActionType.CONSTRUCTOR -> TODO()
-            ActionType.STATIC_CALL -> TODO()
-            ActionType.AUTO -> TODO()
-            ActionType.LINKED -> makeCallExpression(step, methodCall, action, newSteps.lastOrNull() ?: methodCall.scope)
-            ActionType.MAKE_ARRAY -> TODO()
-        }
-    }
-    return newSteps
-}
-
-private fun makeCallExpression(step: Edge, methodCall: MethodCallExpr, action: CallAction, prevStep: Expression): MethodCallExpr {
-    val callAction = if (step.action is LinkedAction) {
-        step.action.edge.action as CallAction
-    } else if (step.action is CallAction) {
-        step.action
-    } else {
-        throw Exception()
-    }
-    val args = if (callAction.param != null && callAction.param.entity == action.param?.entity) {
-        listOf(methodCall.args.first())
-    } else {
-        listOf()
-    }
-
-    return MethodCallExpr(prevStep, callAction.methodName, args)
-}
-
 private fun doMigration(graph1: Library, codeElements: CodeElements, jgraph2: DirectedPseudograph<State, Edge>) {
     for (machine in graph1.stateMachines) {
         for (edge in machine.edges) {
@@ -151,15 +130,9 @@ private fun doMigration(graph1: Library, codeElements: CodeElements, jgraph2: Di
                     if (methodCall.name == action.methodName) {
                         val linkedEdges = edge.getLinkedEdges()
                         if (linkedEdges.isNotEmpty()) {
-                            val newRoute = DijkstraShortestPath.findPathBetween(jgraph2, edge.src, linkedEdges.first().dst.machine.getInitState())
-                            assert(newRoute != null)
-                            val parent = methodCall.parentNode
-                            val newSteps = addSteps(newRoute, methodCall, action)
-                            parent.childrenNodes.remove(methodCall)
-                            if (parent is MethodCallExpr) {
-                                parent.scope = newSteps.last()
-                            } else if (parent is ExpressionStmt) {
-                                parent.expression = newSteps.last()
+                            val route = DijkstraShortestPath.findPathBetween(jgraph2, edge.src, linkedEdges.first().dst.machine.getInitState())
+                            if (route != null) {
+                                applySteps(route, methodCall, action)
                             }
                         }
                     }
@@ -167,6 +140,107 @@ private fun doMigration(graph1: Library, codeElements: CodeElements, jgraph2: Di
             }
         }
     }
+}
+
+private fun applySteps(steps: List<Edge>, methodCall: MethodCallExpr, action: CallAction) {
+    removeMethodCall(methodCall)
+    var insertionPoint = methodCall.scope
+
+    for (step in steps) {
+        insertionPoint = when (step.action.type()) {
+            ActionType.METHOD_CALL -> makeCallExpression(step, methodCall, action, insertionPoint)
+            ActionType.CONSTRUCTOR -> TODO()
+            ActionType.STATIC_CALL -> TODO()
+            ActionType.AUTO -> insertionPoint
+            ActionType.LINKED -> makeCallExpression(step, methodCall, action, insertionPoint)
+            ActionType.MAKE_ARRAY -> makeArray(step.action as MakeArrayAction, insertionPoint)
+        }
+    }
+}
+
+private fun removeMethodCall(methodCall: MethodCallExpr) {
+    val parent = methodCall.parentNode
+    parent.childrenNodes.remove(methodCall)
+    if (parent is MethodCallExpr) {
+        parent.scope = methodCall.scope
+    } else if (parent is ExpressionStmt) {
+        parent.expression = methodCall.scope
+    }
+}
+
+private fun unpackCallAction(edge: Edge): CallAction {
+    if (edge.action is LinkedAction) {
+        return edge.action.edge.action as CallAction
+    } else if (edge.action is CallAction) {
+        return edge.action
+    } else {
+        throw Exception()
+    }
+}
+
+private fun makeCallExpression(step: Edge, methodCall: MethodCallExpr, action: CallAction, point: Expression): MethodCallExpr {
+    val callAction = unpackCallAction(step)
+    val args = if (callAction.param != null && callAction.param.entity == action.param?.entity) {
+        methodCall.args
+    } else {
+        listOf()
+    }
+
+    val parent = point.parentNode
+
+    val expr = MethodCallExpr(point, callAction.methodName, args)
+    expr.parentNode = parent
+
+    if (parent is MethodCallExpr) {
+        parent.scope = expr
+    } else if (parent is ExpressionStmt) {
+        parent.expression = expr
+    }
+//    else if (parent is ExpressionStmt) {
+//        parent.expression = expr
+//    }
+    return expr
+}
+
+var listNameCounter = 0;
+
+private fun makeArray(action: MakeArrayAction, point: Expression): Expression {
+    var node: Node = point
+    while (node.parentNode is BlockStmt == false) {
+        node = node.parentNode
+    }
+    val blockStmt = node.parentNode as BlockStmt
+
+    val getSize = action.getSize
+    val getItem = action.getItem
+    val scope = if (point is MethodCallExpr) point.scope else point
+    val getSizeNode = MethodCallExpr(scope.clone() as Expression, getSize.methodName, listOf())
+    val getItemNode = MethodCallExpr(scope.clone() as Expression, getItem.methodName, listOf(NameExpr("i")))
+
+    val listName = "tmp" + (listNameCounter++)
+    val list = ASTHelper.createVariableDeclarationExpr(ClassOrInterfaceType("List"), listName)
+    list.vars.first().init = ObjectCreationExpr(null, ClassOrInterfaceType("ArrayList"), listOf(getSizeNode.clone() as Expression))
+    val listNode = NameExpr(listName)
+
+    val init = ASTHelper.createVariableDeclarationExpr(ASTHelper.INT_TYPE, "i")
+    init.vars.first().init = IntegerLiteralExpr("0")
+    val compare = BinaryExpr(NameExpr("i"), getSizeNode, BinaryExpr.Operator.less)
+    val update = UnaryExpr(NameExpr("i"), UnaryExpr.Operator.posIncrement)
+
+    val listFill = MethodCallExpr(listNode, "add", listOf(NameExpr("i"), getItemNode))
+    val body = BlockStmt(listOf(ExpressionStmt(listFill)))
+    val forLoop = ForStmt(listOf(init), compare, listOf(update), body)
+
+    val pos = blockStmt.stmts.indexOf(node)
+    blockStmt.stmts.add(pos, forLoop)
+    blockStmt.stmts.add(pos, ExpressionStmt(list))
+
+    val parent = point.parentNode
+    parent.childrenNodes.remove(point)
+    if (parent is MethodCallExpr) {
+        parent.scope = listNode
+    }
+    return listNode
 }
 
 private fun fixEntityTypes(codeElements: CodeElements, graph1: Library, graph2: Library) {
