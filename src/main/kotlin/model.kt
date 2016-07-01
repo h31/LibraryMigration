@@ -32,6 +32,8 @@ data class StateMachine(val entity: Entity,
     fun getInitState() = states.first { state -> state.name == "Init" }
     fun getConstructedState() = states.first { state -> state.name == "Constructed" }
 
+    fun getDisplayedEdges() = edges.filterNot { it -> it.action is LinkedAction }
+
     fun inherit(name: String): StateMachine {
         val copy = copy(name = name)
         copy.edges += Edge(
@@ -61,7 +63,7 @@ data class State(val name: String,
     }
 
     fun id() = name + "_" + machine.name
-    fun label() = machine.name + ": " + name
+    fun label() = name
 }
 
 fun makeInitState(machine: StateMachine) = State("Init", machine)
@@ -72,13 +74,13 @@ interface Action {
     fun label(): String
 }
 
-class CallAction(val methodName: String,
+data class CallAction(val methodName: String,
                  val param: Param?) : Action {
     override fun label() = methodName + (param?.label() ?: "()")
     override fun type() = ActionType.METHOD_CALL
 }
 
-class StaticCallAction(val methodName: String,
+data class StaticCallAction(val methodName: String,
                        val param: Param) : Action {
     override fun label() = methodName + param.label()
     override fun type() = ActionType.STATIC_CALL
@@ -89,20 +91,20 @@ class AutoAction : Action {
     override fun type() = ActionType.AUTO
 }
 
-class ConstructorAction(val className: String) : Action {
+data class ConstructorAction(val className: String) : Action {
     override fun label() = "new " + className
     override fun type() = ActionType.CONSTRUCTOR
 }
 
-class LinkedAction(val edge: Edge) : Action {
-    override fun label() = "new " + edge.dst.machine.entity.name + "()"
+data class LinkedAction(val edge: Edge) : Action {
+    override fun label() = "new " + edge.getLinkedEdges().first().dst.machine.entity.name + "()"
     override fun type() = ActionType.LINKED
 }
 
-class MakeArrayAction(val getSize: CallAction,
+data class MakeArrayAction(val getSize: CallAction,
                       val getItem: CallAction) : Action {
     override fun type() = ActionType.MAKE_ARRAY
-    override fun label() = "Array of %s with size %s".format(getItem.toString(), getSize.toString())
+    override fun label() = "Array of %s with size %s".format(getItem.label(), getSize.label())
 }
 
 data class Edge(val machine: StateMachine,
@@ -118,6 +120,7 @@ data class Edge(val machine: StateMachine,
     }
 
     fun getLinkedEdges() = machine.edges.filter { it -> it.action is LinkedAction && it.action.edge == this }
+    fun label() = action.label()
 }
 
 data class Param(val entity: Entity,

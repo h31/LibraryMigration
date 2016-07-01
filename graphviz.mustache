@@ -1,0 +1,23 @@
+digraph G {
+{{#machines}}
+    subgraph cluster{{num}} {
+    label = <<B>{{name}}</B>>;
+    {{#vertices}}
+        {{id}} [ label="{{label}}" ];
+    {{/vertices}}
+    {{#virtuals}}
+        virtual{{counter}} [ shape = point ];
+    {{/virtuals}}
+    }
+{{/machines}}
+{{#edges}}
+    {{#linkedEdge}}
+        {{src}} -> virtual{{counter}} [ label="{{edge}}" ];
+        virtual{{counter}} -> {{dst}};
+        virtual{{counter}} -> {{machine}} [ label="{{linkedEdge}}" ];
+    {{/linkedEdge}}
+    {{^linkedEdge}}
+        {{src}} -> {{dst}} [ label="{{edge}}" ];
+    {{/linkedEdge}}
+{{/edges}}
+}

@@ -72,8 +72,8 @@ fun main(args: Array<String>) {
 //    makeGraph(graph1, Paths.get("graph1.dot"), true)
 //    makeGraph(graph2, Paths.get("graph2.dot"), false)
 
-    val graphviz1 = toGraphviz(graph1, true, false)
-    val graphviz2 = toGraphviz(graph2, false, false)
+    val graphviz1 = toDOT(graph1)
+    val graphviz2 = toDOT(graph2)
     graphvizRender(graphviz1, "graph1")
     graphvizRender(graphviz2, "graph2")
 
