@@ -29,83 +29,142 @@ import java.nio.file.Paths
  */
 
 fun main(args: Array<String>) {
-    // val source = Paths.get("../spark1/src/main/java/Main.java");
-    val source = Paths.get("Graphs/src/Main.java")
-    val destination = source
-    // val destination = Paths.get("../spark2/src/main/java/Main.java");
+    migrateGraphs()
+//    // val source = Paths.get("../spark1/src/main/java/Main.java");
+//    val source = Paths.get("Graphs/src/Main.java")
+//    val destination = source // source.resolveSibling(source.fileName.toString().replace(".java", "-migrated.java"))
+//    // val destination = Paths.get("../spark2/src/main/java/Main.java");
+//
+////    val lib_src = Paths.get("src.java")
+////    val lib_dst = Paths.get("dst.java")
+//
+//    val cu = readLib(source)
+//
+////    val srcLib = readLib(lib_src)
+////    val dstLib = readLib(lib_dst)
+//
+//    val codeElements = CodeElements();
+//    CodeElementsVisitor().visit(cu, codeElements);
+//
+//    parseImports(cu.imports)
+//
+////    val srcElements = CodeElements();
+////    CodeElementsVisitor().visit(srcLib, srcElements);
+////
+////    val dstElements = CodeElements();
+////    CodeElementsVisitor().visit(dstLib, dstElements);
+//
+////    val path = Entity("path", "String")
+////    val route = Entity("route", "Route")
+////    val filter = Entity("filter", "Filter")
+////    val server = Entity("server", "static")
+////    val acceptType = Entity("acceptType", "String")
+////    val transformer = Entity("transformer", "JsonTransformer")
+////    val entityMap = listOf(path, route, filter, server, acceptType, transformer).map { it -> it.name to it }.toMap()
+//
+////    val spark1 = makeSpark1(entityMap)
+////    val spark2 = makeSpark2(entityMap)
+//
+////    makeGraph(spark1, Paths.get("graph1.dot"))
+////    makeGraph(spark2, Paths.get("graph2.dot"))
+//
+//    val graph1 = makeGraph1()
+//    val graph2 = makeGraph2()
+////    makeGraph(graph1, Paths.get("graph1.dot"), true)
+////    makeGraph(graph2, Paths.get("graph2.dot"), false)
+//
+//    graphvizRender(toDOT(graph1), "graph1")
+//    graphvizRender(toDOT(graph2), "graph2")
+//
+//    graphNode2ToNode1(graph1, graph2, codeElements)
+//
+////    println(cu);
+//    Files.write(destination, cu.toString().toByteArray());
+}
 
-//    val lib_src = Paths.get("src.java")
-//    val lib_dst = Paths.get("dst.java")
+fun migrateGraphs() {
+    val source = Paths.get("Graphs/src/Main.java")
+    val destination = source // source.resolveSibling(source.fileName.toString().replace(".java", "-migrated.java"))
 
     val cu = readLib(source)
-
-//    val srcLib = readLib(lib_src)
-//    val dstLib = readLib(lib_dst)
 
     val codeElements = CodeElements();
     CodeElementsVisitor().visit(cu, codeElements);
 
     parseImports(cu.imports)
 
-//    val srcElements = CodeElements();
-//    CodeElementsVisitor().visit(srcLib, srcElements);
-//
-//    val dstElements = CodeElements();
-//    CodeElementsVisitor().visit(dstLib, dstElements);
-
-//    val path = Entity("path", "String")
-//    val route = Entity("route", "Route")
-//    val filter = Entity("filter", "Filter")
-//    val server = Entity("server", "static")
-//    val acceptType = Entity("acceptType", "String")
-//    val transformer = Entity("transformer", "JsonTransformer")
-//    val entityMap = listOf(path, route, filter, server, acceptType, transformer).map { it -> it.name to it }.toMap()
-
-//    val spark1 = makeSpark1(entityMap)
-//    val spark2 = makeSpark2(entityMap)
-
-//    makeGraph(spark1, Paths.get("graph1.dot"))
-//    makeGraph(spark2, Paths.get("graph2.dot"))
-
     val graph1 = makeGraph1()
     val graph2 = makeGraph2()
-//    makeGraph(graph1, Paths.get("graph1.dot"), true)
-//    makeGraph(graph2, Paths.get("graph2.dot"), false)
 
-    val graphviz1 = toDOT(graph1)
-    val graphviz2 = toDOT(graph2)
-    graphvizRender(graphviz1, "graph1")
-    graphvizRender(graphviz2, "graph2")
+    graphvizRender(toDOT(graph1), "graph1")
+    graphvizRender(toDOT(graph2), "graph2")
 
-    val jgraph1 = toJGrapht(graph1)
+    graphNode2ToNode1(graph1, graph2, codeElements)
+
+//    println(cu);
+    Files.write(destination, cu.toString().toByteArray());
+}
+
+fun migrateHTTP() {
+    val source = Paths.get("HTTP/src/main/java/Main.java")
+    val destination = source
+
+    val cu = readLib(source)
+
+    val codeElements = CodeElements();
+    CodeElementsVisitor().visit(cu, codeElements);
+
+    parseImports(cu.imports)
+
+    val java = makeJava()
+    val apache = makeApache()
+
+    graphvizRender(toDOT(java), "java")
+    graphvizRender(toDOT(apache), "apache")
+
+    javaToApache(java, apache, codeElements)
+
+//    println(cu);
+    Files.write(destination, cu.toString().toByteArray());
+}
+
+fun graphNode1ToNode2(graph1: Library, graph2: Library, codeElements: CodeElements) {
     val jgraph2 = toJGrapht(graph2)
 
-
     val src = graph2.stateMachines.first { m -> m.name == "Node" }.getConstructedState()
-//    val dst = graph2.stateMachines.first { m -> m.name == "child" }.getInitState()
-//
-//    makeRoute(src, dst, jgraph2)
+    val dst = graph2.stateMachines.first { m -> m.name == "child" }.getInitState()
 
-//    val dst2 = graph2.stateMachines.first { m -> m.name == "parent" }.getInitState()
-//
-//    makeRoute(src, dst2, jgraph2)
+    makeRoute(src, dst, jgraph2)
 
-    val src2 = graph1.stateMachines.first { m -> m.name == "Node" }.getConstructedState()
-    val dstList = graph1.stateMachines.first { m -> m.name == "NodeList" }.getInitState()
+    doMigration(graph1, codeElements, jgraph2)
 
-    makeRoute(src2, dstList, jgraph1)
+    fixEntityTypes(codeElements, graph1, graph2)
+}
+
+fun graphNode2ToNode1(graph1: Library, graph2: Library, codeElements: CodeElements) {
+    val jgraph1 = toJGrapht(graph1)
+
+    val src = graph1.stateMachines.first { m -> m.name == "Node" }.getConstructedState()
+    val dst = graph1.stateMachines.first { m -> m.name == "NodeList" }.getInitState()
+
+    makeRoute(src, dst, jgraph1)
 
     doMigration(graph2, codeElements, jgraph1)
 
-//    fixEntityTypes(codeElements, graph1, graph2)
     fixEntityTypes(codeElements, graph2, graph1)
+}
 
-//    doMigration(graph1, codeElements, jgraph2)
-//
-//    fixEntityTypes(codeElements, graph1, graph2)
+fun javaToApache(java: Library, apache: Library, codeElements: CodeElements) {
+    val apacheGraph = toJGrapht(apache)
 
-    println(cu);
-    Files.write(destination, cu.toString().toByteArray());
+    val src = java.stateMachines.first { m -> m.name == "URL" }.getConstructedState()
+    val dst = java.stateMachines.first { m -> m.name == "Body" }.getInitState()
+
+    makeRoute(src, dst, apacheGraph)
+
+    doMigration(java, codeElements, apacheGraph)
+
+    fixEntityTypes(codeElements, java, apache)
 }
 
 private fun makeRoute(src: State, dst: State, jgraph2: DirectedPseudograph<State, Edge>) {
@@ -154,6 +213,7 @@ private fun applySteps(steps: List<Edge>, methodCall: MethodCallExpr, action: Ca
             ActionType.AUTO -> insertionPoint
             ActionType.LINKED -> makeCallExpression(step, methodCall, action, insertionPoint)
             ActionType.MAKE_ARRAY -> makeArray(step.action as MakeArrayAction, insertionPoint)
+            ActionType.TEMPLATE -> TODO()
         }
     }
 }
@@ -180,7 +240,7 @@ private fun unpackCallAction(edge: Edge): CallAction {
 
 private fun makeCallExpression(step: Edge, methodCall: MethodCallExpr, action: CallAction, point: Expression): MethodCallExpr {
     val callAction = unpackCallAction(step)
-    val args = if (callAction.param != null && callAction.param.entity == action.param?.entity) {
+    val args = if (callAction.param != null && callAction.param.machine.entity == action.param?.machine?.entity) {
         methodCall.args
     } else {
         listOf()

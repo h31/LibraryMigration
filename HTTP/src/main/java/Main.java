@@ -11,6 +11,7 @@ import org.apache.http.util.EntityUtils;
 
 import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.MalformedURLException;
 import java.net.URL;
@@ -31,14 +32,18 @@ public class Main {
         apache();
     }
 
-    private static String readerToString(BufferedReader in) {
-        return in.lines().collect(Collectors.joining("\n"));
+    private static String readerToString(InputStream in) {
+        return new BufferedReader(new InputStreamReader(in)).lines().collect(Collectors.joining("\n"));
+    }
+
+    private static String responseToString(HttpResponse httpResponse) throws IOException {
+        return EntityUtils.toString(httpResponse.getEntity());
     }
 
     private static void java() throws IOException {
         URL url = new URL("http://api.ipify.org/");
         URLConnection conn = url.openConnection();
-        BufferedReader in = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+        InputStream in = conn.getInputStream();
         String response = readerToString(in);
         System.out.println(response);
         in.close();
@@ -49,7 +54,7 @@ public class Main {
         HttpGet httpget = new HttpGet("http://api.ipify.org/");
 
         CloseableHttpResponse httpResponse = httpclient.execute(httpget);
-        String response = EntityUtils.toString(httpResponse.getEntity());
+        String response = responseToString(httpResponse);
         System.out.println(response);
         httpclient.close();
     }

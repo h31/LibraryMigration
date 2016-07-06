@@ -19,6 +19,7 @@ import java.io.StringReader
 fun toDOT(library: Library): String {
     val edges = mutableListOf<Map<String, Any>>()
     val virtuals = library.stateMachines.map { it -> it to mutableListOf<Int>() }.toMap()
+    val displayerMachines = library.stateMachines.filter { it -> it.inherits == null }
 
     var counter = 0
     for (machine in library.stateMachines) {
@@ -31,7 +32,7 @@ fun toDOT(library: Library): String {
             val values = if (linkedEdge != null) {
                 virtuals.get(machine)!!.add(counter)
                 baseMap + mapOf(
-                        "machine" to linkedEdge.dst.machine.getInitState().id(),
+                        "machine" to linkedEdge.dst.id(),
                         "linkedEdge" to linkedEdge.label(),
                         "counter" to counter++)
             } else baseMap
@@ -42,7 +43,7 @@ fun toDOT(library: Library): String {
     val machines = library.stateMachines.mapIndexed {
         num, machine ->
         mapOf("num" to num,
-                "name" to machine.name,
+                "name" to machine.label(),
                 "vertices" to machine.states,
                 "virtuals" to virtuals.get(machine)!!.map {
                     count ->
@@ -50,7 +51,7 @@ fun toDOT(library: Library): String {
                 })
     }
 
-    val compiler = Mustache.compiler().escapeHTML(false)
+    val compiler = Mustache.compiler()
     val template = compiler.compile(FileReader("graphviz.mustache"))
     return template.execute(mapOf("machines" to machines, "edges" to edges))
 }
@@ -61,7 +62,7 @@ fun graphvizRender(graph: String, prefix: String) {
     Files.write(dotPath, graph.toByteArray());
     val rt = Runtime.getRuntime();
     val command = "dot -Tpdf %s -o %s".format(dotPath, pdfPath)
-//    rt.exec(command)
+    rt.exec(command)
 }
 
 fun toJGrapht(library: Library): DirectedPseudograph<State, Edge> {
