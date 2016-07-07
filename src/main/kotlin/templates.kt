@@ -1,3 +1,5 @@
+import com.github.javaparser.ast.expr.Expression
+import com.github.javaparser.ast.expr.IntegerLiteralExpr
 import com.samskivert.mustache.Mustache
 import java.io.FileReader
 
@@ -11,6 +13,8 @@ fun fillPlaceholders(template: String, params: Map<String, Edge>, variables: Map
     val compiled = Mustache.compiler().escapeHTML(false).compile(template)
     return compiled.execute(stringParams)
 }
+
+fun templateIntoAST(template: String) = IntegerLiteralExpr(template)
 
 fun generateCode(edge: Edge, obj: String?): String = when (edge.action) {
     is CallAction -> obj + "." + edge.action.methodName

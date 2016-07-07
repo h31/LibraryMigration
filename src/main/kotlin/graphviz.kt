@@ -70,7 +70,7 @@ fun toJGrapht(library: Library): DirectedPseudograph<State, Edge> {
     val graph = DirectedPseudograph<State, Edge>(Edge::class.java)
 
     val exporter = DOTExporter<State, Edge>(VertexNameProvider { it.id() },
-            VertexNameProvider { it.label() }, EdgeNameProvider { it.label() })
+            VertexNameProvider { it -> it.machine.name + " " + it.label() }, EdgeNameProvider { it.label() })
 
     for (fsm in library.stateMachines) {
         System.out.println("FSM: " + fsm.toString())

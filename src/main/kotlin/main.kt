@@ -180,6 +180,13 @@ private fun makeRoute(src: State, dst: State, jgraph2: DirectedPseudograph<State
     }
 }
 
+fun findActionsInCode(srcLibrary: Library, codeElements: CodeElements) {
+    val edges = srcLibrary.stateMachines.flatMap { machine -> machine.edges }
+    for (edge in edges) {
+        val calls = codeElements.methodCalls
+    }
+}
+
 private fun doMigration(graph1: Library, codeElements: CodeElements, jgraph2: DirectedPseudograph<State, Edge>) {
     for (machine in graph1.stateMachines) {
         for (edge in machine.edges) {
