@@ -32,8 +32,8 @@ public class Main {
         apache();
     }
 
-    private static String readerToString(InputStream in) {
-        return new BufferedReader(new InputStreamReader(in)).lines().collect(Collectors.joining("\n"));
+    private static String readerToString(URLConnection conn) throws IOException {
+        return new BufferedReader(new InputStreamReader(conn.getInputStream())).lines().collect(Collectors.joining("\n"));
     }
 
     private static String responseToString(HttpResponse httpResponse) throws IOException {
@@ -43,10 +43,8 @@ public class Main {
     private static void java() throws IOException {
         URL url = new URL("http://api.ipify.org/");
         URLConnection conn = url.openConnection();
-        InputStream in = conn.getInputStream();
-        String response = readerToString(in);
+        String response = readerToString(conn);
         System.out.println(response);
-        in.close();
     }
 
     private static void apache() throws IOException {
