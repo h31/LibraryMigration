@@ -12,10 +12,10 @@ object HTTPEntities {
 }
 
 fun makeJava(): Library {
-    val url = StateMachine(entity = HTTPEntities.url, type = "String")
+    val url = StateMachine(entity = HTTPEntities.url)
 
-    val request = StateMachine(entity = HTTPEntities.request, type = "URL")
-    val connection = StateMachine(entity = HTTPEntities.connection, type = "URLConnection")
+    val request = StateMachine(entity = HTTPEntities.request)
+    val connection = StateMachine(entity = HTTPEntities.connection)
 
     val hasURL = State(name = "hasURL", machine = request)
 
@@ -40,33 +40,33 @@ fun makeJava(): Library {
             )
     )
 
-    val inputStream = StateMachine(entity = HTTPEntities.inputStream, type = "InputStream")
+//    val inputStream = StateMachine(entity = HTTPEntities.inputStream)
+
+//    makeLinkedEdge(
+//            machine = connection,
+//            dst = inputStream.getInitState(),
+//            action = CallAction(
+//                    methodName = "getInputStream",
+//                    param = null
+//            )
+//    )
+
+    val body = StateMachine(entity = HTTPEntities.body)
 
     makeLinkedEdge(
             machine = connection,
-            dst = inputStream.getInitState(),
-            action = CallAction(
-                    methodName = "getInputStream",
-                    param = null
-            )
-    )
-
-    val body = StateMachine(entity = HTTPEntities.body, type = "String")
-
-    makeLinkedEdge(
-            machine = inputStream,
             dst = body.getInitState(),
             action = StaticCallAction(
                     methodName = "readerToString",
                     param = Param(
-                            machine = inputStream,
+                            machine = connection,
                             pos = 0
                     )
             )
     )
 
     return Library(
-            stateMachines = listOf(url, request, connection, inputStream, body),
+            stateMachines = listOf(url, request, connection, body),
             entityTypes = mapOf(
                     HTTPEntities.request to "URL",
                     HTTPEntities.url to "String",
@@ -78,10 +78,10 @@ fun makeJava(): Library {
 }
 
 fun makeApache(): Library {
-    val url = StateMachine(entity = HTTPEntities.url, type = "String")
-    val client = StateMachine(entity = HTTPEntities.client, type = "CloseableHttpClient")
-    val request = StateMachine(entity = HTTPEntities.request, type = "HttpGet")
-    val connection = StateMachine(entity = HTTPEntities.connection, type = "CloseableHttpResponse")
+    val url = StateMachine(entity = HTTPEntities.url)
+    val client = StateMachine(entity = HTTPEntities.client)
+    val request = StateMachine(entity = HTTPEntities.request)
+    val connection = StateMachine(entity = HTTPEntities.connection)
 
     val hasURL = State(name = "hasURL", machine = request)
 
@@ -129,7 +129,7 @@ fun makeApache(): Library {
             action = AutoAction()
     )
 
-    val body = StateMachine(entity = HTTPEntities.body, type = "String")
+    val body = StateMachine(entity = HTTPEntities.body)
 
     makeLinkedEdge(
             machine = connection,

@@ -28,12 +28,12 @@ fun toDOT(library: Library): String {
             val baseMap = mapOf(
                     "src" to edge.src.id(),
                     "dst" to edge.dst.id(),
-                    "edge" to edge.label())
+                    "edge" to edge.label(library))
             val values = if (linkedEdge != null) {
                 virtuals.get(machine)!!.add(counter)
                 baseMap + mapOf(
                         "machine" to linkedEdge.dst.id(),
-                        "linkedEdge" to linkedEdge.label(),
+                        "linkedEdge" to linkedEdge.label(library),
                         "counter" to counter++)
             } else baseMap
             edges += values
@@ -43,7 +43,7 @@ fun toDOT(library: Library): String {
     val machines = library.stateMachines.mapIndexed {
         num, machine ->
         mapOf("num" to num,
-                "name" to machine.label(),
+                "name" to machine.label(library),
                 "vertices" to machine.states,
                 "virtuals" to virtuals.get(machine)!!.map {
                     count ->
@@ -58,8 +58,13 @@ fun toDOT(library: Library): String {
 
 fun graphvizRender(graph: String, prefix: String) {
     val dotPath = Paths.get(prefix + ".dot")
-    val pdfPath = Paths.get(prefix + ".pdf")
     Files.write(dotPath, graph.toByteArray());
+    DOTtoPDF(prefix)
+}
+
+fun DOTtoPDF(prefix: String) {
+    val dotPath = prefix + ".dot"
+    val pdfPath = prefix + ".pdf"
     val rt = Runtime.getRuntime();
     val command = "dot -Tpdf %s -o %s".format(dotPath, pdfPath)
     rt.exec(command)
@@ -70,7 +75,7 @@ fun toJGrapht(library: Library): DirectedPseudograph<State, Edge> {
     val graph = DirectedPseudograph<State, Edge>(Edge::class.java)
 
     val exporter = DOTExporter<State, Edge>(VertexNameProvider { it.id() },
-            VertexNameProvider { it -> it.machine.name + " " + it.label() }, EdgeNameProvider { it.label() })
+            VertexNameProvider { it -> it.machine.name + " " + it.label(library) }, EdgeNameProvider { it.label(library) })
 
     for (fsm in library.stateMachines) {
         System.out.println("FSM: " + fsm.toString())
@@ -88,6 +93,7 @@ fun toJGrapht(library: Library): DirectedPseudograph<State, Edge> {
     }
 
     exporter.export(FileWriter(File("graph_debug.dot"), false), graph)
+    DOTtoPDF("graph_debug")
 
     return graph
 }

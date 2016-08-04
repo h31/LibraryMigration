@@ -9,7 +9,7 @@ object GraphEntities {
 }
 
 fun makeGraph1(): Library {
-    val node = StateMachine(entity = GraphEntities.node, type = "Node1")
+    val node = StateMachine(entity = GraphEntities.node)
     val parent = node.inherit(name = "parent")
     val child = node.inherit(name = "child")
     val getNode = Edge(
@@ -17,7 +17,7 @@ fun makeGraph1(): Library {
             action = CallAction(
                     methodName = "getNode",
                     param = Param(
-                            machine = StateMachine(entity = GraphEntities.num, type = "int"),
+                            machine = StateMachine(entity = GraphEntities.num),
                             pos = 0
                     )
             )
@@ -55,7 +55,7 @@ fun makeGraph1(): Library {
             )
     )
 
-    val list = StateMachine(entity = GraphEntities.nodeList, type = "List<Node1>")
+    val list = StateMachine(entity = GraphEntities.nodeList)
 
     Edge(
             machine = node,
@@ -89,20 +89,20 @@ fun makeGraph1(): Library {
 }
 
 fun makeGraph2(): Library {
-    val list = StateMachine(entity = GraphEntities.nodeList, type = "List<Node2>")
+    val list = StateMachine(entity = GraphEntities.nodeList)
 
     val listGet = Edge(
             machine = list,
             action = CallAction(
                     methodName = "get",
                     param = Param(
-                            machine = StateMachine(entity = GraphEntities.num, type = "int"),
+                            machine = StateMachine(entity = GraphEntities.num),
                             pos = 0
                     )
             )
     )
 
-    val node = StateMachine(entity = GraphEntities.node, type = "Node2")
+    val node = StateMachine(entity = GraphEntities.node)
     val parent = node.inherit(name = "parent")
     val child = node.inherit(name = "child")
 

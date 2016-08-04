@@ -29,7 +29,8 @@ import java.nio.file.Paths
  */
 
 fun main(args: Array<String>) {
-    migrateGraphs()
+//    migrateGraphs()
+    migrateHTTP()
 //    // val source = Paths.get("../spark1/src/main/java/Main.java");
 //    val source = Paths.get("Graphs/src/Main.java")
 //    val destination = source // source.resolveSibling(source.fileName.toString().replace(".java", "-migrated.java"))
@@ -124,8 +125,8 @@ fun migrateHTTP() {
 
     javaToApache(java, apache, codeElements)
 
-//    println(cu);
-    Files.write(destination, cu.toString().toByteArray());
+    println(cu);
+//    Files.write(destination, cu.toString().toByteArray());
 }
 
 fun graphNode1ToNode2(graph1: Library, graph2: Library, codeElements: CodeElements) {
@@ -134,7 +135,7 @@ fun graphNode1ToNode2(graph1: Library, graph2: Library, codeElements: CodeElemen
     val src = graph2.stateMachines.first { m -> m.name == "Node" }.getConstructedState()
     val dst = graph2.stateMachines.first { m -> m.name == "child" }.getInitState()
 
-    makeRoute(src, dst, jgraph2)
+    makeRoute(src, dst, jgraph2, graph2)
 
     doMigration(graph1, codeElements, jgraph2)
 
@@ -147,7 +148,7 @@ fun graphNode2ToNode1(graph1: Library, graph2: Library, codeElements: CodeElemen
     val src = graph1.stateMachines.first { m -> m.name == "Node" }.getConstructedState()
     val dst = graph1.stateMachines.first { m -> m.name == "NodeList" }.getInitState()
 
-    makeRoute(src, dst, jgraph1)
+    makeRoute(src, dst, jgraph1, graph1)
 
     doMigration(graph2, codeElements, jgraph1)
 
@@ -157,26 +158,27 @@ fun graphNode2ToNode1(graph1: Library, graph2: Library, codeElements: CodeElemen
 fun javaToApache(java: Library, apache: Library, codeElements: CodeElements) {
     val apacheGraph = toJGrapht(apache)
 
-    val src = java.stateMachines.first { m -> m.name == "URL" }.getConstructedState()
-    val dst = java.stateMachines.first { m -> m.name == "Body" }.getInitState()
+    val src = apache.stateMachines.first { m -> m.name == "URL" }.getConstructedState()
+    val dst = apache.stateMachines.first { m -> m.name == "Body" }.getInitState()
 
-    makeRoute(src, dst, apacheGraph)
+    makeRoute(src, dst, apacheGraph, apache)
 
     doMigration(java, codeElements, apacheGraph)
 
     fixEntityTypes(codeElements, java, apache)
 }
 
-private fun makeRoute(src: State, dst: State, jgraph2: DirectedPseudograph<State, Edge>) {
+private fun makeRoute(src: State, dst: State, jgraph2: DirectedPseudograph<State, Edge>, library: Library) {
     val route = DijkstraShortestPath.findPathBetween(jgraph2, src, dst)
-    println("Route from %s to %s: ".format(src.label(), dst.label()))
+    println("Route from %s to %s: ".format(src.stateAndMachineName(),
+            dst.stateAndMachineName()))
     for (state in route.withIndex()) {
         val action = if (state.value.action.type() == ActionType.LINKED) {
             (state.value.action as LinkedAction).edge.action
         } else {
             state.value.action
         }
-        println("%d: %s".format(state.index, action.label()))
+        println("%d: %s".format(state.index, action.label(library)))
     }
 }
 
@@ -188,21 +190,23 @@ fun findActionsInCode(srcLibrary: Library, codeElements: CodeElements) {
 }
 
 private fun doMigration(graph1: Library, codeElements: CodeElements, jgraph2: DirectedPseudograph<State, Edge>) {
-    for (machine in graph1.stateMachines) {
-        for (edge in machine.edges) {
-            if (edge.action.type() == ActionType.METHOD_CALL) {
-                val action = edge.action as CallAction
-                for (methodCall in codeElements.methodCalls) {
-                    if (methodCall.name == action.methodName) {
-                        val linkedEdges = edge.getLinkedEdges()
-                        if (linkedEdges.isNotEmpty()) {
-                            val route = DijkstraShortestPath.findPathBetween(jgraph2, edge.src, linkedEdges.first().dst.machine.getInitState())
-                            if (route != null) {
-                                applySteps(route, methodCall, action)
-                            }
-                        }
-                    }
-                }
+    val edges = graph1.stateMachines.flatMap { it -> it.edges }.asSequence()
+    for (edge in edges) {
+        if (edge.action is CallAction) {
+            migrateMethodCall(edge, edge.action, codeElements.methodCalls, jgraph2)
+        }
+    }
+}
+
+private fun migrateMethodCall(edge: Edge, callAction: CallAction, methodCalls: MutableList<MethodCallExpr>, jgraph2: DirectedPseudograph<State, Edge>) {
+    val callNodes = methodCalls.filter { methodCall -> methodCall.name == callAction.methodName }
+    for (callNode in callNodes) {
+        val linkedEdges = edge.getLinkedEdges()
+        for (linkedEdge in linkedEdges) {
+            println("Searching route from %s to %s \n".format(edge.src.stateAndMachineName(), linkedEdge.dst.stateAndMachineName()))
+            val route = DijkstraShortestPath.findPathBetween(jgraph2, edge.src, linkedEdge.dst)
+            if (route != null) {
+                applySteps(route, methodCall, callAction)
             }
         }
     }

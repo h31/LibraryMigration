@@ -6,6 +6,14 @@ enum class ActionType {
     CONSTRUCTOR, METHOD_CALL, STATIC_CALL, AUTO, LINKED, MAKE_ARRAY, TEMPLATE
 }
 
+interface Labelable {
+    fun label(library: Library): String
+}
+
+interface Identifiable {
+    fun id(): String
+}
+
 data class Entity(val name: String)
 
 data class Library(val stateMachines: List<StateMachine>,
@@ -22,8 +30,7 @@ data class Type(val entity: Entity,
 
 data class StateMachine(val entity: Entity,
                         val name: String = entity.name,
-                        val type: String,
-                        val inherits: StateMachine? = null) {
+                        val inherits: StateMachine? = null) : Labelable {
     val states: MutableSet<State> = mutableSetOf()
     val edges: MutableSet<Edge> = mutableSetOf()
 
@@ -42,7 +49,7 @@ data class StateMachine(val entity: Entity,
 
     fun getDisplayedEdges() = edges.filterNot { it -> it.action is LinkedAction }
 
-    fun label() = name + ": " + type
+    override fun label(library: Library) = name + ": " + type(library)
 
     fun inherit(name: String): StateMachine {
         val copy = copy(name = name, inherits = this)
@@ -53,10 +60,12 @@ data class StateMachine(val entity: Entity,
         )
         return copy
     }
+
+    fun type(library: Library) = library.entityTypes[entity]
 }
 
 data class State(val name: String,
-                 val machine: StateMachine) {
+                 val machine: StateMachine) : Labelable, Identifiable {
     init {
         machine.states.add(this)
     }
@@ -72,63 +81,65 @@ data class State(val name: String,
         throw Exception()
     }
 
-    fun id() = name + "_" + machine.name
+    override fun id() = name + "_" + machine.name
+    override fun label(library: Library) = name
     fun label() = name
+    fun stateAndMachineName() = machine.name + "." + name
 }
 
 fun makeInitState(machine: StateMachine) = State("Init", machine)
 fun makeConstructedState(machine: StateMachine) = State("Constructed", machine)
 
-interface Action {
+interface Action : Labelable {
     fun type(): ActionType
-    fun label(): String
+    override fun label(library: Library): String
 }
 
 data class CallAction(val methodName: String,
                       val param: Param?) : Action {
-    override fun label() = "%s(%s)".format(methodName, param?.label() ?: "")
+    override fun label(library: Library) = "%s(%s)".format(methodName, param?.label(library) ?: "")
     override fun type() = ActionType.METHOD_CALL
 }
 
 data class StaticCallAction(val methodName: String,
                             val param: Param) : Action {
-    override fun label() = "%s(%s)".format(methodName, param.label())
+    override fun label(library: Library) = "%s(%s)".format(methodName, param.label(library))
     override fun type() = ActionType.STATIC_CALL
 }
 
 class AutoAction : Action {
-    override fun label() = ""
+    override fun label(library: Library) = ""
     override fun type() = ActionType.AUTO
 }
 
 data class ConstructorAction(val param: Param?) : Action {
     var constructedMachine: StateMachine? = null
-    override fun label() = "new %s(%s)".format(constructedMachine?.type ?: "Unknown", param ?: "")
+    override fun label(library: Library) = "new %s(%s)".format(constructedMachine?.type(library) ?: "Unknown", param ?: "")
     override fun type() = ActionType.CONSTRUCTOR
 }
 
 data class LinkedAction(val edge: Edge) : Action {
-    override fun label() = "return " + edge.getLinkedEdges().first().dst.machine.type + "()"
+    override fun label(library: Library) = "return " + edge.getLinkedEdges().first().dst.machine.type(library) + "()"
     override fun type() = ActionType.LINKED
 }
 
 data class MakeArrayAction(val getSize: CallAction,
                            val getItem: CallAction) : Action {
     override fun type() = ActionType.MAKE_ARRAY
-    override fun label() = "Array of %s with size %s".format(getItem.label(), getSize.label())
+    override fun label(library: Library) = "Array of %s with size %s".format(getItem.label(library), getSize.label(library))
 }
 
 data class TemplateAction(val template: String,
                           val params: Map<String, Edge>) : Action {
     override fun type() = ActionType.TEMPLATE
-    override fun label() = template + " with " + params.toString()
+    override fun label(library: Library) = template + " with " + params.toString()
 }
 
 data class Edge(val machine: StateMachine,
                 val src: State = makeConstructedState(machine),
                 val dst: State = src,
                 val action: Action,
-                val autoRegister: Boolean = true) {
+                val autoRegister: Boolean = true) : Labelable {
 
     init {
         if (autoRegister) {
@@ -140,7 +151,7 @@ data class Edge(val machine: StateMachine,
     }
 
     fun getLinkedEdges() = machine.edges.filter { it -> it.action is LinkedAction && it.action.edge == this }
-    fun label() = action.label()
+    override fun label(library: Library) = action.label(library)
 }
 
 fun makeLinkedEdge(machine: StateMachine,
@@ -150,6 +161,7 @@ fun makeLinkedEdge(machine: StateMachine,
     val actionEdge = Edge(
             machine = machine,
             src = src,
+            dst = src,
             action = action
     )
     val linkedEdge = Edge(
@@ -164,7 +176,7 @@ fun makeLinkedEdge(machine: StateMachine,
 }
 
 data class Param(val machine: StateMachine,
-                 val pos: Int) {
-    override fun toString() = label()
-    fun label() = machine.label()
+                 val pos: Int) : Labelable {
+    override fun toString() = machine.name
+    override fun label(library: Library) = machine.label(library)
 }
