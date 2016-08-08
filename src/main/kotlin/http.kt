@@ -20,7 +20,8 @@ fun makeJava(): Library {
     val hasURL = State(name = "hasURL", machine = request)
 
     Edge(
-            machine = url,
+            machine = request,
+            src = request.getInitState(),
             dst = hasURL,
             action = ConstructorAction(
                     param = Param(
@@ -56,12 +57,13 @@ fun makeJava(): Library {
     makeLinkedEdge(
             machine = connection,
             dst = body.getInitState(),
-            action = StaticCallAction(
+            action = CallAction(
                     methodName = "readerToString",
                     param = Param(
                             machine = connection,
                             pos = 0
-                    )
+                    ),
+                    className = "Main"
             )
     )
 
@@ -85,9 +87,22 @@ fun makeApache(): Library {
 
     val hasURL = State(name = "hasURL", machine = request)
 
+    client.edges.clear()
+
+    Edge(
+            machine = client,
+            src = client.getInitState(),
+            dst = client.getConstructedState(),
+            action = CallAction(
+                    methodName = "createDefault",
+                    param = null,
+                    className = "HttpClients"
+            )
+    )
+
     Edge(
             machine = request,
-            src = url.getConstructedState(),
+            src = request.getInitState(),
             dst = hasURL,
             action = ConstructorAction(
                     param = Param(
@@ -97,7 +112,7 @@ fun makeApache(): Library {
             )
     )
 
-    Edge(
+    val setURI = Edge(
             machine = request,
             src = request.getConstructedState(),
             dst = hasURL,
@@ -117,16 +132,11 @@ fun makeApache(): Library {
                     methodName = "execute",
                     param = Param(
                             machine = request,
+                            state = hasURL,
+                            dst = connection.getInitState(),
                             pos = 0
                     )
             )
-    )
-
-    Edge(
-            machine = request,
-            src = hasURL,
-            dst = connection.getInitState(),
-            action = AutoAction()
     )
 
     val body = StateMachine(entity = HTTPEntities.body)
@@ -134,12 +144,13 @@ fun makeApache(): Library {
     makeLinkedEdge(
             machine = connection,
             dst = body.getInitState(),
-            action = StaticCallAction(
+            action = CallAction(
                     methodName = "responseToString",
                     param = Param(
                             machine = connection,
                             pos = 0
-                    )
+                    ),
+                    className = "Main"
             )
     )
 

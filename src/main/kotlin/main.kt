@@ -192,40 +192,102 @@ fun findActionsInCode(srcLibrary: Library, codeElements: CodeElements) {
 private fun doMigration(graph1: Library, codeElements: CodeElements, jgraph2: DirectedPseudograph<State, Edge>) {
     val edges = graph1.stateMachines.flatMap { it -> it.edges }.asSequence()
     for (edge in edges) {
+        println("Processing " + edge.label(graph1) + "... ")
+        if (edge.src == edge.dst) {
+            println("  Makes a loop, skipping")
+            continue
+        }
+        if (edge.action is AutoAction) {
+            println("  Has an auto action, skipping")
+            continue
+        }
         if (edge.action is CallAction) {
-            migrateMethodCall(edge, edge.action, codeElements.methodCalls, jgraph2)
+            println("  Has a call action")
+            val route = findRoute(jgraph2, edge.src, edge.dst)
+            migrateMethodCall(edge, codeElements.methodCalls, route, graph1)
+        }
+        if (edge.action is LinkedAction) {
+            println("  Has a linked action")
+            val dependency = edge.action.edge
+            val route = findRoute(jgraph2, edge.src, edge.dst)
+            migrateMethodCall(dependency, codeElements.methodCalls, route, graph1)
         }
     }
 }
 
-private fun migrateMethodCall(edge: Edge, callAction: CallAction, methodCalls: MutableList<MethodCallExpr>, jgraph2: DirectedPseudograph<State, Edge>) {
-    val callNodes = methodCalls.filter { methodCall -> methodCall.name == callAction.methodName }
-    for (callNode in callNodes) {
-        val linkedEdges = edge.getLinkedEdges()
-        for (linkedEdge in linkedEdges) {
-            println("Searching route from %s to %s \n".format(edge.src.stateAndMachineName(), linkedEdge.dst.stateAndMachineName()))
-            val route = DijkstraShortestPath.findPathBetween(jgraph2, edge.src, linkedEdge.dst)
-            if (route != null) {
-                applySteps(route, methodCall, callAction)
-            }
+private fun getUsages(methodCalls: MutableList<MethodCallExpr>,
+                      methodName: String) =
+        methodCalls.filter { methodCall -> methodCall.name == methodName }
+
+private fun findRoute(graph: DirectedPseudograph<State, Edge>, src: State, dst: State): List<Edge> {
+    println("Searching route from %s to %s \n".format(src.stateAndMachineName(), dst.stateAndMachineName()))
+    return DijkstraShortestPath.findPathBetween(graph, src, dst)
+}
+
+private fun prettyPrinter(string: String): String {
+    var intend = 0
+    val buffer = StringBuilder()
+    for (char in string) {
+        buffer.append(char)
+        if (char == '(') {
+            buffer.append('\n')
+            intend++
+            buffer.append(" ".repeat(intend*2))
+        } else if (char == ')') {
+            intend--
+        } else if (char == ',') {
+            buffer.append('\n')
+            buffer.append(" ".repeat(intend*2-1))
+        }
+    }
+    return buffer.toString()
+}
+
+private fun migrateMethodCall(edge: Edge, methodCalls: MutableList<MethodCallExpr>, route: List<Edge>, library: Library) {
+    if (edge.action is CallAction) {
+        val usages = getUsages(methodCalls, edge.action.methodName)
+        if (usages.isNotEmpty()) {
+            println("  Has %d usage(s)!".format(usages.size))
+        }
+        for (usage in usages) {
+            applySteps(route, usage, library)
         }
     }
 }
 
-private fun applySteps(steps: List<Edge>, methodCall: MethodCallExpr, action: CallAction) {
+private fun applySteps(steps: List<Edge>, methodCall: MethodCallExpr, library: Library) {
     removeMethodCall(methodCall)
     var insertionPoint = methodCall.scope
+    val parent = methodCall.parentNode
 
     for (step in steps) {
-        insertionPoint = when (step.action.type()) {
-            ActionType.METHOD_CALL -> makeCallExpression(step, methodCall, action, insertionPoint)
-            ActionType.CONSTRUCTOR -> TODO()
-            ActionType.STATIC_CALL -> TODO()
-            ActionType.AUTO -> insertionPoint
-            ActionType.LINKED -> makeCallExpression(step, methodCall, action, insertionPoint)
-            ActionType.MAKE_ARRAY -> makeArray(step.action as MakeArrayAction, insertionPoint)
-            ActionType.TEMPLATE -> TODO()
+        println("Step: " + step.label(library))
+        insertionPoint = when (step.action) {
+            is CallAction -> makeCallExpression(step.action, insertionPoint, parent)
+            is ConstructorAction -> TODO()
+            is AutoAction -> insertionPoint
+            is LinkedAction -> addLinkedAction(step.action, insertionPoint, parent)
+            is MakeArrayAction -> makeArray(step.action, insertionPoint)
+            is TemplateAction -> TODO()
+            is UsageAction -> addUsageAction(step.action, insertionPoint, parent)
+            else -> error("Unknown action!")
         }
+    }
+}
+
+private fun addUsageAction(action: UsageAction, point: Expression?, srcParent: Node): MethodCallExpr {
+    if (action.edge.action is CallAction) {
+        return makeCallExpression(action.edge.action, point, srcParent)
+    } else {
+        error("Unsupported action")
+    }
+}
+
+private fun addLinkedAction(action: LinkedAction, point: Expression?, srcParent: Node): MethodCallExpr {
+    if (action.edge.action is CallAction) {
+        return makeCallExpression(action.edge.action, point, srcParent)
+    } else {
+        error("Unsupported action")
     }
 }
 
@@ -249,17 +311,20 @@ private fun unpackCallAction(edge: Edge): CallAction {
     }
 }
 
-private fun makeCallExpression(step: Edge, methodCall: MethodCallExpr, action: CallAction, point: Expression): MethodCallExpr {
-    val callAction = unpackCallAction(step)
-    val args = if (callAction.param != null && callAction.param.machine.entity == action.param?.machine?.entity) {
-        methodCall.args
-    } else {
-        listOf()
-    }
+private fun getArgs() {
+//    val callAction = unpackCallAction(step)
+//    val args = if (callAction.param != null && callAction.param.machine.entity == action.param?.machine?.entity) {
+//        methodCall.args
+//    } else {
+//        listOf()
+//    }
+}
 
-    val parent = point.parentNode
+private fun makeCallExpression(action: CallAction, point: Expression?, srcParent: Node): MethodCallExpr {
+    val parent = point?.parentNode ?: srcParent
+    val scope = if (action.className != null) NameExpr(action.className) else point
 
-    val expr = MethodCallExpr(point, callAction.methodName, args)
+    val expr = MethodCallExpr(scope, action.methodName, listOf())
     expr.parentNode = parent
 
     if (parent is MethodCallExpr) {
@@ -267,9 +332,6 @@ private fun makeCallExpression(step: Edge, methodCall: MethodCallExpr, action: C
     } else if (parent is ExpressionStmt) {
         parent.expression = expr
     }
-//    else if (parent is ExpressionStmt) {
-//        parent.expression = expr
-//    }
     return expr
 }
 

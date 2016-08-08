@@ -24,7 +24,7 @@ fun toDOT(library: Library): String {
     var counter = 0
     for (machine in library.stateMachines) {
         for (edge in machine.getDisplayedEdges()) {
-            val linkedEdge = edge.getLinkedEdges().firstOrNull()
+            val linkedEdge = edge.linkedEdges.filter { it -> it.action is LinkedAction }.firstOrNull()
             val baseMap = mapOf(
                     "src" to edge.src.id(),
                     "dst" to edge.dst.id(),
