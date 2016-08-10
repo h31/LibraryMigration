@@ -220,7 +220,7 @@ private fun getUsages(methodCalls: MutableList<MethodCallExpr>,
         methodCalls.filter { methodCall -> methodCall.name == methodName }
 
 private fun findRoute(graph: DirectedPseudograph<State, Edge>, src: State, dst: State): List<Edge> {
-    println("Searching route from %s to %s \n".format(src.stateAndMachineName(), dst.stateAndMachineName()))
+    println("  Searching route from %s to %s".format(src.stateAndMachineName(), dst.stateAndMachineName()))
     return DijkstraShortestPath.findPathBetween(graph, src, dst)
 }
 
@@ -255,37 +255,38 @@ private fun migrateMethodCall(edge: Edge, methodCalls: MutableList<MethodCallExp
     }
 }
 
+data class InsertionPoint(val scope: Expression?, val parent: Node)
+
 private fun applySteps(steps: List<Edge>, methodCall: MethodCallExpr, library: Library) {
+    var insertionPoint = InsertionPoint(scope = methodCall.scope, parent = methodCall.parentNode)
     removeMethodCall(methodCall)
-    var insertionPoint = methodCall.scope
-    val parent = methodCall.parentNode
 
     for (step in steps) {
-        println("Step: " + step.label(library))
+        println("    Step: " + step.label(library))
         insertionPoint = when (step.action) {
-            is CallAction -> makeCallExpression(step.action, insertionPoint, parent)
+            is CallAction -> makeCallExpression(step.action, insertionPoint)
             is ConstructorAction -> TODO()
             is AutoAction -> insertionPoint
-            is LinkedAction -> addLinkedAction(step.action, insertionPoint, parent)
+            is LinkedAction -> addLinkedAction(step.action, insertionPoint)
             is MakeArrayAction -> makeArray(step.action, insertionPoint)
             is TemplateAction -> TODO()
-            is UsageAction -> addUsageAction(step.action, insertionPoint, parent)
+            is UsageAction -> addUsageAction(step.action, insertionPoint)
             else -> error("Unknown action!")
         }
     }
 }
 
-private fun addUsageAction(action: UsageAction, point: Expression?, srcParent: Node): MethodCallExpr {
+private fun addUsageAction(action: UsageAction, point: InsertionPoint): InsertionPoint {
     if (action.edge.action is CallAction) {
-        return makeCallExpression(action.edge.action, point, srcParent)
+        return makeCallExpression(action.edge.action, point)
     } else {
         error("Unsupported action")
     }
 }
 
-private fun addLinkedAction(action: LinkedAction, point: Expression?, srcParent: Node): MethodCallExpr {
+private fun addLinkedAction(action: LinkedAction, point: InsertionPoint): InsertionPoint {
     if (action.edge.action is CallAction) {
-        return makeCallExpression(action.edge.action, point, srcParent)
+        return makeCallExpression(action.edge.action, point)
     } else {
         error("Unsupported action")
     }
@@ -320,9 +321,9 @@ private fun getArgs() {
 //    }
 }
 
-private fun makeCallExpression(action: CallAction, point: Expression?, srcParent: Node): MethodCallExpr {
-    val parent = point?.parentNode ?: srcParent
-    val scope = if (action.className != null) NameExpr(action.className) else point
+private fun makeCallExpression(action: CallAction, point: InsertionPoint): InsertionPoint {
+    val parent = point.parent
+    val scope = if (action.className != null) NameExpr(action.className) else point.scope
 
     val expr = MethodCallExpr(scope, action.methodName, listOf())
     expr.parentNode = parent
@@ -331,14 +332,18 @@ private fun makeCallExpression(action: CallAction, point: Expression?, srcParent
         parent.scope = expr
     } else if (parent is ExpressionStmt) {
         parent.expression = expr
+    } else if (parent is VariableDeclarator) {
+        parent.init = expr
+    } else {
+        error("TODO")
     }
-    return expr
+    return point.copy(scope = expr)
 }
 
 var listNameCounter = 0;
 
-private fun makeArray(action: MakeArrayAction, point: Expression): Expression {
-    var node: Node = point
+private fun makeArray(action: MakeArrayAction, point: InsertionPoint): InsertionPoint {
+    var node: Node = point.scope!! // TODO
     while (node.parentNode is BlockStmt == false) {
         node = node.parentNode
     }
@@ -346,7 +351,7 @@ private fun makeArray(action: MakeArrayAction, point: Expression): Expression {
 
     val getSize = action.getSize
     val getItem = action.getItem
-    val scope = if (point is MethodCallExpr) point.scope else point
+    val scope = if (point.scope is MethodCallExpr) point.scope.scope else point.scope
     val getSizeNode = MethodCallExpr(scope.clone() as Expression, getSize.methodName, listOf())
     val getItemNode = MethodCallExpr(scope.clone() as Expression, getItem.methodName, listOf(NameExpr("i")))
 
@@ -368,12 +373,12 @@ private fun makeArray(action: MakeArrayAction, point: Expression): Expression {
     blockStmt.stmts.add(pos, forLoop)
     blockStmt.stmts.add(pos, ExpressionStmt(list))
 
-    val parent = point.parentNode
-    parent.childrenNodes.remove(point)
+    val parent = point.scope.parentNode
+    parent.childrenNodes.remove(point.scope)
     if (parent is MethodCallExpr) {
         parent.scope = listNode
     }
-    return listNode
+    return point.copy(scope = listNode)
 }
 
 private fun fixEntityTypes(codeElements: CodeElements, graph1: Library, graph2: Library) {
