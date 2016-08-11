@@ -139,12 +139,16 @@ data class Edge(val machine: StateMachine,
                 val src: State = makeConstructedState(machine),
                 val dst: State = src,
                 val action: Action) : Labelable {
-    val linkedEdges = mutableSetOf<Edge>()
+    var linkedEdge: Edge? = null
+    val usageEdges = mutableSetOf<Edge>()
 
     init {
         machine.edges += this
         if (action is LinkedAction) {
-            action.edge.linkedEdges += this
+            if (linkedEdge == null) {
+                error("Edge already linked")
+            }
+            action.edge.linkedEdge = this
         }
 
         if (action is ConstructorAction) {

@@ -321,7 +321,7 @@ private fun getArgs() {
 //    }
 }
 
-private fun makeCallExpression(action: CallAction, point: InsertionPoint): InsertionPoint {
+private fun makeCallExpression(action: CallAction, point: InsertionPoint, edge: Edge): InsertionPoint {
     val parent = point.parent
     val scope = if (action.className != null) NameExpr(action.className) else point.scope
 
