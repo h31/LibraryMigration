@@ -114,7 +114,7 @@ data class ConstructorAction(val param: Param?) : Action {
 }
 
 data class LinkedAction(val edge: Edge) : Action {
-    override fun label(library: Library) = "return " + edge.getLinkedEdge().dst.machine.type(library) + "()"
+    override fun label(library: Library) = "return " + edge.linkedEdge?.dst?.machine?.type(library) + "()"
     override fun type() = ActionType.LINKED
 }
 
@@ -145,7 +145,7 @@ data class Edge(val machine: StateMachine,
     init {
         machine.edges += this
         if (action is LinkedAction) {
-            if (linkedEdge == null) {
+            if (action.edge.linkedEdge != null) {
                 error("Edge already linked")
             }
             action.edge.linkedEdge = this

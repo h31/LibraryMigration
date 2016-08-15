@@ -18,6 +18,7 @@ import org.jgrapht.ext.DOTExporter
 import org.jgrapht.ext.EdgeNameProvider
 import org.jgrapht.ext.VertexNameProvider
 import org.jgrapht.graph.*
+import sun.misc.ExtensionDependency
 import java.io.FileInputStream
 import java.io.FileWriter
 import java.nio.file.Files
@@ -243,6 +244,17 @@ private fun prettyPrinter(string: String): String {
     return buffer.toString()
 }
 
+private fun getDependencies(edge: Edge, methodCall: MethodCallExpr): Map<StateMachine, Expression> {
+    val scope = methodCall.scope
+    val callAction = unpackCallAction(edge)
+    if (callAction != null && callAction.param != null) {
+        val arg = methodCall.args.first()
+        return mapOf(edge.machine to scope, callAction.param.machine to arg)
+    } else {
+        return mapOf(edge.machine to scope)
+    }
+}
+
 private fun migrateMethodCall(edge: Edge, methodCalls: MutableList<MethodCallExpr>, route: List<Edge>, library: Library) {
     if (edge.action is CallAction) {
         val usages = getUsages(methodCalls, edge.action.methodName)
@@ -250,46 +262,51 @@ private fun migrateMethodCall(edge: Edge, methodCalls: MutableList<MethodCallExp
             println("  Has %d usage(s)!".format(usages.size))
         }
         for (usage in usages) {
-            applySteps(route, usage, library)
+            val dependencies = getDependencies(edge, usage)
+            applySteps(route, usage, library, dependencies)
         }
     }
 }
 
 data class InsertionPoint(val scope: Expression?, val parent: Node)
 
-private fun applySteps(steps: List<Edge>, methodCall: MethodCallExpr, library: Library) {
-    var insertionPoint = InsertionPoint(scope = methodCall.scope, parent = methodCall.parentNode)
-    removeMethodCall(methodCall)
+private fun applySteps(steps: List<Edge>, methodCall: MethodCallExpr, library: Library, dependencies: Map<StateMachine, Expression>) {
+    val blockStmt = getBlockStmt(methodCall)
+//    var insertionPoint = InsertionPoint(scope = methodCall.scope, parent = methodCall.parentNode)
+//    removeMethodCall(methodCall)
+    val pendingStmts = mutableListOf<Statement>()
 
     for (step in steps) {
         println("    Step: " + step.label(library))
-        insertionPoint = when (step.action) {
-            is CallAction -> makeCallExpression(step.action, insertionPoint)
+
+        val newExpressions: List<Expression> = when (step.action) {
+            is CallAction -> makeCallExpression(step.action, dependencies, step, blockStmt, library)
             is ConstructorAction -> TODO()
-            is AutoAction -> insertionPoint
-            is LinkedAction -> addLinkedAction(step.action, insertionPoint)
-            is MakeArrayAction -> makeArray(step.action, insertionPoint)
+            is AutoAction -> listOf()
+            is LinkedAction -> {
+                val linkedEdge = step.action.edge
+                val expressions = makeCallExpression(linkedEdge.action as CallAction, dependencies, linkedEdge, blockStmt, library)
+                addLinkedAction(step.action, expressions, step)
+            }
+            is MakeArrayAction -> TODO() // makeArray(step.action)
             is TemplateAction -> TODO()
-            is UsageAction -> addUsageAction(step.action, insertionPoint)
+            is UsageAction -> makeCallExpression(step.action.edge.action as CallAction, dependencies, step.action.edge, blockStmt, library)
             else -> error("Unknown action!")
         }
+        println("Received expressions: " + newExpressions.toString())
+        val newStatements = newExpressions.map { expr -> ExpressionStmt(expr) }
+        pendingStmts.addAll(newStatements)
     }
+    blockStmt.stmts.addAll(0, pendingStmts)
 }
 
-private fun addUsageAction(action: UsageAction, point: InsertionPoint): InsertionPoint {
-    if (action.edge.action is CallAction) {
-        return makeCallExpression(action.edge.action, point)
-    } else {
-        error("Unsupported action")
-    }
-}
-
-private fun addLinkedAction(action: LinkedAction, point: InsertionPoint): InsertionPoint {
-    if (action.edge.action is CallAction) {
-        return makeCallExpression(action.edge.action, point)
-    } else {
-        error("Unsupported action")
-    }
+private fun addLinkedAction(action: LinkedAction, expressions: List<Expression>, step: Edge): List<Expression> {
+    val type = "CloseableHttpClient" // checkNotNull(library.entityTypes[machine.entity])
+    val name = "newLinkedAction"
+    val expr = expressions.first()
+    val newVariable = ASTHelper.createVariableDeclarationExpr(ClassOrInterfaceType(type), name)
+    newVariable.vars.first().init = expr
+    return listOf(newVariable)
 }
 
 private fun removeMethodCall(methodCall: MethodCallExpr) {
@@ -302,13 +319,18 @@ private fun removeMethodCall(methodCall: MethodCallExpr) {
     }
 }
 
-private fun unpackCallAction(edge: Edge): CallAction {
+private fun unpackCallAction(edge: Edge): CallAction? {
     if (edge.action is LinkedAction) {
         return edge.action.edge.action as CallAction
-    } else if (edge.action is CallAction) {
+    }
+    else if (edge.action is UsageAction) {
+        return edge.action.edge.action as CallAction
+    }
+    else if (edge.action is CallAction) {
         return edge.action
-    } else {
-        throw Exception()
+    }
+    else {
+        return null
     }
 }
 
@@ -321,13 +343,57 @@ private fun getArgs() {
 //    }
 }
 
-private fun makeCallExpression(action: CallAction, point: InsertionPoint, edge: Edge): InsertionPoint {
-    val parent = point.parent
-    val scope = if (action.className != null) NameExpr(action.className) else point.scope
+data class CallExpressionParams(val scope: Expression?, val args: List<Expression>)
+class NeedDependencyException(val machine: StateMachine) : Exception()
 
-    val expr = MethodCallExpr(scope, action.methodName, listOf())
-    expr.parentNode = parent
+private fun makeCallExpressionDeps(action: CallAction, dependencies: Map<StateMachine, Expression>, edge: Edge): CallExpressionParams {
+    val scope = if (action.className != null) {
+        NameExpr(action.className)
+    } else if (edge.machine in dependencies) {
+        dependencies[edge.machine]
+    } else {
+        throw NeedDependencyException(edge.machine)
+    }
 
+    val args = if (action.param != null) {
+        if (action.param.pos != 0) TODO()
+        val argExpression = dependencies[action.param.machine]
+        if (argExpression == null) throw NeedDependencyException(action.param.machine)
+        listOf(argExpression)
+    } else {
+        listOf()
+    }
+
+    return CallExpressionParams(scope, args)
+}
+
+private fun makeMissingDependency(machine: StateMachine, blockStmt: BlockStmt, library: Library, dependencies: Map<StateMachine, Expression>): Expression {
+    val type = "CloseableHttpClient" // checkNotNull(library.entityTypes[machine.entity])
+    val name = "newMachine"
+    val newVariable = ASTHelper.createVariableDeclarationExpr(ClassOrInterfaceType(type), name)
+    blockStmt.stmts.add(0, ExpressionStmt(newVariable))
+
+    val step = machine.edges.first { edge -> edge.src == machine.getInitState() && edge.dst == machine.getConstructedState() }
+    val initExpr = makeCallExpression(step.action as CallAction, dependencies, step, blockStmt, library)
+    newVariable.vars.first().init = initExpr.first()
+    return NameExpr(name)
+}
+
+private fun makeCallExpression(action: CallAction, dependencies: Map<StateMachine, Expression>, step: Edge, blockStmt: BlockStmt, library: Library): List<Expression> {
+    var currentDeps = dependencies
+    while (true) {
+        try {
+            val callParams = makeCallExpressionDeps(action, currentDeps, step)
+            val expr = MethodCallExpr(callParams.scope, action.methodName, callParams.args)
+            return listOf(expr)
+        } catch (ex: NeedDependencyException) {
+            val expr = makeMissingDependency(ex.machine, blockStmt, library, currentDeps)
+            currentDeps += (ex.machine to expr)
+        }
+    }
+}
+
+private fun setAsChild(parent: Node, expr: Expression) {
     if (parent is MethodCallExpr) {
         parent.scope = expr
     } else if (parent is ExpressionStmt) {
@@ -337,48 +403,49 @@ private fun makeCallExpression(action: CallAction, point: InsertionPoint, edge: 
     } else {
         error("TODO")
     }
-    return point.copy(scope = expr)
 }
 
 var listNameCounter = 0;
 
-private fun makeArray(action: MakeArrayAction, point: InsertionPoint): InsertionPoint {
-    var node: Node = point.scope!! // TODO
+//private fun makeArray(action: MakeArrayAction): List<Statement> {
+//    val getSize = action.getSize
+//    val getItem = action.getItem
+//    val scope = if (point.scope is MethodCallExpr) point.scope.scope else point.scope
+//    val getSizeNode = MethodCallExpr(scope.clone() as Expression, getSize.methodName, listOf())
+//    val getItemNode = MethodCallExpr(scope.clone() as Expression, getItem.methodName, listOf(NameExpr("i")))
+//
+//    val listName = "tmp" + (listNameCounter++)
+//    val list = ASTHelper.createVariableDeclarationExpr(ClassOrInterfaceType("List"), listName)
+//    list.vars.first().init = ObjectCreationExpr(null, ClassOrInterfaceType("ArrayList"), listOf(getSizeNode.clone() as Expression))
+//    val listNode = NameExpr(listName)
+//
+//    val init = ASTHelper.createVariableDeclarationExpr(ASTHelper.INT_TYPE, "i")
+//    init.vars.first().init = IntegerLiteralExpr("0")
+//    val compare = BinaryExpr(NameExpr("i"), getSizeNode, BinaryExpr.Operator.less)
+//    val update = UnaryExpr(NameExpr("i"), UnaryExpr.Operator.posIncrement)
+//
+//    val listFill = MethodCallExpr(listNode, "add", listOf(NameExpr("i"), getItemNode))
+//    val body = BlockStmt(listOf(ExpressionStmt(listFill)))
+//    val forLoop = ForStmt(listOf(init), compare, listOf(update), body)
+//
+//    return listOf(forLoop, ExpressionStmt(list))
+////    val pos = 0 // blockStmt.stmts.indexOf(node)
+////    blockStmt.stmts.add(pos, forLoop)
+////    blockStmt.stmts.add(pos, ExpressionStmt(list))
+//
+////    val parent = point.scope.parentNode
+////    parent.childrenNodes.remove(point.scope)
+////    if (parent is MethodCallExpr) {
+////        parent.scope = listNode
+////    }
+//}
+
+private fun getBlockStmt(initialNode: Node): BlockStmt {
+    var node: Node = initialNode
     while (node.parentNode is BlockStmt == false) {
         node = node.parentNode
     }
-    val blockStmt = node.parentNode as BlockStmt
-
-    val getSize = action.getSize
-    val getItem = action.getItem
-    val scope = if (point.scope is MethodCallExpr) point.scope.scope else point.scope
-    val getSizeNode = MethodCallExpr(scope.clone() as Expression, getSize.methodName, listOf())
-    val getItemNode = MethodCallExpr(scope.clone() as Expression, getItem.methodName, listOf(NameExpr("i")))
-
-    val listName = "tmp" + (listNameCounter++)
-    val list = ASTHelper.createVariableDeclarationExpr(ClassOrInterfaceType("List"), listName)
-    list.vars.first().init = ObjectCreationExpr(null, ClassOrInterfaceType("ArrayList"), listOf(getSizeNode.clone() as Expression))
-    val listNode = NameExpr(listName)
-
-    val init = ASTHelper.createVariableDeclarationExpr(ASTHelper.INT_TYPE, "i")
-    init.vars.first().init = IntegerLiteralExpr("0")
-    val compare = BinaryExpr(NameExpr("i"), getSizeNode, BinaryExpr.Operator.less)
-    val update = UnaryExpr(NameExpr("i"), UnaryExpr.Operator.posIncrement)
-
-    val listFill = MethodCallExpr(listNode, "add", listOf(NameExpr("i"), getItemNode))
-    val body = BlockStmt(listOf(ExpressionStmt(listFill)))
-    val forLoop = ForStmt(listOf(init), compare, listOf(update), body)
-
-    val pos = blockStmt.stmts.indexOf(node)
-    blockStmt.stmts.add(pos, forLoop)
-    blockStmt.stmts.add(pos, ExpressionStmt(list))
-
-    val parent = point.scope.parentNode
-    parent.childrenNodes.remove(point.scope)
-    if (parent is MethodCallExpr) {
-        parent.scope = listNode
-    }
-    return point.copy(scope = listNode)
+    return node.parentNode as BlockStmt
 }
 
 private fun fixEntityTypes(codeElements: CodeElements, graph1: Library, graph2: Library) {
@@ -506,6 +573,7 @@ private class CodeElementsVisitor : VoidVisitorAdapter<CodeElements>() {
 
     override fun visit(n: MethodCallExpr, arg: CodeElements) {
         arg.methodCalls.add(n);
+        arg.nodes.add(n);
         super.visit(n, arg)
     }
 
@@ -516,6 +584,7 @@ private class CodeElementsVisitor : VoidVisitorAdapter<CodeElements>() {
 
     override fun visit(n: ConstructorDeclaration, arg: CodeElements) {
         arg.methodDecls.add(MethodOrConstructor(n));
+        arg.nodes.add(n);
         super.visit(n, arg)
     }
 
@@ -534,7 +603,8 @@ data class CodeElements(val classes: MutableList<ClassOrInterfaceDeclaration> = 
                         val methodDecls: MutableList<MethodOrConstructor> = mutableListOf(),
                         val methodCalls: MutableList<MethodCallExpr> = mutableListOf(),
                         val objectCreation: MutableList<ObjectCreationExpr> = mutableListOf(),
-                        val variableDeclarations: MutableList<VariableDeclarationExpr> = mutableListOf())
+                        val variableDeclarations: MutableList<VariableDeclarationExpr> = mutableListOf(),
+                        val nodes: MutableList<Node> = mutableListOf())
 
 data class MethodDiff(val methodName: String,
                       val newInSrc: List<IndexedValue<Parameter>>,
