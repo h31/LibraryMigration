@@ -172,11 +172,11 @@ data class Edge(val machine: StateMachine,
                             edge = this
                     )
             )
-            linkedEdges += usage
+            usageEdges += usage
         }
     }
 
-    fun getLinkedEdge() = linkedEdges.first { it -> it.action is LinkedAction }
+    // fun getLinkedEdge() = linkedEdges.first { it -> it.action is LinkedAction }
     override fun label(library: Library) = action.label(library)
 }
 
