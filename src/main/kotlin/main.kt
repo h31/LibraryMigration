@@ -131,56 +131,51 @@ fun migrateHTTP() {
 }
 
 fun graphNode1ToNode2(graph1: Library, graph2: Library, codeElements: CodeElements) {
-    val jgraph2 = toJGrapht(graph2)
-
     val src = graph2.stateMachines.first { m -> m.name == "Node" }.getConstructedState()
     val dst = graph2.stateMachines.first { m -> m.name == "child" }.getInitState()
 
-    makeRoute(src, dst, jgraph2, graph2)
+    val migration = Migration(
+            library1 = graph2,
+            library2 = graph1,
+            codeElements = codeElements)
 
-    doMigration(graph1, codeElements, jgraph2)
+    migration.makeRoute(src, dst)
+
+    migration.doMigration()
 
     fixEntityTypes(codeElements, graph1, graph2)
 }
 
 fun graphNode2ToNode1(graph1: Library, graph2: Library, codeElements: CodeElements) {
-    val jgraph1 = toJGrapht(graph1)
-
     val src = graph1.stateMachines.first { m -> m.name == "Node" }.getConstructedState()
     val dst = graph1.stateMachines.first { m -> m.name == "NodeList" }.getInitState()
 
-    makeRoute(src, dst, jgraph1, graph1)
+    val migration = Migration(
+            library1 = graph1,
+            library2 = graph2,
+            codeElements = codeElements)
 
-    doMigration(graph2, codeElements, jgraph1)
+    migration.makeRoute(src, dst)
+
+    migration.doMigration()
 
     fixEntityTypes(codeElements, graph2, graph1)
 }
 
 fun javaToApache(java: Library, apache: Library, codeElements: CodeElements) {
-    val apacheGraph = toJGrapht(apache)
-
     val src = apache.stateMachines.first { m -> m.name == "URL" }.getConstructedState()
     val dst = apache.stateMachines.first { m -> m.name == "Body" }.getInitState()
 
-    makeRoute(src, dst, apacheGraph, apache)
+    val migration = Migration(
+            library1 = java,
+            library2 = apache,
+            codeElements = codeElements)
 
-    doMigration(java, codeElements, apacheGraph)
+    migration.makeRoute(src, dst)
+
+    migration.doMigration()
 
     fixEntityTypes(codeElements, java, apache)
-}
-
-private fun makeRoute(src: State, dst: State, jgraph2: DirectedPseudograph<State, Edge>, library: Library) {
-    val route = DijkstraShortestPath.findPathBetween(jgraph2, src, dst)
-    println("Route from %s to %s: ".format(src.stateAndMachineName(),
-            dst.stateAndMachineName()))
-    for (state in route.withIndex()) {
-        val action = if (state.value.action.type() == ActionType.LINKED) {
-            (state.value.action as LinkedAction).edge.action
-        } else {
-            state.value.action
-        }
-        println("%d: %s".format(state.index, action.label(library)))
-    }
 }
 
 fun findActionsInCode(srcLibrary: Library, codeElements: CodeElements) {
@@ -188,41 +183,6 @@ fun findActionsInCode(srcLibrary: Library, codeElements: CodeElements) {
     for (edge in edges) {
         val calls = codeElements.methodCalls
     }
-}
-
-private fun doMigration(graph1: Library, codeElements: CodeElements, jgraph2: DirectedPseudograph<State, Edge>) {
-    val edges = graph1.stateMachines.flatMap { it -> it.edges }.asSequence()
-    for (edge in edges) {
-        println("Processing " + edge.label(graph1) + "... ")
-        if (edge.src == edge.dst) {
-            println("  Makes a loop, skipping")
-            continue
-        }
-        if (edge.action is AutoAction) {
-            println("  Has an auto action, skipping")
-            continue
-        }
-        if (edge.action is CallAction) {
-            println("  Has a call action")
-            val route = findRoute(jgraph2, edge.src, edge.dst)
-            migrateMethodCall(edge, codeElements.methodCalls, route, graph1)
-        }
-        if (edge.action is LinkedAction) {
-            println("  Has a linked action")
-            val dependency = edge.action.edge
-            val route = findRoute(jgraph2, edge.src, edge.dst)
-            migrateMethodCall(dependency, codeElements.methodCalls, route, graph1)
-        }
-    }
-}
-
-private fun getUsages(methodCalls: MutableList<MethodCallExpr>,
-                      methodName: String) =
-        methodCalls.filter { methodCall -> methodCall.name == methodName }
-
-private fun findRoute(graph: DirectedPseudograph<State, Edge>, src: State, dst: State): List<Edge> {
-    println("  Searching route from %s to %s".format(src.stateAndMachineName(), dst.stateAndMachineName()))
-    return DijkstraShortestPath.findPathBetween(graph, src, dst)
 }
 
 private fun prettyPrinter(string: String): String {
@@ -244,95 +204,7 @@ private fun prettyPrinter(string: String): String {
     return buffer.toString()
 }
 
-private fun getDependencies(edge: Edge, methodCall: MethodCallExpr): Map<StateMachine, Expression> {
-    val scope = methodCall.scope
-    val callAction = unpackCallAction(edge)
-    if (callAction != null && callAction.param != null) {
-        val arg = methodCall.args.first()
-        return mapOf(edge.machine to scope, callAction.param.machine to arg)
-    } else {
-        return mapOf(edge.machine to scope)
-    }
-}
-
-private fun migrateMethodCall(edge: Edge, methodCalls: MutableList<MethodCallExpr>, route: List<Edge>, library: Library) {
-    if (edge.action is CallAction) {
-        val usages = getUsages(methodCalls, edge.action.methodName)
-        if (usages.isNotEmpty()) {
-            println("  Has %d usage(s)!".format(usages.size))
-        }
-        for (usage in usages) {
-            val dependencies = getDependencies(edge, usage)
-            applySteps(route, usage, library, dependencies)
-        }
-    }
-}
-
 data class InsertionPoint(val scope: Expression?, val parent: Node)
-
-private fun applySteps(steps: List<Edge>, methodCall: MethodCallExpr, library: Library, dependencies: Map<StateMachine, Expression>) {
-    val blockStmt = getBlockStmt(methodCall)
-//    var insertionPoint = InsertionPoint(scope = methodCall.scope, parent = methodCall.parentNode)
-//    removeMethodCall(methodCall)
-    val pendingStmts = mutableListOf<Statement>()
-
-    for (step in steps) {
-        println("    Step: " + step.label(library))
-
-        val newExpressions: List<Expression> = when (step.action) {
-            is CallAction -> makeCallExpression(step.action, dependencies, step, blockStmt, library)
-            is ConstructorAction -> TODO()
-            is AutoAction -> listOf()
-            is LinkedAction -> {
-                val linkedEdge = step.action.edge
-                val expressions = makeCallExpression(linkedEdge.action as CallAction, dependencies, linkedEdge, blockStmt, library)
-                addLinkedAction(step.action, expressions, step)
-            }
-            is MakeArrayAction -> TODO() // makeArray(step.action)
-            is TemplateAction -> TODO()
-            is UsageAction -> makeCallExpression(step.action.edge.action as CallAction, dependencies, step.action.edge, blockStmt, library)
-            else -> error("Unknown action!")
-        }
-        println("Received expressions: " + newExpressions.toString())
-        val newStatements = newExpressions.map { expr -> ExpressionStmt(expr) }
-        pendingStmts.addAll(newStatements)
-    }
-    blockStmt.stmts.addAll(0, pendingStmts)
-}
-
-private fun addLinkedAction(action: LinkedAction, expressions: List<Expression>, step: Edge): List<Expression> {
-    val type = "CloseableHttpClient" // checkNotNull(library.entityTypes[machine.entity])
-    val name = "newLinkedAction"
-    val expr = expressions.first()
-    val newVariable = ASTHelper.createVariableDeclarationExpr(ClassOrInterfaceType(type), name)
-    newVariable.vars.first().init = expr
-    return listOf(newVariable)
-}
-
-private fun removeMethodCall(methodCall: MethodCallExpr) {
-    val parent = methodCall.parentNode
-    parent.childrenNodes.remove(methodCall)
-    if (parent is MethodCallExpr) {
-        parent.scope = methodCall.scope
-    } else if (parent is ExpressionStmt) {
-        parent.expression = methodCall.scope
-    }
-}
-
-private fun unpackCallAction(edge: Edge): CallAction? {
-    if (edge.action is LinkedAction) {
-        return edge.action.edge.action as CallAction
-    }
-    else if (edge.action is UsageAction) {
-        return edge.action.edge.action as CallAction
-    }
-    else if (edge.action is CallAction) {
-        return edge.action
-    }
-    else {
-        return null
-    }
-}
 
 private fun getArgs() {
 //    val callAction = unpackCallAction(step)
@@ -345,53 +217,6 @@ private fun getArgs() {
 
 data class CallExpressionParams(val scope: Expression?, val args: List<Expression>)
 class NeedDependencyException(val machine: StateMachine) : Exception()
-
-private fun makeCallExpressionDeps(action: CallAction, dependencies: Map<StateMachine, Expression>, edge: Edge): CallExpressionParams {
-    val scope = if (action.className != null) {
-        NameExpr(action.className)
-    } else if (edge.machine in dependencies) {
-        dependencies[edge.machine]
-    } else {
-        throw NeedDependencyException(edge.machine)
-    }
-
-    val args = if (action.param != null) {
-        if (action.param.pos != 0) TODO()
-        val argExpression = dependencies[action.param.machine]
-        if (argExpression == null) throw NeedDependencyException(action.param.machine)
-        listOf(argExpression)
-    } else {
-        listOf()
-    }
-
-    return CallExpressionParams(scope, args)
-}
-
-private fun makeMissingDependency(machine: StateMachine, blockStmt: BlockStmt, library: Library, dependencies: Map<StateMachine, Expression>): Expression {
-    val type = "CloseableHttpClient" // checkNotNull(library.entityTypes[machine.entity])
-    val name = "newMachine"
-    val newVariable = ASTHelper.createVariableDeclarationExpr(ClassOrInterfaceType(type), name)
-    blockStmt.stmts.add(0, ExpressionStmt(newVariable))
-
-    val step = machine.edges.first { edge -> edge.src == machine.getInitState() && edge.dst == machine.getConstructedState() }
-    val initExpr = makeCallExpression(step.action as CallAction, dependencies, step, blockStmt, library)
-    newVariable.vars.first().init = initExpr.first()
-    return NameExpr(name)
-}
-
-private fun makeCallExpression(action: CallAction, dependencies: Map<StateMachine, Expression>, step: Edge, blockStmt: BlockStmt, library: Library): List<Expression> {
-    var currentDeps = dependencies
-    while (true) {
-        try {
-            val callParams = makeCallExpressionDeps(action, currentDeps, step)
-            val expr = MethodCallExpr(callParams.scope, action.methodName, callParams.args)
-            return listOf(expr)
-        } catch (ex: NeedDependencyException) {
-            val expr = makeMissingDependency(ex.machine, blockStmt, library, currentDeps)
-            currentDeps += (ex.machine to expr)
-        }
-    }
-}
 
 private fun setAsChild(parent: Node, expr: Expression) {
     if (parent is MethodCallExpr) {
@@ -439,14 +264,6 @@ var listNameCounter = 0;
 ////        parent.scope = listNode
 ////    }
 //}
-
-private fun getBlockStmt(initialNode: Node): BlockStmt {
-    var node: Node = initialNode
-    while (node.parentNode is BlockStmt == false) {
-        node = node.parentNode
-    }
-    return node.parentNode as BlockStmt
-}
 
 private fun fixEntityTypes(codeElements: CodeElements, graph1: Library, graph2: Library) {
     for (type in graph1.entityTypes) {
