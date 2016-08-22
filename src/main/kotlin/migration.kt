@@ -19,96 +19,80 @@ class Migration(val library1: Library,
                 val codeElements: CodeElements,
                 val graph1: DirectedPseudograph<State, Edge> = toJGrapht(library1),
                 val graph2: DirectedPseudograph<State, Edge> = toJGrapht(library2)) {
+    val dependencies: MutableMap<StateMachine, Expression> = mutableMapOf()
+    val pendingStmts = mutableListOf<Statement>()
+    var stmtCounter = 0
 
     fun makeRoute(src: State, dst: State) {
         val route = DijkstraShortestPath.findPathBetween(graph2, src, dst)
         println("Route from %s to %s: ".format(src.stateAndMachineName(),
                 dst.stateAndMachineName()))
         for (state in route.withIndex()) {
-            val action = if (state.value.action.type() == ActionType.LINKED) {
-                (state.value.action as LinkedAction).edge.action
-            } else {
-                state.value.action
-            }
-            println("%d: %s".format(state.index, action.label(library2)))
+            println("%d: %s".format(state.index, state.value.label(library2)))
         }
     }
 
     fun doMigration() {
-        val edges = library1.stateMachines.flatMap { it -> it.edges }.asSequence()
+        val edges = library1.stateMachines.flatMap { it -> it.edges }
         for (edge in edges) {
             println("Processing " + edge.label(library1) + "... ")
             if (edge.src == edge.dst) {
                 println("  Makes a loop, skipping")
                 continue
             }
-            if (edge.action is AutoAction) {
+            if (edge is AutoEdge) {
                 println("  Has an auto action, skipping")
                 continue
             }
-            if (edge.action is CallAction) {
+            if (edge is CallEdge) {
                 println("  Has a call action")
                 val route = findRoute(graph2, edge.src, edge.dst)
                 migrateMethodCall(edge, route)
             }
-            if (edge.action is LinkedAction) {
+            if (edge is LinkedEdge) {
                 println("  Has a linked action")
-                val dependency = edge.action.edge
+                val dependency = edge.edge
                 val route = findRoute(graph2, edge.src, edge.dst)
                 migrateMethodCall(dependency, route)
             }
         }
     }
 
-    private fun migrateMethodCall(edge: Edge, route: List<Edge>) {
-        if (edge.action is CallAction) {
-            val usages = getUsages(edge.action.methodName)
+    private fun migrateMethodCall(edge: CallEdge, route: List<Edge>) {
+            val usages = getUsages(edge.methodName)
             if (usages.isNotEmpty()) {
                 println("  Has %d usage(s)!".format(usages.size))
             }
             for (usage in usages) {
-                val dependencies = getDependencies(edge, usage)
-                applySteps(route, usage, dependencies)
+                dependencies.putAll(extractDependenciesFromMethod(edge, usage))
+                applySteps(route)
             }
-        }
     }
 
-    private fun applySteps(steps: List<Edge>, methodCall: MethodCallExpr, dependencies: Map<StateMachine, Expression>) {
-        val blockStmt = getBlockStmt(methodCall)
-//    var insertionPoint = InsertionPoint(scope = methodCall.scope, parent = methodCall.parentNode)
-//    removeMethodCall(methodCall)
-        val pendingStmts = mutableListOf<Statement>()
-
+    private fun applySteps(steps: List<Edge>) {
         for (step in steps) {
             println("    Step: " + step.label(library2))
 
-            val newExpressions: List<Expression> = when (step.action) {
-                is CallAction -> makeCallExpression(step.action, dependencies, step, blockStmt)
-                is ConstructorAction -> TODO()
-                is AutoAction -> listOf()
-                is LinkedAction -> {
-                    val linkedEdge = step.action.edge
-                    val expressions = makeCallExpression(linkedEdge.action as CallAction, dependencies, linkedEdge, blockStmt)
-                    addLinkedAction(step.action, expressions, step)
-                }
-                is MakeArrayAction -> TODO() // makeArray(step.action)
-                is TemplateAction -> TODO()
-                is UsageAction -> makeCallExpression(step.action.edge.action as CallAction, dependencies, step.action.edge, blockStmt)
+            val newStatements: List<Statement> = when (step) {
+                is CallEdge -> makeCallStatement(step)
+                is ConstructorEdge -> TODO()
+                is AutoEdge -> listOf()
+                is LinkedEdge -> makeLinkedEdge(step)
+                is MakeArrayEdge -> TODO() // makeArray(step.action)
+                is TemplateEdge -> TODO()
+                is UsageEdge -> TODO() // makeCallStatement(step.edge)
                 else -> error("Unknown action!")
             }
-            println("Received expressions: " + newExpressions.toString())
-            val newStatements = newExpressions.map { expr -> ExpressionStmt(expr) }
+            println("Received statement: " + newStatements.toString())
             pendingStmts.addAll(newStatements)
         }
-        blockStmt.stmts.addAll(0, pendingStmts)
     }
 
-    private fun addLinkedAction(action: LinkedAction, expressions: List<Expression>, step: Edge): List<Expression> {
-        val type = "CloseableHttpClient" // checkNotNull(library.entityTypes[machine.entity])
-        val name = "newLinkedAction"
-        val expr = expressions.first()
-        val newVariable = ASTHelper.createVariableDeclarationExpr(ClassOrInterfaceType(type), name)
-        newVariable.vars.first().init = expr
+    private fun makeLinkedEdge(step: LinkedEdge): List<Statement> {
+        val type = checkNotNull(library2.entityTypes[step.machine.entity])
+        val name = "newLinkedEdge" + (stmtCounter++)
+        val expr = makeCallExpression(step.edge)
+        val newVariable = makeNewVariable(type, name, expr)
         return listOf(newVariable)
     }
 
@@ -122,64 +106,59 @@ class Migration(val library1: Library,
         }
     }
 
-    private fun unpackCallAction(edge: Edge): CallAction? {
-        if (edge.action is LinkedAction) {
-            return edge.action.edge.action as CallAction
+    private fun unpackCallEdge(edge: Edge): CallEdge? {
+        if (edge is LinkedEdge) {
+            return edge.edge
         }
-        else if (edge.action is UsageAction) {
-            return edge.action.edge.action as CallAction
+        else if (edge is UsageEdge) {
+            return edge.edge as CallEdge
         }
-        else if (edge.action is CallAction) {
-            return edge.action
+        else if (edge is CallEdge) {
+            return edge
         }
         else {
             return null
         }
     }
 
-    private fun makeCallExpressionDeps(action: CallAction, dependencies: Map<StateMachine, Expression>, edge: Edge): CallExpressionParams {
-        val scope = if (action.className != null) {
-            NameExpr(action.className)
-        } else if (edge.machine in dependencies) {
-            dependencies[edge.machine]
+    private fun makeCallExpressionParams(edge: CallEdge): CallExpressionParams {
+        val scope = if (edge.className != null) {
+            NameExpr(edge.className)
         } else {
-            throw NeedDependencyException(edge.machine)
+            dependencies[edge.machine]
         }
 
-        val args = if (action.param != null) {
-            if (action.param.pos != 0) TODO()
-            val argExpression = dependencies[action.param.machine]
-            if (argExpression == null) throw NeedDependencyException(action.param.machine)
-            listOf(argExpression)
-        } else {
-            listOf()
-        }
+        val args = edge.param.map { param -> checkNotNull(dependencies[param.machine]) }
 
         return CallExpressionParams(scope, args)
     }
 
-    private fun makeMissingDependency(machine: StateMachine, blockStmt: BlockStmt, dependencies: Map<StateMachine, Expression>): Expression {
-        val type = "CloseableHttpClient" // checkNotNull(library.entityTypes[machine.entity])
-        val name = "newMachine"
+    private fun makeNewVariable(type: String, name: String, initExpr: Expression): Statement {
         val newVariable = ASTHelper.createVariableDeclarationExpr(ClassOrInterfaceType(type), name)
-        blockStmt.stmts.add(0, ExpressionStmt(newVariable))
-
-        val step = machine.edges.first { edge -> edge.src == machine.getInitState() && edge.dst == machine.getConstructedState() }
-        val initExpr = makeCallExpression(step.action as CallAction, dependencies, step, blockStmt)
-        newVariable.vars.first().init = initExpr.first()
-        return NameExpr(name)
+        newVariable.vars.first().init = initExpr
+        return ExpressionStmt(newVariable)
     }
 
-    private fun makeCallExpression(action: CallAction, dependencies: Map<StateMachine, Expression>, step: Edge, blockStmt: BlockStmt): List<Expression> {
-        var currentDeps = dependencies
+    private fun makeMissingDependency(machine: StateMachine) {
+        val type = checkNotNull(library2.entityTypes[machine.entity])
+        val name = "newMachine" + (stmtCounter++)
+
+        val step = machine.edges.first { edge: Edge -> edge.src == machine.getInitState() && edge.dst == machine.getConstructedState() }
+        val initExpr = makeCallExpression(step as CallEdge)
+
+        makeNewVariable(type, name, initExpr)
+    }
+
+    private fun makeCallStatement(step: CallEdge) = listOf(ExpressionStmt(makeCallExpression(step)))
+
+    private fun makeCallExpression(step: CallEdge): Expression {
         while (true) {
             try {
-                val callParams = makeCallExpressionDeps(action, currentDeps, step)
-                val expr = MethodCallExpr(callParams.scope, action.methodName, callParams.args)
-                return listOf(expr)
+                val callParams = makeCallExpressionParams(step)
+                val expr = MethodCallExpr(callParams.scope, step.methodName, callParams.args)
+                return expr
             } catch (ex: NeedDependencyException) {
-                val expr = makeMissingDependency(ex.machine, blockStmt, currentDeps)
-                currentDeps += (ex.machine to expr)
+                makeMissingDependency(ex.machine)
             }
         }
     }
@@ -200,14 +179,7 @@ class Migration(val library1: Library,
     private fun getUsages(methodName: String) =
             codeElements.methodCalls.filter { methodCall -> methodCall.name == methodName }
 
-    private fun getDependencies(edge: Edge, methodCall: MethodCallExpr): Map<StateMachine, Expression> {
-        val scope = methodCall.scope
-        val callAction = unpackCallAction(edge)
-        if (callAction != null && callAction.param != null) {
-            val arg = methodCall.args.first()
-            return mapOf(edge.machine to scope, callAction.param.machine to arg)
-        } else {
-            return mapOf(edge.machine to scope)
-        }
+    private fun extractDependenciesFromMethod(edge: CallEdge, methodCall: MethodCallExpr): Map<StateMachine, Expression> {
+        return edge.param.mapIndexed { i, param -> param.machine to methodCall.args[i] }.toMap() + (edge.machine to methodCall.scope)
     }
 }

@@ -1,4 +1,5 @@
 import com.samskivert.mustache.Mustache
+import org.jgrapht.EdgeFactory
 import org.jgrapht.ext.DOTExporter
 import org.jgrapht.ext.EdgeNameProvider
 import org.jgrapht.ext.VertexNameProvider
@@ -24,16 +25,16 @@ fun toDOT(library: Library): String {
     var counter = 0
     for (machine in library.stateMachines) {
         for (edge in machine.getDisplayedEdges()) {
-            val linkedEdge = edge.linkedEdge
-            val baseMap = mapOf(
+            val baseMap = mapOf<String, String>(
                     "src" to edge.src.id(),
                     "dst" to edge.dst.id(),
                     "edge" to edge.label(library))
-            val values = if (linkedEdge != null) {
+            val values = if (edge is CallEdge && edge.linkedEdge != null) {
+
                 virtuals.get(machine)!!.add(counter)
                 baseMap + mapOf(
-                        "machine" to linkedEdge.dst.id(),
-                        "linkedEdge" to linkedEdge.label(library),
+                        "machine" to edge.linkedEdge!!.dst.id(),
+                        "linkedEdge" to edge.linkedEdge!!.label(library),
                         "counter" to counter++)
             } else baseMap
             edges += values
@@ -72,7 +73,9 @@ fun DOTtoPDF(prefix: String) {
 
 fun toJGrapht(library: Library): DirectedPseudograph<State, Edge> {
     System.out.println("Start")
-    val graph = DirectedPseudograph<State, Edge>(Edge::class.java)
+    val graph = DirectedPseudograph<State, Edge>(
+            EdgeFactory { source, target -> source.machine.edges.first { edge -> edge.src == source && edge.dst == target }}
+    )
 
     val exporter = DOTExporter<State, Edge>(VertexNameProvider { it.id() },
             VertexNameProvider { it -> it.machine.name + " " + it.label(library) }, EdgeNameProvider { it.label(library) })
