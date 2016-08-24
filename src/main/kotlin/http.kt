@@ -6,7 +6,7 @@ object HTTPEntities {
     val request: Entity = Entity(name = "Request")
     val url: Entity = Entity(name = "URL")
     val connection: Entity = Entity(name = "Connection")
-    val inputStream = Entity(name = "InputStream")
+//    val inputStream = Entity(name = "InputStream")
     val body: Entity = Entity(name = "Body")
     val client: Entity = Entity(name = "Client")
 }
@@ -19,26 +19,20 @@ fun makeJava(): Library {
 
     val hasURL = State(name = "hasURL", machine = request)
 
-    Edge(
+    ConstructorEdge(
             machine = request,
             src = request.getInitState(),
             dst = hasURL,
-            action = ConstructorAction(
                     param = Param(
-                            machine = url,
-                            pos = 0
+                            machine = url
                     )
-            )
     )
 
     makeLinkedEdge(
             machine = request,
             src = hasURL,
             dst = connection.getInitState(),
-            action = CallAction(
-                    methodName = "openConnection",
-                    param = null
-            )
+                    methodName = "openConnection"
     )
 
 //    val inputStream = StateMachine(entity = HTTPEntities.inputStream)
@@ -57,24 +51,21 @@ fun makeJava(): Library {
     makeLinkedEdge(
             machine = connection,
             dst = body.getInitState(),
-            action = CallAction(
                     methodName = "readerToString",
-                    param = Param(
-                            machine = connection,
-                            pos = 0
-                    ),
-                    className = "Main"
-            )
+                    param = listOf(Param(
+                            machine = connection
+                    )
+                    )
     )
 
     return Library(
             stateMachines = listOf(url, request, connection, body),
-            entityTypes = mapOf(
-                    HTTPEntities.request to "URL",
-                    HTTPEntities.url to "String",
-                    HTTPEntities.connection to "URLConnection",
-                    HTTPEntities.inputStream to "InputStream",
-                    HTTPEntities.body to "String"
+            machineTypes = mapOf(
+                    request to "URL",
+                    url to "String",
+                    connection to "URLConnection",
+//                    inputStream to "InputStream",
+                    body to "String"
             )
     )
 }
@@ -84,59 +75,48 @@ fun makeApache(): Library {
     val client = StateMachine(entity = HTTPEntities.client)
     val request = StateMachine(entity = HTTPEntities.request)
     val connection = StateMachine(entity = HTTPEntities.connection)
+    val httpClients = StateMachine(entity = Entity("httpClients"))
 
     val hasURL = State(name = "hasURL", machine = request)
 
     client.edges.clear()
 
-    Edge(
-            machine = client,
-            src = client.getInitState(),
+    makeLinkedEdge(
+            machine = httpClients,
             dst = client.getConstructedState(),
-            action = CallAction(
                     methodName = "createDefault",
-                    param = null,
-                    className = "HttpClients"
-            )
+            isStatic = true
     )
 
-    Edge(
+    ConstructorEdge(
             machine = request,
             src = request.getInitState(),
             dst = hasURL,
-            action = ConstructorAction(
                     param = Param(
-                            machine = url,
-                            pos = 0
+                            machine = url
                     )
-            )
     )
 
-    val setURI = Edge(
+    val setURI = CallEdge(
             machine = request,
             src = request.getConstructedState(),
             dst = hasURL,
-            action = CallAction(
                     methodName = "setURI",
-                    param = Param(
-                            machine = url,
-                            pos = 0
+                    param = listOf(Param(
+                            machine = url
                     )
-            )
+                    )
     )
 
     val execute = makeLinkedEdge(
             machine = client,
             dst = connection.getInitState(),
-            action = CallAction(
                     methodName = "execute",
-                    param = Param(
+                    param = listOf(Param(
                             machine = request,
-                            state = hasURL,
-                            dst = connection.getInitState(),
-                            pos = 0
+                            state = hasURL
                     )
-            )
+                    )
     )
 
     val body = StateMachine(entity = HTTPEntities.body)
@@ -144,24 +124,22 @@ fun makeApache(): Library {
     makeLinkedEdge(
             machine = connection,
             dst = body.getInitState(),
-            action = CallAction(
                     methodName = "responseToString",
-                    param = Param(
-                            machine = connection,
-                            pos = 0
-                    ),
-                    className = "Main"
-            )
+                    param = listOf(Param(
+                            machine = connection
+                    )
+                    )
     )
 
     return Library(
-            stateMachines = listOf(url, request, client, connection, body),
-            entityTypes = mapOf(
-                    HTTPEntities.request to "HttpGet",
-                    HTTPEntities.url to "String",
-                    HTTPEntities.connection to "CloseableHttpResponse",
-                    HTTPEntities.body to "String",
-                    HTTPEntities.client to "CloseableHttpClient"
+            stateMachines = listOf(url, request, client, connection, body, httpClients),
+            machineTypes = mapOf(
+                    request to "HttpGet",
+                    url to "String",
+                    connection to "CloseableHttpResponse",
+                    body to "String",
+                    client to "CloseableHttpClient",
+                    httpClients to "HttpClients"
             )
     )
 }

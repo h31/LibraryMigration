@@ -16,16 +16,16 @@ fun fillPlaceholders(template: String, params: Map<String, Edge>, variables: Map
 
 fun templateIntoAST(template: String) = IntegerLiteralExpr(template)
 
-fun generateCode(edge: Edge, obj: String?): String = when (edge.action) {
-    is CallAction -> obj + "." + edge.action.methodName
-    is ConstructorAction -> "new " + obj
-    is AutoAction -> obj ?: throw Exception()
+fun generateCode(edge: Edge, obj: String?): String = when (edge) {
+    is CallEdge -> obj + "." + edge.methodName
+    is ConstructorEdge -> "new " + obj
+    is AutoEdge -> obj ?: throw Exception()
     else -> throw Exception()
 }
 
 fun main(args: Array<String>) {
     val machine = StateMachine(entity = Entity("test"))
-    val edge = Edge(machine = machine, action = CallAction("method", null))
+    val edge = CallEdge(machine = machine, methodName = "method")
 
     println(fillPlaceholders("Hello {{ obj }}", params = mapOf("obj" to edge), variables = mapOf(machine to "object")))
 }

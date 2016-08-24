@@ -10,64 +10,51 @@ object GraphEntities {
 
 fun makeGraph1(): Library {
     val node = StateMachine(entity = GraphEntities.node)
+    val num = StateMachine(entity = GraphEntities.num)
     val parent = node.inherit(name = "parent")
     val child = node.inherit(name = "child")
-    val getNode = Edge(
+    val getNode = CallEdge(
             machine = node,
-            action = CallAction(
                     methodName = "getNode",
-                    param = Param(
-                            machine = StateMachine(entity = GraphEntities.num),
-                            pos = 0
+                    param = listOf(Param(
+                            machine = num
                     )
-            )
+                    )
     )
 
-    val getNum = Edge(
+    val getNum = CallEdge(
             machine = node,
-            action = CallAction(
-                    methodName = "getNodeNum",
-                    param = null
-            )
+                    methodName = "getNodeNum"
     )
 
-    Edge(
+    LinkedEdge(
             machine = node,
             dst = child.getInitState(),
-            action = LinkedAction(
                     edge = getNode
-            )
     )
 
-    val getParent = Edge(
+    val getParent = CallEdge(
             machine = node,
-            action = CallAction(
-                    methodName = "getParent",
-                    param = null
-            )
+                    methodName = "getParent"
     )
 
-    Edge(
+    LinkedEdge(
             machine = node,
             dst = parent.getInitState(),
-            action = LinkedAction(
                     edge = getParent
-            )
     )
 
-    val list = StateMachine(entity = GraphEntities.nodeList)
+    val nodeList = StateMachine(entity = GraphEntities.nodeList)
 
-    Edge(
+    MakeArrayEdge(
             machine = node,
-            dst = list.getInitState(),
-            action = MakeArrayAction(
-                    getSize = getNum.action as CallAction,
-                    getItem = getNode.action as CallAction
-            )
+            dst = nodeList.getInitState(),
+                    getSize = getNum,
+                    getItem = getNode
     )
 
 //    Edge(
-//            machine = list,
+//            machine = nodeList,
 //            dst = child.getInitState(),
 //            action = CallAction(
 //                    methodName = "get",
@@ -79,79 +66,66 @@ fun makeGraph1(): Library {
 //    )
 
     return Library(
-            stateMachines = listOf(node, list, parent, child),
-            entityTypes = mapOf(
-                    GraphEntities.node to "Node1",
-                    GraphEntities.nodeList to "List<Node1>",
-                    GraphEntities.num to "int"
+            stateMachines = listOf(node, nodeList, parent, child),
+            machineTypes = mapOf(
+                    node to "Node1",
+                    nodeList to "List<Node1>",
+                    num to "int"
             )
     )
 }
 
 fun makeGraph2(): Library {
-    val list = StateMachine(entity = GraphEntities.nodeList)
+    val nodeList = StateMachine(entity = GraphEntities.nodeList)
+    val num = StateMachine(entity = GraphEntities.num)
 
-    val listGet = Edge(
-            machine = list,
-            action = CallAction(
+    val listGet = CallEdge(
+            machine = nodeList,
                     methodName = "get",
-                    param = Param(
-                            machine = StateMachine(entity = GraphEntities.num),
-                            pos = 0
+                    param = listOf(Param(
+                            machine = num
                     )
-            )
+                    )
     )
 
     val node = StateMachine(entity = GraphEntities.node)
     val parent = node.inherit(name = "parent")
     val child = node.inherit(name = "child")
 
-    val getNode = Edge(
+    val getNode = CallEdge(
             machine = node,
-            action = CallAction(
-                    methodName = "getNodeList",
-                    param = null
-            )
+                    methodName = "getNodeList"
     )
 
-    val getParent = Edge(
+    val getParent = CallEdge(
             machine = node,
-            action = CallAction(
-                    methodName = "getParentNode",
-                    param = null
-            )
+                    methodName = "getParentNode"
     )
 
-    Edge(
+    LinkedEdge(
             machine = node,
             dst = parent.getInitState(),
-            action = LinkedAction(
                     edge = getParent
-            )
     )
 
-    val listNodeCreate = Edge(
+    val listNodeCreate = LinkedEdge(
             machine = node,
-            dst = list.getInitState(),
-            action = LinkedAction(
+            dst = nodeList.getInitState(),
                     edge = getNode
-            )
     )
 
-    val nodeCreate = Edge(
-            machine = list,
+    val nodeCreate = LinkedEdge(
+            machine = nodeList,
             dst = child.getInitState(),
-            action = LinkedAction(
                     edge = listGet
-            )
     )
 
     return Library(
-            stateMachines = listOf(node, list, parent, child),
-            entityTypes = mapOf(
-                    GraphEntities.node to "Node2",
-                    GraphEntities.nodeList to "List<Node2>",
-                    GraphEntities.num to "int"
+            stateMachines = listOf(node, nodeList, parent, child),
+            machineTypes = mapOf(
+                    node to "Node2",
+                    nodeList to "List<Node2>",
+                    num to "int"
             )
     )
 }

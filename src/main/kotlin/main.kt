@@ -103,8 +103,8 @@ fun migrateGraphs() {
 
     graphNode2ToNode1(graph1, graph2, codeElements)
 
-//    println(cu);
-    Files.write(destination, cu.toString().toByteArray());
+    println(cu);
+//    Files.write(destination, cu.toString().toByteArray());
 }
 
 fun migrateHTTP() {
@@ -266,14 +266,14 @@ var listNameCounter = 0;
 //}
 
 private fun fixEntityTypes(codeElements: CodeElements, graph1: Library, graph2: Library) {
-    for (type in graph1.entityTypes) {
+    for (type in graph1.machineTypes) {
         val declarations = codeElements.variableDeclarations.filter { it -> it.type.toString() == type.value }
         for (decl in declarations) {
-            decl.type = ClassOrInterfaceType(graph2.entityTypes.get(type.key))
+            decl.type = ClassOrInterfaceType(graph2.machineTypes.get(type.key))
         }
         val objectCreations = codeElements.objectCreation.filter { it -> it.type.toString() == type.value }
         for (obj in objectCreations) {
-            obj.type = ClassOrInterfaceType(graph2.entityTypes.get(type.key))
+            obj.type = ClassOrInterfaceType(graph2.machineTypes.get(type.key))
         }
     }
 }

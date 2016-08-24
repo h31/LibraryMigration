@@ -13,7 +13,7 @@ interface Identifiable {
 data class Entity(val name: String)
 
 data class Library(val stateMachines: List<StateMachine>,
-                   val entityTypes: Map<Entity, String>) {
+                   val machineTypes: Map<StateMachine, String>) {
 //    init {
 //        for ((key, value) in entityTypes) {
 //            stateMachines.first { it -> it.entity == key }.type = value
@@ -43,7 +43,7 @@ data class StateMachine(val entity: Entity,
     fun getInitState() = states.first { state -> state.name == "Init" }
     fun getConstructedState() = states.first { state -> state.name == "Constructed" }
 
-    fun getDisplayedEdges() = edges.filterNot { edge -> edge is LinkedEdge || edge is UsageEdge }
+    fun getDisplayedEdges() = edges.filterNot { edge -> edge is LinkedEdge }
 
     override fun label(library: Library) = name + ": " + type(library)
 
@@ -52,7 +52,7 @@ data class StateMachine(val entity: Entity,
         return copy
     }
 
-    fun type(library: Library) = library.entityTypes[entity]
+    fun type(library: Library) = library.machineTypes[this]
 }
 
 data class State(val name: String,
@@ -87,10 +87,10 @@ interface Edge : Labelable {
     val src: State
     val dst: State
 
-    fun createUsageEdges(params: List<Param>) = params.map { param -> UsageEdge(
+    fun createUsageEdges(params: List<Param>, dst: State) = params.map { param -> UsageEdge(
                 machine = param.machine,
                 src = param.state,
-                dst = param.state,
+                dst = dst,
                 edge = this
     )
     }
@@ -100,19 +100,18 @@ data class CallEdge(override val machine: StateMachine,
                     override val src: State = makeConstructedState(machine),
                     override val dst: State = src,
 
-                    var linkedEdge: LinkedEdge? = null,
-
                     val methodName: String,
                     val param: List<Param> = listOf(),
-                    val usageEdges: MutableSet<UsageEdge> = mutableSetOf(),
-                    val className: String? = null) : Edge {
+                    val isStatic: Boolean = false) : Edge {
+    var linkedEdge: LinkedEdge? = null
+    val usageEdges: MutableSet<UsageEdge> = mutableSetOf()
 
     init {
         machine.edges += this
-        usageEdges += createUsageEdges(param)
+        usageEdges += createUsageEdges(param, dst)
     }
 
-    override fun label(library: Library) = "%s %s(%s)".format(className ?: "", methodName, param.map { it.label(library) }.joinToString())
+    override fun label(library: Library) = "%s(%s)".format(methodName, param.map { it.label(library) }.joinToString())
 }
 
 data class AutoEdge(override val machine: StateMachine,
@@ -192,13 +191,15 @@ fun makeLinkedEdge(machine: StateMachine,
                    dst: State,
 
                    methodName: String,
-                   param: List<Param> = listOf()): CallEdge {
+                   param: List<Param> = listOf(),
+                   isStatic: Boolean = false): CallEdge {
     val callEdge = CallEdge(
             machine = machine,
             src = src,
             dst = src,
             methodName = methodName,
-            param = param
+            param = param,
+            isStatic = isStatic
     )
     val linkedEdge = LinkedEdge(
             machine = machine,
