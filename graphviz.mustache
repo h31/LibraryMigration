@@ -3,7 +3,7 @@ digraph G {
     subgraph cluster{{num}} {
     label = <<B>{{name}}</B>>;
     {{#vertices}}
-        {{id}} [ label="{{label}}" ];
+        {{id}} [ label="{{label}}" {{#init}}, style = invis{{/init}} ];
     {{/vertices}}
     {{#virtuals}}
         virtual{{counter}} [ shape = point ];

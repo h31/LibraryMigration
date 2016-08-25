@@ -76,6 +76,7 @@ data class State(val name: String,
     override fun label(library: Library) = name
     fun label() = name
     fun stateAndMachineName() = machine.name + "." + name
+    fun isInit() = name == "Init"
 }
 
 fun makeInitState(machine: StateMachine) = State("Init", machine)
