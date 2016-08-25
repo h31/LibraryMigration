@@ -23,7 +23,7 @@ class Migration(val library1: Library,
                 val graph2: DirectedPseudograph<State, Edge> = toJGrapht(library2)) {
     val dependencies: MutableMap<StateMachine, Expression> = mutableMapOf()
     // val pendingStmts = mutableListOf<Statement>()
-    var stmtCounter = 0
+    var nameGeneratorCounter = 0
 
     fun makeRoute(src: State, dst: State) {
         val route = DijkstraShortestPath.findPathBetween(graph2, src, dst)
@@ -100,7 +100,7 @@ class Migration(val library1: Library,
 
     private fun makeLinkedEdge(step: LinkedEdge): List<Statement> {
         val type = checkNotNull(library2.machineTypes[step.dst.machine])
-        val name = "newLinkedEdge" + (stmtCounter++)
+        val name = "linkedEdge_%s_%d".format(step.machine.name, nameGeneratorCounter++)
         val expr = makeCallExpression(step.edge)
         val newVariable = makeNewVariable(type, name, expr)
         dependencies[step.dst.machine] = NameExpr(name)
@@ -108,6 +108,9 @@ class Migration(val library1: Library,
     }
 
     private fun makeUsageEdge(step: UsageEdge): List<Statement> {
+        if (step.edge is CallEdge && step.edge.isStatic) {
+            return emptyList()
+        }
         val (usedVariableName, newVariableStatement) = makeMissingDependency(step.edge.machine, step.dst)
         dependencies[step.edge.machine] = NameExpr(usedVariableName)
 //        val callStatement = makeCallStatement(step.edge as CallEdge)
@@ -185,19 +188,25 @@ class Migration(val library1: Library,
         return CallExpressionParams(scope, args)
     }
 
-    private fun makeNewVariable(type: String, name: String, initExpr: Expression): Statement {
+    private fun makeNewVariable(type: String, name: String, initExpr: Expression?): Statement {
         val newVariable = ASTHelper.createVariableDeclarationExpr(ClassOrInterfaceType(type), name)
-        newVariable.vars.first().init = initExpr
+        if (initExpr != null) {
+            newVariable.vars.first().init = initExpr
+        }
         return ExpressionStmt(newVariable)
     }
 
     private fun makeMissingDependency(machine: StateMachine, requiredState: State): Pair<String, Statement> {
         val type = checkNotNull(library2.machineTypes[machine])
-        val name = "newMachine" + (stmtCounter++)
+        val name = "newMachine_%s_%d".format(machine.name, nameGeneratorCounter++)
 
         val step = library2.stateMachines.flatMap { machine -> machine.edges }
-                .first { edge: Edge -> edge is LinkedEdge && edge.dst == requiredState } as LinkedEdge
-        val initExpr = makeCallExpression(step.edge)
+                .first { edge: Edge -> (edge is CallEdge == false) && (edge is UsageEdge == false) && (edge.dst == requiredState) }
+        val initExpr = if (step is LinkedEdge) {
+            makeCallExpression(step.edge)
+        } else {
+            null
+        }
 
         val newVariableStatement = makeNewVariable(type, name, initExpr)
         return Pair(name, newVariableStatement)
