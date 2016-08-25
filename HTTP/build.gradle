@@ -1,9 +1,12 @@
 apply plugin: 'java'
 apply plugin: 'idea'
+apply plugin: 'application'
 
 repositories {
     mavenCentral()
 }
+
+mainClassName = "Main"
 
 dependencies {
     compile 'org.apache.httpcomponents:httpclient:4.5.2'
