@@ -19,8 +19,10 @@ import org.jgrapht.ext.EdgeNameProvider
 import org.jgrapht.ext.VertexNameProvider
 import org.jgrapht.graph.*
 import sun.misc.ExtensionDependency
+import java.io.File
 import java.io.FileInputStream
 import java.io.FileWriter
+import java.nio.charset.Charset
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
@@ -112,6 +114,7 @@ fun migrateHTTP() {
     val destination = source
 
     val cu = readLib(source)
+    val originalCode = Files.readAllBytes(source).toString(Charset.defaultCharset())
 
     val codeElements = CodeElements();
     CodeElementsVisitor().visit(cu, codeElements);
@@ -126,7 +129,13 @@ fun migrateHTTP() {
 
     javaToApache(java, apache, codeElements)
 
-    println(cu);
+    val migratedCode = cu.toString()
+    println(migratedCode);
+    checkMigrationCorrectness(source, originalCode, migratedCode)
+//    val mainClass = CompilerUtils.CACHED_COMPILER.loadFromJava("Main", migratedCode)
+//    val javaMethod = mainClass.getMethod("java")
+//    val result = javaMethod.invoke(null)
+//    System.out.println(result)
 //    Files.write(destination, cu.toString().toByteArray());
 }
 
@@ -434,6 +443,35 @@ data class ClassDiff(val name: String,
 
 class MethodOrConstructor(var node: BodyDeclaration) {
     fun get() = node
+}
+
+fun checkMigrationCorrectness(path: Path, originalCode: String, migratedCode: String) {
+    val rt = Runtime.getRuntime();
+    val command = "./gradlew -q run"
+
+    println("Running original code")
+
+    val process1 = rt.exec(command, null, File("HTTP/"))
+    val originalOutput = process1.inputStream.readBytes().toString(Charset.defaultCharset())
+
+    Files.write(path, migratedCode.toByteArray())
+
+    println("Running migrated code")
+
+    val process2 = rt.exec(command, null, File("HTTP/"))
+    val migratedOutput = process2.inputStream.readBytes().toString(Charset.defaultCharset())
+
+    Files.write(path, originalCode.toByteArray())
+
+    if (originalOutput == migratedOutput) {
+        println("Migration OK")
+    } else {
+        println("Migrated code doesn't work properly")
+        println("Migrated:")
+        println(migratedOutput)
+        println("Original:")
+        println(originalOutput)
+    }
 }
 
 //fun makeSpark1(entities: Map<String, Entity>): Library {
