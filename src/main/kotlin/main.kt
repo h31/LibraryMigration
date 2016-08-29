@@ -178,17 +178,23 @@ fun graphNode2ToNode1(graph1: Library, graph2: Library, codeElements: CodeElemen
 }
 
 fun javaToApache(java: Library, apache: Library, codeElements: CodeElements) {
-    val src = apache.stateMachines.first { m -> m.name == "URL" }.getConstructedState()
-    val dst = apache.stateMachines.first { m -> m.name == "Body" }.getInitState()
+//    val src = apache.stateMachines.first { m -> m.name == "URL" }.getConstructedState()
+//    val dst = apache.stateMachines.first { m -> m.name == "Body" }.getInitState()
 
-    val migration = Migration(
-            library1 = java,
-            library2 = apache,
-            codeElements = codeElements)
+//    migration.makeRoute(src, dst)
 
-    migration.makeRoute(src, dst)
+    for (methodDecl in codeElements.methodDecls) {
+        val methodLocalCodeElements = CodeElements()
+        CodeElementsVisitor().visit(methodDecl, methodLocalCodeElements);
 
-    migration.doMigration()
+        val migration = Migration(
+                library1 = java,
+                library2 = apache,
+                codeElements = methodLocalCodeElements)
+
+        migration.doMigration()
+    }
+    // TODO: Constructors
 
     fixEntityTypes(codeElements, java, apache)
 }
