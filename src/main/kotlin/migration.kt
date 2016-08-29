@@ -16,6 +16,14 @@ import org.jgrapht.graph.DirectedPseudograph
  * Created by artyom on 22.08.16.
  */
 
+class RouteProcessor() {
+
+}
+
+data class PendingStatement(val statement: Statement,
+                            val provides: String? = null,
+                            val depends: List<String> = listOf())
+
 class Migration(val library1: Library,
                 val library2: Library,
                 val codeElements: CodeElements,
@@ -42,51 +50,47 @@ class Migration(val library1: Library,
                 println("  Makes a loop, skipping")
                 continue
             }
-            if (edge is AutoEdge) {
-                println("  Has an auto action, skipping")
-                continue
-            }
-            if (edge is CallEdge) {
-                println("  Has a call action")
-                val route = findRoute(graph2, edge.src, edge.dst)
-                migrateMethodCall(edge, route)
-            }
-            if (edge is LinkedEdge) {
-                println("  Has a linked action")
-                val dependency = edge.edge
-                val route = findRoute(graph2, edge.src, edge.dst)
-                migrateMethodCall(dependency, route)
+            when (edge) {
+                is AutoEdge -> println("  Has an auto action, skipping")
+                is CallEdge -> {
+                    println("  Has a call action")
+                    val route = findRoute(graph2, edge.src, edge.dst)
+                    migrateMethodCall(edge, route)
+                }
+                is LinkedEdge -> {
+                    println("  Has a linked action")
+                    val dependency = edge.edge
+                    val route = findRoute(graph2, edge.src, edge.dst)
+                    migrateMethodCall(dependency, route)
+                }
             }
         }
     }
 
     private fun migrateMethodCall(edge: CallEdge, route: List<Edge>) {
-            val usages = getUsages(edge.methodName)
-            if (usages.isNotEmpty()) {
-                println("  Has %d usage(s)!".format(usages.size))
-            }
-            for (usage in usages) {
-                dependencies.putAll(extractDependenciesFromMethod(edge, usage))
-                // makeDependenciesFromEdge(edge)
-                val pendingStmts = applySteps(route)
-//                println("--- Inserted statements: ---")
-//                for (statement in pendingStmts) {
-//                    println(statement)
-//                }
-                replaceMethodCall(usage, pendingStmts)
-            }
+        val usages = getUsages(edge.methodName)
+        if (usages.isNotEmpty()) {
+            println("  Has %d usage(s)!".format(usages.size))
+        }
+        for (usage in usages) {
+            val oldVarName = getVariableNameFromExpression(usage)
+            dependencies.putAll(extractDependenciesFromMethod(edge, usage))
+            // makeDependenciesFromEdge(edge)
+            val pendingStmts = applySteps(route, oldVarName)
+            replaceMethodCall(usage, pendingStmts, oldVarName)
+        }
     }
 
-    private fun applySteps(steps: List<Edge>): List<Statement> {
-        val pendingStmts = mutableListOf<Statement>()
+    private fun applySteps(steps: List<Edge>, oldVarName: String?): List<PendingStatement> {
+        val pendingStmts = mutableListOf<PendingStatement>()
         for (step in steps) {
             println("    Step: " + step.label(library2))
 
-            val newStatements: List<Statement> = when (step) {
+            val newStatements: List<PendingStatement> = when (step) {
                 is CallEdge -> makeCallStatement(step)
                 is ConstructorEdge -> TODO()
                 is AutoEdge -> listOf()
-                is LinkedEdge -> makeLinkedEdge(step)
+                is LinkedEdge -> makeLinkedEdge(step, oldVarName)
                 is MakeArrayEdge -> TODO() // makeArray(step.action)
                 is TemplateEdge -> TODO()
                 is UsageEdge -> makeUsageEdge(step)
@@ -98,57 +102,49 @@ class Migration(val library1: Library,
         return pendingStmts
     }
 
-    private fun makeLinkedEdge(step: LinkedEdge): List<Statement> {
+    private fun makeLinkedEdge(step: LinkedEdge, oldVarName: String?): List<PendingStatement> {
         val type = checkNotNull(library2.machineTypes[step.dst.machine])
-        val name = "linkedEdge_%s_%d".format(step.machine.name, nameGeneratorCounter++)
+        val name = oldVarName ?: "linkedEdge_%s_%d".format(step.machine.name, nameGeneratorCounter++)
         val expr = makeCallExpression(step.edge)
         val newVariable = makeNewVariable(type, name, expr)
         dependencies[step.dst.machine] = NameExpr(name)
-        return listOf(newVariable)
+        return listOf(PendingStatement(statement = newVariable, provides = name))
     }
 
-    private fun makeUsageEdge(step: UsageEdge): List<Statement> {
+    private fun makeUsageEdge(step: UsageEdge): List<PendingStatement> {
         if (step.edge is CallEdge && step.edge.isStatic) {
             return emptyList()
         }
         val (usedVariableName, newVariableStatement) = makeMissingDependency(step.edge.machine, step.dst)
         dependencies[step.edge.machine] = NameExpr(usedVariableName)
 //        val callStatement = makeCallStatement(step.edge as CallEdge)
-        return listOf(newVariableStatement)
+        return listOf(PendingStatement(statement = newVariableStatement, provides = usedVariableName))
     }
 
-    private fun replaceMethodCall(methodCall: MethodCallExpr, pendingStmts: List<Statement>) {
-        var node: Node = methodCall
-        while (node.parentNode is BlockStmt == false) {
-            node = node.parentNode
-        }
-        val parent = node.parentNode as BlockStmt
-        if (node is ExpressionStmt && node.expression is VariableDeclarationExpr) {
-            replaceCodeUsage(parent, node.expression as VariableDeclarationExpr, pendingStmts)
+    private fun replaceMethodCall(methodCall: MethodCallExpr, pendingStmts: List<PendingStatement>, oldVarName: String?) {
+        val (node, parent) = getBlockStmt(methodCall)
+        if (oldVarName != null) {
+            replaceCodeUsage(parent, oldVarName, pendingStmts)
         }
         val statements = parent.stmts
         val pos = statements.indexOf(node)
-        statements.addAll(pos, pendingStmts)
+        statements.addAll(pos, pendingStmts.map { pending -> pending.statement })
         statements.remove(node)
         node.parentNode = null
         for (stmt in pendingStmts) {
-            stmt.parentNode = parent
+            stmt.statement.parentNode = parent
         }
     }
 
-    private fun replaceCodeUsage(blockStmt: BlockStmt, varDecl: VariableDeclarationExpr, pendingStmts: List<Statement>) {
-        val variableDeclaration = pendingStmts.last()
-        if (variableDeclaration is ExpressionStmt) {
-            val expr = variableDeclaration.expression
-            if (expr is VariableDeclarationExpr) {
-                val newVarName = expr.vars.first().id.name
-                val oldVarName = varDecl.vars.first().id.name
-                replaceName(blockStmt, oldVarName, newVarName)
-            } else {
-                TODO()
-            }
-        } else {
-            TODO()
+    private fun getVariableNameFromExpression(methodCall: MethodCallExpr): String? {
+        val parent = methodCall.parentNode
+        return if (parent is VariableDeclarator) parent.id.name else null
+    }
+
+    private fun replaceCodeUsage(blockStmt: BlockStmt, oldVarName: String, pendingStmts: List<PendingStatement>) {
+        val newVarName = pendingStmts.map { stmt -> stmt.provides }.lastOrNull() ?: error("New statement should provide a variable")
+        if (oldVarName != newVarName) {
+            replaceName(blockStmt, oldVarName, newVarName)
         }
     }
 
@@ -180,7 +176,7 @@ class Migration(val library1: Library,
         val scope = if (edge.isStatic) {
             NameExpr(edge.machine.type(library2))
         } else {
-            dependencies[edge.machine]
+            checkNotNull(dependencies[edge.machine])
         }
 
         val args = edge.param.map { param -> checkNotNull(dependencies[param.machine]) }
@@ -212,26 +208,20 @@ class Migration(val library1: Library,
         return Pair(name, newVariableStatement)
     }
 
-    private fun makeCallStatement(step: CallEdge) = listOf(ExpressionStmt(makeCallExpression(step)))
+    private fun makeCallStatement(step: CallEdge) = listOf(PendingStatement(ExpressionStmt(makeCallExpression(step))))
 
     private fun makeCallExpression(step: CallEdge): Expression {
-        while (true) {
-            try {
-                val callParams = makeCallExpressionParams(step)
-                val expr = MethodCallExpr(callParams.scope, step.methodName, callParams.args)
-                return expr
-            } catch (ex: NeedDependencyException) {
-                makeMissingDependency(ex.machine, step.src)
-            }
-        }
+        val callParams = makeCallExpressionParams(step)
+        val expr = MethodCallExpr(callParams.scope, step.methodName, callParams.args)
+        return expr
     }
 
-    private fun getBlockStmt(initialNode: Node): BlockStmt {
+    private fun getBlockStmt(initialNode: Node): Pair<Statement, BlockStmt> {
         var node: Node = initialNode
         while (node.parentNode is BlockStmt == false) {
             node = node.parentNode
         }
-        return node.parentNode as BlockStmt
+        return Pair(node as Statement, node.parentNode as BlockStmt)
     }
 
     private fun findRoute(graph: DirectedPseudograph<State, Edge>, src: State, dst: State): List<Edge> {

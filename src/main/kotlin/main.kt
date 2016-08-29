@@ -225,7 +225,7 @@ private fun getArgs() {
 }
 
 data class CallExpressionParams(val scope: Expression?, val args: List<Expression>)
-class NeedDependencyException(val machine: StateMachine) : Exception()
+//class NeedDependencyException(val machine: StateMachine) : Exception()
 
 private fun setAsChild(parent: Node, expr: Expression) {
     if (parent is MethodCallExpr) {
