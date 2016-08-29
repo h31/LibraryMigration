@@ -1,10 +1,7 @@
 import com.github.javaparser.ASTHelper
 import com.github.javaparser.ast.Node
 import com.github.javaparser.ast.body.VariableDeclarator
-import com.github.javaparser.ast.expr.Expression
-import com.github.javaparser.ast.expr.MethodCallExpr
-import com.github.javaparser.ast.expr.NameExpr
-import com.github.javaparser.ast.expr.VariableDeclarationExpr
+import com.github.javaparser.ast.expr.*
 import com.github.javaparser.ast.stmt.BlockStmt
 import com.github.javaparser.ast.stmt.ExpressionStmt
 import com.github.javaparser.ast.stmt.Statement
@@ -118,17 +115,22 @@ class Migration(val library1: Library,
     }
 
     private fun replaceMethodCall(methodCall: MethodCallExpr, pendingStmts: List<PendingStatement>, oldVarName: String?) {
-        val (node, parent) = getBlockStmt(methodCall)
+        val (statement, blockStmt) = getBlockStmt(methodCall)
         if (oldVarName != null) {
-            replaceCodeUsage(parent, oldVarName, pendingStmts)
+            replaceCodeUsage(blockStmt, oldVarName, pendingStmts)
         }
-        val statements = parent.stmts
-        val pos = statements.indexOf(node)
+        val statements = blockStmt.stmts
+        val pos = statements.indexOf(statement)
         statements.addAll(pos, pendingStmts.map { pending -> pending.statement })
-        statements.remove(node)
-        node.parentNode = null
+        if (statement is ExpressionStmt && statement.expression is AssignExpr) {
+            val assignment = statement.expression as AssignExpr
+            assignment.value = NameExpr(getNewVarName(pendingStmts))
+        } else {
+            statements.remove(statement)
+            statement.parentNode = null
+        }
         for (stmt in pendingStmts) {
-            stmt.statement.parentNode = parent
+            stmt.statement.parentNode = blockStmt
         }
     }
 
@@ -138,11 +140,13 @@ class Migration(val library1: Library,
     }
 
     private fun replaceCodeUsage(blockStmt: BlockStmt, oldVarName: String, pendingStmts: List<PendingStatement>) {
-        val newVarName = pendingStmts.map { stmt -> stmt.provides }.lastOrNull() ?: error("New statement should provide a variable")
+        val newVarName = getNewVarName(pendingStmts)
         if (oldVarName != newVarName) {
             replaceName(blockStmt, oldVarName, newVarName)
         }
     }
+
+    private fun getNewVarName(pendingStmts: List<PendingStatement>): String = pendingStmts.map { stmt -> stmt.provides }.lastOrNull() ?: error("New statement should provide a variable")
 
     private fun replaceName(node: Node, src: String, dst: String) {
         if (node is NameExpr && node.name == src) {
