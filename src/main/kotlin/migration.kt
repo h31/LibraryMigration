@@ -16,10 +16,6 @@ import org.jgrapht.graph.DirectedPseudograph
  * Created by artyom on 22.08.16.
  */
 
-class RouteProcessor() {
-
-}
-
 data class PendingStatement(val statement: Statement,
                             val provides: String? = null,
                             val depends: List<String> = listOf())

@@ -156,17 +156,23 @@ fun graphNode1ToNode2(graph1: Library, graph2: Library, codeElements: CodeElemen
 }
 
 fun graphNode2ToNode1(graph1: Library, graph2: Library, codeElements: CodeElements) {
-    val src = graph1.stateMachines.first { m -> m.name == "Node" }.getConstructedState()
-    val dst = graph1.stateMachines.first { m -> m.name == "NodeList" }.getInitState()
+//    val src = graph1.stateMachines.first { m -> m.name == "Node" }.getConstructedState()
+//    val dst = graph1.stateMachines.first { m -> m.name == "NodeList" }.getInitState()
 
-    val migration = Migration(
-            library1 = graph1,
-            library2 = graph2,
-            codeElements = codeElements)
+//    migration.makeRoute(src, dst)
 
-    migration.makeRoute(src, dst)
+    for (methodDecl in codeElements.methodDecls) {
+        val methodLocalCodeElements = CodeElements()
+        CodeElementsVisitor().visit(methodDecl, methodLocalCodeElements);
 
-    migration.doMigration()
+        val migration = Migration(
+                library1 = graph1,
+                library2 = graph2,
+                codeElements = methodLocalCodeElements)
+
+        migration.doMigration()
+    }
+    // TODO: Constructors
 
     fixEntityTypes(codeElements, graph2, graph1)
 }
@@ -393,7 +399,7 @@ fun parseImports(imports: List<ImportDeclaration>) = imports.map { x ->
 
 private class CodeElementsVisitor : VoidVisitorAdapter<CodeElements>() {
     override fun visit(n: MethodDeclaration, arg: CodeElements) {
-        arg.methodDecls.add(MethodOrConstructor(n));
+        arg.methodDecls.add(n);
         super.visit(n, arg)
     }
 
@@ -409,7 +415,7 @@ private class CodeElementsVisitor : VoidVisitorAdapter<CodeElements>() {
     }
 
     override fun visit(n: ConstructorDeclaration, arg: CodeElements) {
-        arg.methodDecls.add(MethodOrConstructor(n));
+        arg.constructorDecls.add(n);
         arg.nodes.add(n);
         super.visit(n, arg)
     }
@@ -426,7 +432,8 @@ private class CodeElementsVisitor : VoidVisitorAdapter<CodeElements>() {
 }
 
 data class CodeElements(val classes: MutableList<ClassOrInterfaceDeclaration> = mutableListOf(),
-                        val methodDecls: MutableList<MethodOrConstructor> = mutableListOf(),
+                        val methodDecls: MutableList<MethodDeclaration> = mutableListOf(),
+                        val constructorDecls: MutableList<ConstructorDeclaration> = mutableListOf(),
                         val methodCalls: MutableList<MethodCallExpr> = mutableListOf(),
                         val objectCreation: MutableList<ObjectCreationExpr> = mutableListOf(),
                         val variableDeclarations: MutableList<VariableDeclarationExpr> = mutableListOf(),
@@ -440,10 +447,6 @@ data class MethodDiff(val methodName: String,
 
 data class ClassDiff(val name: String,
                      val methodsChanged: Map<MethodDeclaration, MethodDiff>)
-
-class MethodOrConstructor(var node: BodyDeclaration) {
-    fun get() = node
-}
 
 fun checkMigrationCorrectness(path: Path, originalCode: String, migratedCode: String) {
     val rt = Runtime.getRuntime();
