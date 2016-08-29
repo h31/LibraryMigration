@@ -47,14 +47,18 @@ class Migration(val library1: Library,
                 is AutoEdge -> println("  Has an auto action, skipping")
                 is CallEdge -> {
                     println("  Has a call action")
-                    val route = findRoute(graph2, edge.src, edge.dst)
-                    migrateMethodCall(edge, route)
+                    if (getUsages(edge.methodName).isNotEmpty()) {
+                        val route = findRoute(graph2, edge.src, edge.dst)
+                        migrateMethodCall(edge, route)
+                    }
                 }
                 is LinkedEdge -> {
                     println("  Has a linked action")
                     val dependency = edge.edge
-                    val route = findRoute(graph2, edge.src, edge.dst)
-                    migrateMethodCall(dependency, route)
+                    if (getUsages(dependency.methodName).isNotEmpty()) {
+                        val route = findRoute(graph2, edge.src, edge.dst)
+                        migrateMethodCall(dependency, route)
+                    }
                 }
             }
         }
