@@ -29,6 +29,10 @@ public class Main {
     public static void main(String[] args) throws IOException {
         java();
         System.out.println("----------------------------------------");
+        javaOfficial();
+        System.out.println("----------------------------------------");
+        javaIf();
+        System.out.println("----------------------------------------");
         apache();
     }
 
@@ -37,6 +41,28 @@ public class Main {
         URLConnection conn = url.openConnection();
         String response = new BufferedReader(new InputStreamReader(conn.getInputStream())).lines().collect(Collectors.joining("\n"));
         System.out.println(response);
+    }
+
+    private static void javaOfficial() throws IOException {
+        URL oracle = new URL("http://api.ipify.org/");
+        URLConnection yc = oracle.openConnection();
+        BufferedReader in = new BufferedReader(new InputStreamReader(
+                yc.getInputStream()));
+        String inputLine;
+        while ((inputLine = in.readLine()) != null)
+            System.out.println(inputLine);
+        in.close();
+    }
+
+    private static void javaIf() throws IOException {
+        URL url = new URL("http://api.ipify.org/");
+        URLConnection conn = url.openConnection();
+        if (conn != null) {
+            String response = new BufferedReader(new InputStreamReader(conn.getInputStream())).lines().collect(Collectors.joining("\n"));
+            System.out.println(response);
+        } else {
+            System.out.println("Error!");
+        }
     }
 
     private static void apache() throws IOException {

@@ -177,8 +177,8 @@ class Migration(val library1: Library,
             }
             is AssignExpr -> parent.value = newExpr
             is ObjectCreationExpr -> {
-                val pos = parent.args.indexOf(methodCall)
-                parent.args.set(pos, newExpr)
+                val argsPos = parent.args.indexOf(methodCall)
+                parent.args.set(argsPos, newExpr)
                 newExpr.parentNode = parent
             }
         }

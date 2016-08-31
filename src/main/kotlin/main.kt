@@ -184,7 +184,7 @@ fun javaToApache(java: Library, apache: Library, codeElements: CodeElements) {
 //    migration.makeRoute(src, dst)
 
     for (methodDecl in codeElements.methodDecls) {
-        if (methodDecl.name() != "java") continue
+        if (methodDecl.name().startsWith("java") == false) continue
         val methodLocalCodeElements = methodDecl.getCodeElements()
 
         val migration = Migration(
