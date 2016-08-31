@@ -146,7 +146,8 @@ fun graphNode1ToNode2(graph1: Library, graph2: Library, codeElements: CodeElemen
     val migration = Migration(
             library1 = graph2,
             library2 = graph1,
-            codeElements = codeElements)
+            codeElements = codeElements,
+            functionName = "abc")
 
     migration.makeRoute(src, dst)
 
@@ -167,7 +168,8 @@ fun graphNode2ToNode1(graph1: Library, graph2: Library, codeElements: CodeElemen
         val migration = Migration(
                 library1 = graph1,
                 library2 = graph2,
-                codeElements = methodLocalCodeElements)
+                codeElements = methodLocalCodeElements,
+                functionName = "abc")
 
         migration.doMigration()
     }
@@ -182,12 +184,14 @@ fun javaToApache(java: Library, apache: Library, codeElements: CodeElements) {
 //    migration.makeRoute(src, dst)
 
     for (methodDecl in codeElements.methodDecls) {
+        if (methodDecl.name() != "java") continue
         val methodLocalCodeElements = methodDecl.getCodeElements()
 
         val migration = Migration(
                 library1 = java,
                 library2 = apache,
-                codeElements = methodLocalCodeElements)
+                codeElements = methodLocalCodeElements,
+                functionName = methodDecl.name())
 
         migration.doMigration()
     }
@@ -464,6 +468,7 @@ class MethodOrConstructorDeclaration(val node: BodyDeclaration) {
         }
         return methodLocalCodeElements
     }
+    fun name() = if (node is MethodDeclaration) node.name else "constructor"
 }
 
 data class ClassDiff(val name: String,
@@ -481,6 +486,15 @@ fun checkMigrationCorrectness(path: Path, originalCode: String, migratedCode: St
     Files.write(path, migratedCode.toByteArray())
 
     println("Running migrated code")
+
+    val build = rt.exec("./gradlew --console rich build", null, File("HTTP/"))
+    build.waitFor()
+    if (build.exitValue() != 0) {
+        println("Compilation failed!")
+        println(build.inputStream.readBytes().toString(Charset.defaultCharset()))
+        Files.write(path, originalCode.toByteArray())
+        return
+    }
 
     val process2 = rt.exec(command, null, File("HTTP/"))
     val migratedOutput = process2.inputStream.readBytes().toString(Charset.defaultCharset())

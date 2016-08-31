@@ -6,7 +6,7 @@ object HTTPEntities {
     val request: Entity = Entity(name = "Request")
     val url: Entity = Entity(name = "URL")
     val connection: Entity = Entity(name = "Connection")
-//    val inputStream = Entity(name = "InputStream")
+    val inputStream = Entity(name = "InputStream")
     val body: Entity = Entity(name = "Body")
     val client: Entity = Entity(name = "Client")
 }
@@ -18,6 +18,7 @@ fun makeJava(): Library {
     val connection = StateMachine(entity = HTTPEntities.connection)
 
     val hasURL = State(name = "hasURL", machine = request)
+    val inputStream = StateMachine(entity = HTTPEntities.inputStream)
 
     ConstructorEdge(
             machine = request,
@@ -58,13 +59,22 @@ fun makeJava(): Library {
                     )
     )
 
+    LinkedEdge(
+            machine = connection,
+            dst = inputStream.getInitState(),
+            edge = CallEdge(
+                    machine = connection,
+                    methodName = "getInputStream"
+            )
+    )
+
     return Library(
-            stateMachines = listOf(url, request, connection, body),
+            stateMachines = listOf(url, request, connection, body, inputStream),
             machineTypes = mapOf(
                     request to "URL",
                     url to "String",
                     connection to "URLConnection",
-//                    inputStream to "InputStream",
+                    inputStream to "InputStream",
                     body to "String"
             )
     )
@@ -76,6 +86,7 @@ fun makeApache(): Library {
     val request = StateMachine(entity = HTTPEntities.request)
     val connection = StateMachine(entity = HTTPEntities.connection)
     val httpClients = StateMachine(entity = Entity("httpClients"))
+    val inputStream = StateMachine(entity = HTTPEntities.inputStream)
 
     val hasURL = State(name = "hasURL", machine = request)
 
@@ -135,12 +146,23 @@ fun makeApache(): Library {
             edge = toStringTemplate
     )
 
+    LinkedEdge(
+            machine = connection,
+            dst = inputStream.getInitState(),
+            edge = TemplateEdge(
+                    machine = connection,
+                    template = "{{ httpResponse }}.getEntity().getContent()",
+                    params = mapOf("httpResponse" to connection.getConstructedState())
+            )
+    )
+
     return Library(
-            stateMachines = listOf(url, request, client, connection, body, httpClients, main),
+            stateMachines = listOf(url, request, client, connection, body, httpClients, main, inputStream),
             machineTypes = mapOf(
                     request to "HttpGet",
                     url to "String",
                     connection to "CloseableHttpResponse",
+                    inputStream to "InputStream",
                     body to "String",
                     client to "CloseableHttpClient",
                     httpClients to "HttpClients",

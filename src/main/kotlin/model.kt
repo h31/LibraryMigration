@@ -95,6 +95,8 @@ interface Edge : Labelable {
                 edge = this
     )
     }
+
+    fun getSubsequentAutoEdges() = dst.machine.edges.filter { edge -> edge is AutoEdge && edge.src == dst}
 }
 
 interface ExpressionEdge : Edge {

@@ -21,7 +21,8 @@ class Migration(val library1: Library,
                 val library2: Library,
                 val codeElements: CodeElements,
                 val graph1: DirectedPseudograph<State, Edge> = toJGrapht(library1),
-                val graph2: DirectedPseudograph<State, Edge> = toJGrapht(library2)) {
+                val graph2: DirectedPseudograph<State, Edge> = toJGrapht(library2),
+                val functionName: String) {
     val dependencies: MutableMap<StateMachine, Expression> = mutableMapOf()
     // val pendingStmts = mutableListOf<Statement>()
     var nameGeneratorCounter = 0
@@ -36,6 +37,7 @@ class Migration(val library1: Library,
     }
 
     fun doMigration() {
+        println("Migrate " + functionName)
         extractRoutes()
 
         val edges = library1.stateMachines.flatMap { it -> it.edges }
@@ -70,18 +72,33 @@ class Migration(val library1: Library,
         val usedEdges: MutableList<Edge> = mutableListOf()
         val edges = library1.stateMachines.flatMap { machine -> machine.edges }
         for (methodCall in codeElements.methodCalls) {
-            val callEdge = edges.firstOrNull { edge -> edge is CallEdge && edge.methodName == methodCall.name }
-            if (callEdge != null) usedEdges += callEdge
+            val callEdge = edges.firstOrNull { edge -> edge is CallEdge && edge.methodName == methodCall.name } as CallEdge?
+            if (callEdge != null) {
+                usedEdges += callEdge
+                if (methodCall.parentNode is VariableDeclarator) {
+                    val linkedEdge = callEdge.linkedEdge
+                    if (linkedEdge != null) {
+                        usedEdges += linkedEdge
+                        usedEdges += linkedEdge.getSubsequentAutoEdges()
+                    } else {
+                        error("Missing linked node")
+                    }
+                }
+                usedEdges += callEdge.usageEdges
+            }
         }
         for (objectCreation in codeElements.objectCreation) {
-            val LinkedEdge = edges.firstOrNull { edge -> edge is LinkedEdge && edge.dst.machine.type(library1) == objectCreation.type.name }
-            if (LinkedEdge != null) usedEdges += LinkedEdge
+            val constructorEdges = edges.firstOrNull { edge -> edge is ConstructorEdge && edge.machine.type(library1) == objectCreation.type.name }
+            if (constructorEdges != null) usedEdges += constructorEdges
         }
-        println("--- Used edges:")
-        for (edge in usedEdges) {
-            println(edge.label(library1))
+        if (usedEdges.isNotEmpty()) {
+            println("--- Used edges:")
+            for (edge in usedEdges) {
+                println(edge.label(library1))
+            }
+            println("---")
+            graphvizRender(toDOT(library1, usedEdges.map { edge -> edge to true }.toMap()), "extracted_" + functionName)
         }
-        println("---")
     }
 
     private fun migrateMethodCall(edge: CallEdge, route: List<Edge>) {
@@ -151,12 +168,19 @@ class Migration(val library1: Library,
         val statements = blockStmt.stmts
         val pos = statements.indexOf(statement)
         statements.addAll(pos, pendingStmts.map { pending -> pending.statement })
-        if (statement is ExpressionStmt && statement.expression is AssignExpr) {
-            val assignment = statement.expression as AssignExpr
-            assignment.value = NameExpr(getNewVarName(pendingStmts))
-        } else {
-            statements.remove(statement)
-            statement.parentNode = null
+        val parent = methodCall.parentNode
+        val newExpr = NameExpr(getNewVarName(pendingStmts))
+        when (parent) {
+            is VariableDeclarator -> {
+                statements.remove(statement)
+                statement.parentNode = null
+            }
+            is AssignExpr -> parent.value = newExpr
+            is ObjectCreationExpr -> {
+                val pos = parent.args.indexOf(methodCall)
+                parent.args.set(pos, newExpr)
+                newExpr.parentNode = parent
+            }
         }
         for (stmt in pendingStmts) {
             stmt.statement.parentNode = blockStmt
