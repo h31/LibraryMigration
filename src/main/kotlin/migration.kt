@@ -36,6 +36,8 @@ class Migration(val library1: Library,
     }
 
     fun doMigration() {
+        extractRoutes()
+
         val edges = library1.stateMachines.flatMap { it -> it.edges }
         for (edge in edges) {
             println("Processing " + edge.label(library1) + "... ")
@@ -55,13 +57,31 @@ class Migration(val library1: Library,
                 is LinkedEdge -> {
                     println("  Has a linked action")
                     val dependency = edge.edge
-                    if (getUsages(dependency.methodName).isNotEmpty()) {
+                    if (dependency is CallEdge && getUsages(dependency.methodName).isNotEmpty()) {
                         val route = findRoute(graph2, edge.src, edge.dst)
                         migrateMethodCall(dependency, route)
                     }
                 }
             }
         }
+    }
+
+    private fun extractRoutes() {
+        val usedEdges: MutableList<Edge> = mutableListOf()
+        val edges = library1.stateMachines.flatMap { machine -> machine.edges }
+        for (methodCall in codeElements.methodCalls) {
+            val callEdge = edges.firstOrNull { edge -> edge is CallEdge && edge.methodName == methodCall.name }
+            if (callEdge != null) usedEdges += callEdge
+        }
+        for (objectCreation in codeElements.objectCreation) {
+            val LinkedEdge = edges.firstOrNull { edge -> edge is LinkedEdge && edge.dst.machine.type(library1) == objectCreation.type.name }
+            if (LinkedEdge != null) usedEdges += LinkedEdge
+        }
+        println("--- Used edges:")
+        for (edge in usedEdges) {
+            println(edge.label(library1))
+        }
+        println("---")
     }
 
     private fun migrateMethodCall(edge: CallEdge, route: List<Edge>) {
@@ -102,14 +122,19 @@ class Migration(val library1: Library,
     private fun makeLinkedEdge(step: LinkedEdge, oldVarName: String?): List<PendingStatement> {
         val type = checkNotNull(library2.machineTypes[step.dst.machine])
         val name = oldVarName ?: "linkedEdge_%s_%d".format(step.machine.name, nameGeneratorCounter++)
-        val expr = makeCallExpression(step.edge)
+        val expr = when {
+            step.edge is CallEdge -> makeCallExpression(step.edge)
+            step.edge is TemplateEdge -> makeTemplateExpression(step.edge)
+            else -> null
+        }
+
         val newVariable = makeNewVariable(type, name, expr)
         dependencies[step.dst.machine] = NameExpr(name)
         return listOf(PendingStatement(statement = newVariable, provides = name))
     }
 
     private fun makeUsageEdge(step: UsageEdge): List<PendingStatement> {
-        if (step.edge is CallEdge && step.edge.isStatic) {
+        if (step.edge is ExpressionEdge && step.edge.isStatic) {
             return emptyList()
         }
         val (usedVariableName, newVariableStatement) = makeMissingDependency(step.edge.machine, step.dst)
@@ -163,7 +188,7 @@ class Migration(val library1: Library,
 
     private fun unpackCallEdge(edge: Edge): CallEdge? {
         if (edge is LinkedEdge) {
-            return edge.edge
+            return edge.edge as CallEdge // TODO
         }
         else if (edge is UsageEdge) {
             return edge.edge as CallEdge
@@ -202,10 +227,10 @@ class Migration(val library1: Library,
 
         val step = library2.stateMachines.flatMap { machine -> machine.edges }
                 .first { edge: Edge -> (edge is CallEdge == false) && (edge is UsageEdge == false) && (edge.dst == requiredState) }
-        val initExpr = if (step is LinkedEdge) {
-            makeCallExpression(step.edge)
-        } else {
-            null
+        val initExpr = when (step) {
+            is LinkedEdge -> makeExpression(step.edge)
+            is TemplateEdge -> makeTemplateExpression(step)
+            else -> null
         }
 
         val newVariableStatement = makeNewVariable(type, name, initExpr)
@@ -218,6 +243,17 @@ class Migration(val library1: Library,
         val callParams = makeCallExpressionParams(step)
         val expr = MethodCallExpr(callParams.scope, step.methodName, callParams.args)
         return expr
+    }
+
+    private fun makeTemplateExpression(step: TemplateEdge): Expression {
+        val stringParams = step.params.mapValues { state -> checkNotNull(dependencies[state.value.machine].toString()) }
+        return templateIntoAST(fillPlaceholders(step.template, stringParams))
+    }
+
+    private fun makeExpression(step: ExpressionEdge) = when (step) {
+        is CallEdge -> makeCallExpression(step)
+        is TemplateEdge -> makeTemplateExpression(step)
+        else -> null
     }
 
     private fun getBlockStmt(initialNode: Node): Pair<Statement, BlockStmt> {

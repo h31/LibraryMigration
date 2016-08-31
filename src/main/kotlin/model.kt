@@ -97,14 +97,19 @@ interface Edge : Labelable {
     }
 }
 
+interface ExpressionEdge : Edge {
+    var linkedEdge: LinkedEdge?
+    val isStatic: Boolean
+}
+
 data class CallEdge(override val machine: StateMachine,
                     override val src: State = makeConstructedState(machine),
                     override val dst: State = src,
 
                     val methodName: String,
                     val param: List<Param> = listOf(),
-                    val isStatic: Boolean = false) : Edge {
-    var linkedEdge: LinkedEdge? = null
+                    override val isStatic: Boolean = false) : ExpressionEdge {
+    override var linkedEdge: LinkedEdge? = null
     val usageEdges: MutableSet<UsageEdge> = mutableSetOf()
 
     init {
@@ -142,7 +147,7 @@ data class LinkedEdge(override val machine: StateMachine,
                       override val src: State = makeConstructedState(machine),
                       override val dst: State = src,
 
-                      val edge: CallEdge) : Edge {
+                      val edge: ExpressionEdge) : Edge {
     init {
         machine.edges += this
 
@@ -171,10 +176,24 @@ data class TemplateEdge(override val machine: StateMachine,
                         override val dst: State = src,
 
                         val template: String,
-                          val params: Map<String, Edge>) : Edge {
-    init { machine.edges += this }
+                        val params: Map<String, State>,
+                        override val isStatic: Boolean = false) : ExpressionEdge {
+    override var linkedEdge: LinkedEdge? = null
+    val usageEdges: MutableSet<UsageEdge> = mutableSetOf()
 
-    override fun label(library: Library) = template + " with " + params.toString()
+    init {
+        machine.edges += this
+        for (param in params) {
+            usageEdges += UsageEdge(
+                    machine = param.value.machine,
+                    src = param.value,
+                    dst = dst,
+                    edge = this
+            )
+        }
+    }
+
+    override fun label(library: Library) = "Template with " + params.map { param -> param.value.stateAndMachineName() }.joinToString()
 }
 
 data class UsageEdge(override val machine: StateMachine,

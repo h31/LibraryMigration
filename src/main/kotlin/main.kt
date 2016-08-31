@@ -162,8 +162,7 @@ fun graphNode2ToNode1(graph1: Library, graph2: Library, codeElements: CodeElemen
 //    migration.makeRoute(src, dst)
 
     for (methodDecl in codeElements.methodDecls) {
-        val methodLocalCodeElements = CodeElements()
-        CodeElementsVisitor().visit(methodDecl, methodLocalCodeElements);
+        val methodLocalCodeElements = methodDecl.getCodeElements()
 
         val migration = Migration(
                 library1 = graph1,
@@ -172,7 +171,6 @@ fun graphNode2ToNode1(graph1: Library, graph2: Library, codeElements: CodeElemen
 
         migration.doMigration()
     }
-    // TODO: Constructors
 
     fixEntityTypes(codeElements, graph2, graph1)
 }
@@ -184,8 +182,7 @@ fun javaToApache(java: Library, apache: Library, codeElements: CodeElements) {
 //    migration.makeRoute(src, dst)
 
     for (methodDecl in codeElements.methodDecls) {
-        val methodLocalCodeElements = CodeElements()
-        CodeElementsVisitor().visit(methodDecl, methodLocalCodeElements);
+        val methodLocalCodeElements = methodDecl.getCodeElements()
 
         val migration = Migration(
                 library1 = java,
@@ -194,7 +191,6 @@ fun javaToApache(java: Library, apache: Library, codeElements: CodeElements) {
 
         migration.doMigration()
     }
-    // TODO: Constructors
 
     fixEntityTypes(codeElements, java, apache)
 }
@@ -405,7 +401,7 @@ fun parseImports(imports: List<ImportDeclaration>) = imports.map { x ->
 
 private class CodeElementsVisitor : VoidVisitorAdapter<CodeElements>() {
     override fun visit(n: MethodDeclaration, arg: CodeElements) {
-        arg.methodDecls.add(n);
+        arg.methodDecls.add(MethodOrConstructorDeclaration(n));
         super.visit(n, arg)
     }
 
@@ -421,13 +417,14 @@ private class CodeElementsVisitor : VoidVisitorAdapter<CodeElements>() {
     }
 
     override fun visit(n: ConstructorDeclaration, arg: CodeElements) {
-        arg.constructorDecls.add(n);
+        arg.methodDecls.add(MethodOrConstructorDeclaration(n));
         arg.nodes.add(n);
         super.visit(n, arg)
     }
 
     override fun visit(n: ObjectCreationExpr, arg: CodeElements) {
         arg.objectCreation.add(n);
+        arg.nodes.add(n);
         super.visit(n, arg)
     }
 
@@ -435,20 +432,38 @@ private class CodeElementsVisitor : VoidVisitorAdapter<CodeElements>() {
         arg.variableDeclarations.add(n);
         super.visit(n, arg)
     }
+
+    override fun visit(n: BlockStmt, arg: CodeElements) {
+        arg.blockStmts.add(n);
+        super.visit(n, arg)
+    }
 }
 
 data class CodeElements(val classes: MutableList<ClassOrInterfaceDeclaration> = mutableListOf(),
-                        val methodDecls: MutableList<MethodDeclaration> = mutableListOf(),
-                        val constructorDecls: MutableList<ConstructorDeclaration> = mutableListOf(),
+                        val methodDecls: MutableList<MethodOrConstructorDeclaration> = mutableListOf(),
                         val methodCalls: MutableList<MethodCallExpr> = mutableListOf(),
                         val objectCreation: MutableList<ObjectCreationExpr> = mutableListOf(),
                         val variableDeclarations: MutableList<VariableDeclarationExpr> = mutableListOf(),
+                        val blockStmts: MutableList<BlockStmt> = mutableListOf(),
                         val nodes: MutableList<Node> = mutableListOf())
 
 data class MethodDiff(val methodName: String,
                       val newInSrc: List<IndexedValue<Parameter>>,
                       val newInDst: List<IndexedValue<Parameter>>) {
     fun methodChanged() = newInSrc.isNotEmpty() || newInDst.isNotEmpty()
+}
+
+class MethodOrConstructorDeclaration(val node: BodyDeclaration) {
+    fun get() = node
+    fun getCodeElements(): CodeElements {
+        val methodLocalCodeElements = CodeElements()
+        if (node is MethodDeclaration) {
+            CodeElementsVisitor().visit(node, methodLocalCodeElements);
+        } else if (node is ConstructorDeclaration) {
+            CodeElementsVisitor().visit(node, methodLocalCodeElements);
+        }
+        return methodLocalCodeElements
+    }
 }
 
 data class ClassDiff(val name: String,

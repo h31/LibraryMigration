@@ -122,15 +122,17 @@ fun makeApache(): Library {
     val body = StateMachine(entity = HTTPEntities.body)
     val main = StateMachine(entity = Entity("Main"))
 
-    makeLinkedEdge(
+    val toStringTemplate = TemplateEdge(
+            machine = main,
+            template = "EntityUtils.toString({{ httpResponse }}.getEntity())",
+            params = mapOf("httpResponse" to connection.getConstructedState()),
+            isStatic = true
+    )
+
+    LinkedEdge(
             machine = main,
             dst = body.getInitState(),
-                    methodName = "responseToString",
-                    param = listOf(Param(
-                            machine = connection
-                    )
-                    ),
-            isStatic = true
+            edge = toStringTemplate
     )
 
     return Library(
@@ -142,7 +144,7 @@ fun makeApache(): Library {
                     body to "String",
                     client to "CloseableHttpClient",
                     httpClients to "HttpClients",
-                    main to "Main"
+                    main to "String"
             )
     )
 }
