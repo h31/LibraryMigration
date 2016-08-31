@@ -57,7 +57,7 @@ public class Main {
     private static void javaIf() throws IOException {
         URL url = new URL("http://api.ipify.org/");
         URLConnection conn = url.openConnection();
-        if (conn != null) {
+        if (conn.getContentLengthLong() > 0) {
             String response = new BufferedReader(new InputStreamReader(conn.getInputStream())).lines().collect(Collectors.joining("\n"));
             System.out.println(response);
         } else {

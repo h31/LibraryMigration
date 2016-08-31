@@ -9,6 +9,7 @@ object HTTPEntities {
     val inputStream = Entity(name = "InputStream")
     val body: Entity = Entity(name = "Body")
     val client: Entity = Entity(name = "Client")
+    val contentLength: Entity = Entity(name = "ContentLength")
 }
 
 fun makeJava(): Library {
@@ -19,6 +20,7 @@ fun makeJava(): Library {
 
     val hasURL = State(name = "hasURL", machine = request)
     val inputStream = StateMachine(entity = HTTPEntities.inputStream)
+    val contentLength = StateMachine(entity = HTTPEntities.contentLength)
 
     ConstructorEdge(
             machine = request,
@@ -68,13 +70,23 @@ fun makeJava(): Library {
             )
     )
 
+    LinkedEdge(
+            machine = connection,
+            dst = contentLength.getInitState(),
+            edge = CallEdge(
+                    machine = connection,
+                    methodName = "getContentLengthLong"
+            )
+    )
+
     return Library(
-            stateMachines = listOf(url, request, connection, body, inputStream),
+            stateMachines = listOf(url, request, connection, body, inputStream, contentLength),
             machineTypes = mapOf(
                     request to "URL",
                     url to "String",
                     connection to "URLConnection",
                     inputStream to "InputStream",
+                    contentLength to "long",
                     body to "String"
             )
     )
@@ -87,6 +99,7 @@ fun makeApache(): Library {
     val connection = StateMachine(entity = HTTPEntities.connection)
     val httpClients = StateMachine(entity = Entity("httpClients"))
     val inputStream = StateMachine(entity = HTTPEntities.inputStream)
+    val contentLength = StateMachine(entity = HTTPEntities.contentLength)
 
     val hasURL = State(name = "hasURL", machine = request)
 
@@ -156,13 +169,24 @@ fun makeApache(): Library {
             )
     )
 
+    LinkedEdge(
+            machine = connection,
+            dst = contentLength.getInitState(),
+            edge = TemplateEdge(
+                    machine = connection,
+                    template = "{{ httpResponse }}.getEntity().getContentLength()",
+                    params = mapOf("httpResponse" to connection.getConstructedState())
+            )
+    )
+
     return Library(
-            stateMachines = listOf(url, request, client, connection, body, httpClients, main, inputStream),
+            stateMachines = listOf(url, request, client, connection, body, httpClients, main, inputStream, contentLength),
             machineTypes = mapOf(
                     request to "HttpGet",
                     url to "String",
                     connection to "CloseableHttpResponse",
                     inputStream to "InputStream",
+                    contentLength to "long",
                     body to "String",
                     client to "CloseableHttpClient",
                     httpClients to "HttpClients",

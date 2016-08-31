@@ -138,7 +138,7 @@ class Migration(val library1: Library,
 
     private fun makeLinkedEdge(step: LinkedEdge, oldVarName: String?): List<PendingStatement> {
         val type = checkNotNull(library2.machineTypes[step.dst.machine])
-        val name = oldVarName ?: "linkedEdge_%s_%d".format(step.machine.name, nameGeneratorCounter++)
+        val name = oldVarName ?: "linkedEdge_%s_%d".format(step.dst.machine.name, nameGeneratorCounter++)
         val expr = when {
             step.edge is CallEdge -> makeCallExpression(step.edge)
             step.edge is TemplateEdge -> makeTemplateExpression(step.edge)
@@ -176,11 +176,13 @@ class Migration(val library1: Library,
                 statement.parentNode = null
             }
             is AssignExpr -> parent.value = newExpr
+            is BinaryExpr -> parent.left = newExpr
             is ObjectCreationExpr -> {
                 val argsPos = parent.args.indexOf(methodCall)
                 parent.args.set(argsPos, newExpr)
                 newExpr.parentNode = parent
             }
+            else -> error("Don't know how to insert into " + parent.toString())
         }
         for (stmt in pendingStmts) {
             stmt.statement.parentNode = blockStmt
