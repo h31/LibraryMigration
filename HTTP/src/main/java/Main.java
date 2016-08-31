@@ -32,18 +32,10 @@ public class Main {
         apache();
     }
 
-    private static String readerToString(URLConnection conn) throws IOException {
-        return new BufferedReader(new InputStreamReader(conn.getInputStream())).lines().collect(Collectors.joining("\n"));
-    }
-
-    private static String responseToString(HttpResponse httpResponse) throws IOException {
-        return EntityUtils.toString(httpResponse.getEntity());
-    }
-
     private static void java() throws IOException {
         URL url = new URL("http://api.ipify.org/");
         URLConnection conn = url.openConnection();
-        String response = readerToString(conn);
+        String response = new BufferedReader(new InputStreamReader(conn.getInputStream())).lines().collect(Collectors.joining("\n"));
         System.out.println(response);
     }
 
@@ -52,7 +44,7 @@ public class Main {
         HttpGet httpget = new HttpGet("http://api.ipify.org/");
 
         CloseableHttpResponse httpResponse = httpclient.execute(httpget);
-        String response = responseToString(httpResponse);
+        String response = EntityUtils.toString(httpResponse.getEntity());
         System.out.println(response);
         httpclient.close();
     }
