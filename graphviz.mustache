@@ -12,12 +12,12 @@ digraph G {
 {{/machines}}
 {{#edges}}
     {{#linkedEdge}}
-        {{src}} -> virtual{{counter}} [ label="{{edge}}" ];
-        virtual{{counter}} -> {{dst}};
-        virtual{{counter}} -> {{machine}} [ label="{{linkedEdge}}" ];
+        {{src}} -> virtual{{counter}} [ label="{{edge}}" {{#visited}}, color = red{{/visited}} ];
+        virtual{{counter}} -> {{dst}} {{#visited}} [color = red] {{/visited}};
+        virtual{{counter}} -> {{machine}} [ label="{{linkedEdge}}" {{#linkedVisited}}, color = red{{/linkedVisited}} ];
     {{/linkedEdge}}
     {{^linkedEdge}}
-        {{src}} -> {{dst}} [ label="{{edge}}" ];
+        {{src}} -> {{dst}} [ label="{{edge}}" {{#visited}}, color = red{{/visited}} ];
     {{/linkedEdge}}
 {{/edges}}
 }

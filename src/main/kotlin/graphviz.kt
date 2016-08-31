@@ -17,7 +17,7 @@ import java.io.StringReader
  * Created by artyom on 16.06.16.
  */
 
-fun toDOT(library: Library): String {
+fun toDOT(library: Library, visited: Map<Edge, Boolean> = mapOf()): String {
     val edges = mutableListOf<Map<String, Any>>()
     val virtuals = library.stateMachines.map { it -> it to mutableListOf<Int>() }.toMap()
     val displayerMachines = library.stateMachines.filter { it -> it.inherits == null }
@@ -25,17 +25,19 @@ fun toDOT(library: Library): String {
     var counter = 0
     for (machine in library.stateMachines) {
         for (edge in machine.getDisplayedEdges()) {
-            val baseMap = mapOf<String, String>(
+            val baseMap = mapOf<String, Any>(
                     "src" to edge.src.id(),
                     "dst" to edge.dst.id(),
-                    "edge" to edge.label(library))
+                    "edge" to edge.label(library),
+                    "visited" to visited.contains(edge))
             val values = if (edge is CallEdge && edge.linkedEdge != null) {
 
                 virtuals.get(machine)!!.add(counter)
                 baseMap + mapOf(
                         "machine" to edge.linkedEdge!!.dst.id(),
                         "linkedEdge" to edge.linkedEdge!!.label(library),
-                        "counter" to counter++)
+                        "counter" to counter++,
+                        "linkedVisited" to visited.contains(edge.linkedEdge!!))
             } else baseMap
             edges += values
         }
@@ -81,16 +83,16 @@ fun toJGrapht(library: Library): DirectedPseudograph<State, Edge> {
             VertexNameProvider { it -> it.machine.name + " " + it.label(library) }, EdgeNameProvider { it.label(library) })
 
     for (fsm in library.stateMachines) {
-        System.out.println("FSM: " + fsm.toString())
+//        System.out.println("FSM: " + fsm.toString())
         for (state in fsm.states) {
-            System.out.println("Vertex: " + state.toString())
+//            System.out.println("Vertex: " + state.toString())
             graph.addVertex(state)
         }
 //        val subgraph = DirectedSubgraph(graph, fsm.states.toSet(), null)
     }
     for (fsm in library.stateMachines) {
         for (edge in fsm.edges) {
-            System.out.println("Edge: " + edge.toString())
+//            System.out.println("Edge: " + edge.toString())
             graph.addEdge(edge.src, edge.dst, edge)
         }
     }
