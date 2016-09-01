@@ -1,0 +1,57 @@
+digraph G {
+    subgraph cluster0 {
+    label = <<B>URL: String</B>>;
+        Init_URL [ label="Init" , style = invis ];
+        Constructed_URL [ label="Constructed"  ];
+    }
+    subgraph cluster1 {
+    label = <<B>Request: URL</B>>;
+        Init_Request [ label="Init" , style = invis ];
+        Constructed_Request [ label="Constructed"  ];
+        hasURL_Request [ label="hasURL"  ];
+        virtual0 [ shape = point ];
+    }
+    subgraph cluster2 {
+    label = <<B>Connection: URLConnection</B>>;
+        Init_Connection [ label="Init" , style = invis ];
+        Constructed_Connection [ label="Constructed"  ];
+        virtual1 [ shape = point ];
+        virtual2 [ shape = point ];
+        virtual3 [ shape = point ];
+    }
+    subgraph cluster3 {
+    label = <<B>Body: String</B>>;
+        Init_Body [ label="Init" , style = invis ];
+        Constructed_Body [ label="Constructed"  ];
+    }
+    subgraph cluster4 {
+    label = <<B>InputStream: InputStream</B>>;
+        Init_InputStream [ label="Init" , style = invis ];
+        Constructed_InputStream [ label="Constructed"  ];
+    }
+    subgraph cluster5 {
+    label = <<B>ContentLength: long</B>>;
+        Init_ContentLength [ label="Init" , style = invis ];
+        Constructed_ContentLength [ label="Constructed"  ];
+    }
+        Init_URL -> Constructed_URL [ label=""  ];
+        Init_Request -> Constructed_Request [ label=""  ];
+        Init_Request -> hasURL_Request [ label="new Request: URL(URL: String)"  ];
+        hasURL_Request -> virtual0 [ label="openConnection()"  ];
+        virtual0 -> hasURL_Request ;
+        virtual0 -> Init_Connection [ label="return URLConnection()"  ];
+        Init_Connection -> Constructed_Connection [ label=""  ];
+        Constructed_Connection -> virtual1 [ label="readerToString(Connection: URLConnection)"  ];
+        virtual1 -> Constructed_Connection ;
+        virtual1 -> Init_Body [ label="return String()"  ];
+        Constructed_Connection -> Constructed_Connection [ label="Usage in readerToString(Connection: URLConnection)"  ];
+        Constructed_Connection -> virtual2 [ label="getInputStream()"  ];
+        virtual2 -> Constructed_Connection ;
+        virtual2 -> Init_InputStream [ label="return InputStream()"  ];
+        Constructed_Connection -> virtual3 [ label="getContentLengthLong()"  ];
+        virtual3 -> Constructed_Connection ;
+        virtual3 -> Init_ContentLength [ label="return long()"  ];
+        Init_Body -> Constructed_Body [ label=""  ];
+        Init_InputStream -> Constructed_InputStream [ label=""  ];
+        Init_ContentLength -> Constructed_ContentLength [ label=""  ];
+}
