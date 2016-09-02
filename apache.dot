@@ -16,6 +16,8 @@ digraph G {
     subgraph cluster3 {
     label = <<B>Connection: CloseableHttpResponse</B>>;
         Constructed_Connection [ label="Constructed" ];
+        virtual1 [ shape = point ];
+        virtual2 [ shape = point ];
     }
     subgraph cluster4 {
     label = <<B>Body: String</B>>;
@@ -24,11 +26,12 @@ digraph G {
     subgraph cluster5 {
     label = <<B>httpClients: HttpClients</B>>;
         Constructed_httpClients [ label="Constructed" ];
-        virtual1 [ shape = point ];
+        virtual3 [ shape = point ];
     }
     subgraph cluster6 {
     label = <<B>Main: String</B>>;
         Constructed_Main [ label="Constructed" ];
+        virtual4 [ shape = point ];
     }
     subgraph cluster7 {
     label = <<B>InputStream: InputStream</B>>;
@@ -47,12 +50,18 @@ digraph G {
         virtual0 -> Constructed_Client [ style = "bold"  ];
         virtual0 -> Constructed_Connection [ label="return CloseableHttpResponse()"  ];
         Constructed_Connection -> Constructed_Main [ label="Usage in Template", style = "dashed"  ];
-        Constructed_Connection -> Constructed_Connection [ label="Template", style = "solid"  ];
+        Constructed_Connection -> virtual1 [ label="Template"  ];
+        virtual1 -> Constructed_Connection [ style = "solid"  ];
+        virtual1 -> Constructed_InputStream [ label="return InputStream()"  ];
         Constructed_Connection -> Constructed_Connection [ label="Usage in Template", style = "dashed"  ];
-        Constructed_Connection -> Constructed_Connection [ label="Template", style = "solid"  ];
+        Constructed_Connection -> virtual2 [ label="Template"  ];
+        virtual2 -> Constructed_Connection [ style = "solid"  ];
+        virtual2 -> Constructed_ContentLength [ label="return long()"  ];
         Constructed_Connection -> Constructed_Connection [ label="Usage in Template", style = "dashed"  ];
-        Constructed_httpClients -> virtual1 [ label="createDefault()"  ];
-        virtual1 -> Constructed_httpClients [ style = "bold"  ];
-        virtual1 -> Constructed_Client [ label="return CloseableHttpClient()"  ];
-        Constructed_Main -> Constructed_Main [ label="Template", style = "solid"  ];
+        Constructed_httpClients -> virtual3 [ label="createDefault()"  ];
+        virtual3 -> Constructed_httpClients [ style = "bold"  ];
+        virtual3 -> Constructed_Client [ label="return CloseableHttpClient()"  ];
+        Constructed_Main -> virtual4 [ label="Template"  ];
+        virtual4 -> Constructed_Main [ style = "solid"  ];
+        virtual4 -> Constructed_Body [ label="return String()"  ];
 }

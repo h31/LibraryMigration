@@ -75,7 +75,7 @@ class Migration(val library1: Library,
             val callEdge = edges.firstOrNull { edge -> edge is CallEdge && edge.methodName == methodCall.name } as CallEdge?
             if (callEdge != null) {
                 usedEdges += callEdge
-                if (methodCall.parentNode is VariableDeclarator) {
+                if (methodCall.parentNode is ExpressionStmt == false) {
                     val linkedEdge = callEdge.linkedEdge
                     if (linkedEdge != null) {
                         usedEdges += linkedEdge
@@ -88,8 +88,11 @@ class Migration(val library1: Library,
             }
         }
         for (objectCreation in codeElements.objectCreation) {
-            val constructorEdges = edges.firstOrNull { edge -> edge is ConstructorEdge && edge.machine.type(library1) == objectCreation.type.name }
-            if (constructorEdges != null) usedEdges += constructorEdges
+            val constructorEdges = edges.firstOrNull { edge -> edge is ConstructorEdge && edge.machine.type(library1) == objectCreation.type.name } as ConstructorEdge?
+            if (constructorEdges != null) {
+                usedEdges += constructorEdges
+                usedEdges += constructorEdges.usageEdges
+            }
         }
         if (usedEdges.isNotEmpty()) {
             println("--- Used edges:")

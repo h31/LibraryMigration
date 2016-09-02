@@ -31,7 +31,7 @@ fun toDOT(library: Library, visited: Map<Edge, Boolean> = mapOf()): String {
                     "edge" to edge.label(library),
                     "visited" to visited.contains(edge),
                     "style" to edge.getStyle())
-            val values = if (edge is CallEdge && edge.linkedEdge != null) {
+            val values = if (edge is ExpressionEdge && edge.linkedEdge != null) {
 
                 virtuals.get(machine)!!.add(counter)
                 baseMap + mapOf(
