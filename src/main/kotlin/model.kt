@@ -40,8 +40,9 @@ data class StateMachine(val entity: Entity,
 //        )
     }
 
-//    fun getInitState() = states.first { state -> state.name == "Init" }
+    //    fun getInitState() = states.first { state -> state.name == "Init" }
     fun getConstructedState() = states.first { state -> state.name == "Constructed" }
+
     fun getDefaultState() = getConstructedState()
 
     fun getDisplayedEdges() = edges.filterNot { edge -> edge is LinkedEdge }
@@ -89,15 +90,16 @@ interface Edge : Labelable {
     val src: State
     val dst: State
 
-    fun createUsageEdges(params: List<Param>, dst: State) = params.map { param -> UsageEdge(
+    fun createUsageEdges(params: List<Param>, dst: State) = params.map { param ->
+        UsageEdge(
                 machine = param.machine,
                 src = param.state,
                 dst = dst,
                 edge = this
-    )
+        )
     }
 
-    fun getSubsequentAutoEdges() = dst.machine.edges.filter { edge -> edge is AutoEdge && edge.src == dst}
+    fun getSubsequentAutoEdges() = dst.machine.edges.filter { edge -> edge is AutoEdge && edge.src == dst }
     fun getStyle(): String
 }
 
@@ -131,7 +133,9 @@ data class AutoEdge(override val machine: StateMachine,
                     override val dst: State = src) : Edge {
     override fun getStyle() = "solid"
 
-    init { machine.edges += this }
+    init {
+        machine.edges += this
+    }
 
     override fun label(library: Library) = ""
 }
@@ -181,10 +185,12 @@ data class MakeArrayEdge(override val machine: StateMachine,
                          override val dst: State = src,
 
                          val getSize: CallEdge,
-                           val getItem: CallEdge) : Edge {
+                         val getItem: CallEdge) : Edge {
     override fun getStyle() = "solid"
 
-    init { machine.edges += this }
+    init {
+        machine.edges += this
+    }
 
     override fun label(library: Library) = "Array of %s with size %s".format(getItem.label(library), getSize.label(library))
 }
@@ -223,7 +229,9 @@ data class UsageEdge(override val machine: StateMachine,
                      val edge: Edge) : Edge {
     override fun getStyle() = "dashed"
 
-    init { machine.edges += this }
+    init {
+        machine.edges += this
+    }
 
     override fun label(library: Library) = "Usage in " + edge.label(library)
 }

@@ -15,33 +15,33 @@ fun makeGraph1(): Library {
     val child = node.inherit(name = "child")
     val getNode = CallEdge(
             machine = node,
-                    methodName = "getNode",
-                    param = listOf(Param(
-                            machine = num
-                    )
-                    )
+            methodName = "getNode",
+            param = listOf(Param(
+                    machine = num
+            )
+            )
     )
 
     val getNum = CallEdge(
             machine = node,
-                    methodName = "getNodeNum"
+            methodName = "getNodeNum"
     )
 
     LinkedEdge(
             machine = node,
             dst = child.getDefaultState(),
-                    edge = getNode
+            edge = getNode
     )
 
     val getParent = CallEdge(
             machine = node,
-                    methodName = "getParent"
+            methodName = "getParent"
     )
 
     LinkedEdge(
             machine = node,
             dst = parent.getDefaultState(),
-                    edge = getParent
+            edge = getParent
     )
 
     val nodeList = StateMachine(entity = GraphEntities.nodeList)
@@ -49,8 +49,8 @@ fun makeGraph1(): Library {
     MakeArrayEdge(
             machine = node,
             dst = nodeList.getDefaultState(),
-                    getSize = getNum,
-                    getItem = getNode
+            getSize = getNum,
+            getItem = getNode
     )
 
 //    Edge(
@@ -81,11 +81,11 @@ fun makeGraph2(): Library {
 
     val listGet = CallEdge(
             machine = nodeList,
-                    methodName = "get",
-                    param = listOf(Param(
-                            machine = num
-                    )
-                    )
+            methodName = "get",
+            param = listOf(Param(
+                    machine = num
+            )
+            )
     )
 
     val node = StateMachine(entity = GraphEntities.node)
@@ -94,30 +94,30 @@ fun makeGraph2(): Library {
 
     val getNode = CallEdge(
             machine = node,
-                    methodName = "getNodeList"
+            methodName = "getNodeList"
     )
 
     val getParent = CallEdge(
             machine = node,
-                    methodName = "getParentNode"
+            methodName = "getParentNode"
     )
 
     LinkedEdge(
             machine = node,
             dst = parent.getDefaultState(),
-                    edge = getParent
+            edge = getParent
     )
 
     val listNodeCreate = LinkedEdge(
             machine = node,
             dst = nodeList.getDefaultState(),
-                    edge = getNode
+            edge = getNode
     )
 
     val nodeCreate = LinkedEdge(
             machine = nodeList,
             dst = child.getDefaultState(),
-                    edge = listGet
+            edge = listGet
     )
 
     return Library(

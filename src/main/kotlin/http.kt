@@ -26,17 +26,17 @@ fun makeJava(): Library {
             machine = request,
             src = request.getDefaultState(),
             dst = hasURL,
-                    param = listOf(Param(
-                            machine = url
-                    )
-                    )
+            param = listOf(Param(
+                    machine = url
+            )
+            )
     )
 
     makeLinkedEdge(
             machine = request,
             src = hasURL,
             dst = connection.getDefaultState(),
-                    methodName = "openConnection"
+            methodName = "openConnection"
     )
 
 //    val inputStream = StateMachine(entity = HTTPEntities.inputStream)
@@ -55,11 +55,11 @@ fun makeJava(): Library {
     makeLinkedEdge(
             machine = connection,
             dst = body.getDefaultState(),
-                    methodName = "readerToString",
-                    param = listOf(Param(
-                            machine = connection
-                    )
-                    )
+            methodName = "readerToString",
+            param = listOf(Param(
+                    machine = connection
+            )
+            )
     )
 
     LinkedEdge(
@@ -109,7 +109,7 @@ fun makeApache(): Library {
     makeLinkedEdge(
             machine = httpClients,
             dst = client.getConstructedState(),
-                    methodName = "createDefault",
+            methodName = "createDefault",
             isStatic = true
     )
 
@@ -117,32 +117,32 @@ fun makeApache(): Library {
             machine = request,
             src = request.getDefaultState(),
             dst = hasURL,
-                    param = listOf(Param(
-                            machine = url
-                    )
-                    )
+            param = listOf(Param(
+                    machine = url
+            )
+            )
     )
 
     val setURI = CallEdge(
             machine = request,
             src = request.getConstructedState(),
             dst = hasURL,
-                    methodName = "setURI",
-                    param = listOf(Param(
-                            machine = url
-                    )
-                    )
+            methodName = "setURI",
+            param = listOf(Param(
+                    machine = url
+            )
+            )
     )
 
     val execute = makeLinkedEdge(
             machine = client,
             dst = connection.getDefaultState(),
-                    methodName = "execute",
-                    param = listOf(Param(
-                            machine = request,
-                            state = hasURL
-                    )
-                    )
+            methodName = "execute",
+            param = listOf(Param(
+                    machine = request,
+                    state = hasURL
+            )
+            )
     )
 
     val body = StateMachine(entity = HTTPEntities.body)

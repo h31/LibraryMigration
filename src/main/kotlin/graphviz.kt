@@ -77,7 +77,7 @@ fun DOTtoPDF(prefix: String) {
 fun toJGrapht(library: Library): DirectedPseudograph<State, Edge> {
     System.out.println("Start")
     val graph = DirectedPseudograph<State, Edge>(
-            EdgeFactory { source, target -> source.machine.edges.first { edge -> edge.src == source && edge.dst == target }}
+            EdgeFactory { source, target -> source.machine.edges.first { edge -> edge.src == source && edge.dst == target } }
     )
 
     val exporter = DOTExporter<State, Edge>(VertexNameProvider { it.id() },

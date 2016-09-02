@@ -215,14 +215,11 @@ class Migration(val library1: Library,
     private fun unpackCallEdge(edge: Edge): CallEdge? {
         if (edge is LinkedEdge) {
             return edge.edge as CallEdge // TODO
-        }
-        else if (edge is UsageEdge) {
+        } else if (edge is UsageEdge) {
             return edge.edge as CallEdge
-        }
-        else if (edge is CallEdge) {
+        } else if (edge is CallEdge) {
             return edge
-        }
-        else {
+        } else {
             return null
         }
     }

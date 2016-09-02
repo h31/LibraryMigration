@@ -214,12 +214,12 @@ private fun prettyPrinter(string: String): String {
         if (char == '(') {
             buffer.append('\n')
             intend++
-            buffer.append(" ".repeat(intend*2))
+            buffer.append(" ".repeat(intend * 2))
         } else if (char == ')') {
             intend--
         } else if (char == ',') {
             buffer.append('\n')
-            buffer.append(" ".repeat(intend*2-1))
+            buffer.append(" ".repeat(intend * 2 - 1))
         }
     }
     return buffer.toString()
@@ -468,6 +468,7 @@ class MethodOrConstructorDeclaration(val node: BodyDeclaration) {
         }
         return methodLocalCodeElements
     }
+
     fun name() = if (node is MethodDeclaration) node.name else "constructor"
 }
 
