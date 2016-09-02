@@ -29,7 +29,7 @@ fun makeGraph1(): Library {
 
     LinkedEdge(
             machine = node,
-            dst = child.getInitState(),
+            dst = child.getDefaultState(),
                     edge = getNode
     )
 
@@ -40,7 +40,7 @@ fun makeGraph1(): Library {
 
     LinkedEdge(
             machine = node,
-            dst = parent.getInitState(),
+            dst = parent.getDefaultState(),
                     edge = getParent
     )
 
@@ -48,14 +48,14 @@ fun makeGraph1(): Library {
 
     MakeArrayEdge(
             machine = node,
-            dst = nodeList.getInitState(),
+            dst = nodeList.getDefaultState(),
                     getSize = getNum,
                     getItem = getNode
     )
 
 //    Edge(
 //            machine = nodeList,
-//            dst = child.getInitState(),
+//            dst = child.getDefaultState(),
 //            action = CallAction(
 //                    methodName = "get",
 //                    param = Param(
@@ -104,19 +104,19 @@ fun makeGraph2(): Library {
 
     LinkedEdge(
             machine = node,
-            dst = parent.getInitState(),
+            dst = parent.getDefaultState(),
                     edge = getParent
     )
 
     val listNodeCreate = LinkedEdge(
             machine = node,
-            dst = nodeList.getInitState(),
+            dst = nodeList.getDefaultState(),
                     edge = getNode
     )
 
     val nodeCreate = LinkedEdge(
             machine = nodeList,
-            dst = child.getInitState(),
+            dst = child.getDefaultState(),
                     edge = listGet
     )
 

@@ -141,7 +141,7 @@ fun migrateHTTP() {
 
 fun graphNode1ToNode2(graph1: Library, graph2: Library, codeElements: CodeElements) {
     val src = graph2.stateMachines.first { m -> m.name == "Node" }.getConstructedState()
-    val dst = graph2.stateMachines.first { m -> m.name == "child" }.getInitState()
+    val dst = graph2.stateMachines.first { m -> m.name == "child" }.getDefaultState()
 
     val migration = Migration(
             library1 = graph2,

@@ -24,17 +24,18 @@ fun makeJava(): Library {
 
     ConstructorEdge(
             machine = request,
-            src = request.getInitState(),
+            src = request.getDefaultState(),
             dst = hasURL,
-                    param = Param(
+                    param = listOf(Param(
                             machine = url
+                    )
                     )
     )
 
     makeLinkedEdge(
             machine = request,
             src = hasURL,
-            dst = connection.getInitState(),
+            dst = connection.getDefaultState(),
                     methodName = "openConnection"
     )
 
@@ -42,7 +43,7 @@ fun makeJava(): Library {
 
 //    makeLinkedEdge(
 //            machine = connection,
-//            dst = inputStream.getInitState(),
+//            dst = inputStream.getDefaultState(),
 //            action = CallAction(
 //                    methodName = "getInputStream",
 //                    param = null
@@ -53,7 +54,7 @@ fun makeJava(): Library {
 
     makeLinkedEdge(
             machine = connection,
-            dst = body.getInitState(),
+            dst = body.getDefaultState(),
                     methodName = "readerToString",
                     param = listOf(Param(
                             machine = connection
@@ -63,7 +64,7 @@ fun makeJava(): Library {
 
     LinkedEdge(
             machine = connection,
-            dst = inputStream.getInitState(),
+            dst = inputStream.getDefaultState(),
             edge = CallEdge(
                     machine = connection,
                     methodName = "getInputStream"
@@ -72,7 +73,7 @@ fun makeJava(): Library {
 
     LinkedEdge(
             machine = connection,
-            dst = contentLength.getInitState(),
+            dst = contentLength.getDefaultState(),
             edge = CallEdge(
                     machine = connection,
                     methodName = "getContentLengthLong"
@@ -114,10 +115,11 @@ fun makeApache(): Library {
 
     ConstructorEdge(
             machine = request,
-            src = request.getInitState(),
+            src = request.getDefaultState(),
             dst = hasURL,
-                    param = Param(
+                    param = listOf(Param(
                             machine = url
+                    )
                     )
     )
 
@@ -134,7 +136,7 @@ fun makeApache(): Library {
 
     val execute = makeLinkedEdge(
             machine = client,
-            dst = connection.getInitState(),
+            dst = connection.getDefaultState(),
                     methodName = "execute",
                     param = listOf(Param(
                             machine = request,
@@ -155,13 +157,13 @@ fun makeApache(): Library {
 
     LinkedEdge(
             machine = main,
-            dst = body.getInitState(),
+            dst = body.getDefaultState(),
             edge = toStringTemplate
     )
 
     LinkedEdge(
             machine = connection,
-            dst = inputStream.getInitState(),
+            dst = inputStream.getDefaultState(),
             edge = TemplateEdge(
                     machine = connection,
                     template = "{{ httpResponse }}.getEntity().getContent()",
@@ -171,7 +173,7 @@ fun makeApache(): Library {
 
     LinkedEdge(
             machine = connection,
-            dst = contentLength.getInitState(),
+            dst = contentLength.getDefaultState(),
             edge = TemplateEdge(
                     machine = connection,
                     template = "{{ httpResponse }}.getEntity().getContentLength()",

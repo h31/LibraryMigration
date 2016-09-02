@@ -31,17 +31,18 @@ data class StateMachine(val entity: Entity,
     val edges: MutableSet<Edge> = mutableSetOf()
 
     init {
-        states += makeInitState(this)
+//        states += makeInitState(this)
         states += makeConstructedState(this)
-        edges += AutoEdge(
-                machine = this,
-                src = getInitState(),
-                dst = getConstructedState()
-        )
+//        edges += AutoEdge(
+//                machine = this,
+//                src = getInitState(),
+//                dst = getConstructedState()
+//        )
     }
 
-    fun getInitState() = states.first { state -> state.name == "Init" }
+//    fun getInitState() = states.first { state -> state.name == "Init" }
     fun getConstructedState() = states.first { state -> state.name == "Constructed" }
+    fun getDefaultState() = getConstructedState()
 
     fun getDisplayedEdges() = edges.filterNot { edge -> edge is LinkedEdge }
 
@@ -79,7 +80,7 @@ data class State(val name: String,
     fun isInit() = name == "Init"
 }
 
-fun makeInitState(machine: StateMachine) = State("Init", machine)
+//fun makeInitState(machine: StateMachine) = State("Init", machine)
 fun makeConstructedState(machine: StateMachine) = State("Constructed", machine)
 
 interface Edge : Labelable {
@@ -97,6 +98,7 @@ interface Edge : Labelable {
     }
 
     fun getSubsequentAutoEdges() = dst.machine.edges.filter { edge -> edge is AutoEdge && edge.src == dst}
+    fun getStyle(): String
 }
 
 interface ExpressionEdge : Edge {
@@ -111,6 +113,8 @@ data class CallEdge(override val machine: StateMachine,
                     val methodName: String,
                     val param: List<Param> = listOf(),
                     override val isStatic: Boolean = false) : ExpressionEdge {
+    override fun getStyle() = "bold"
+
     override var linkedEdge: LinkedEdge? = null
     val usageEdges: MutableSet<UsageEdge> = mutableSetOf()
 
@@ -125,6 +129,8 @@ data class CallEdge(override val machine: StateMachine,
 data class AutoEdge(override val machine: StateMachine,
                     override val src: State = makeConstructedState(machine),
                     override val dst: State = src) : Edge {
+    override fun getStyle() = "solid"
+
     init { machine.edges += this }
 
     override fun label(library: Library) = ""
@@ -134,15 +140,21 @@ data class ConstructorEdge(override val machine: StateMachine,
                            override val src: State = makeConstructedState(machine),
                            override val dst: State = src,
 
-                           val param: Param?) : Edge {
+                           val param: List<Param> = listOf()) : ExpressionEdge {
+    override fun getStyle() = "bold"
+
     var constructedMachine: StateMachine? = null
+    override var linkedEdge: LinkedEdge? = null
+    val usageEdges: MutableSet<UsageEdge> = mutableSetOf()
+    override val isStatic: Boolean = true
 
     init {
         machine.edges += this
         constructedMachine = dst.machine
+        usageEdges += createUsageEdges(param, dst)
     }
 
-    override fun label(library: Library) = "new %s(%s)".format(constructedMachine?.label(library) ?: "Unknown", param?.label(library) ?: "")
+    override fun label(library: Library) = "new %s(%s)".format(constructedMachine?.label(library), param.map { it.label(library) }.joinToString())
 }
 
 data class LinkedEdge(override val machine: StateMachine,
@@ -150,6 +162,8 @@ data class LinkedEdge(override val machine: StateMachine,
                       override val dst: State = src,
 
                       val edge: ExpressionEdge) : Edge {
+    override fun getStyle() = "dotted"
+
     init {
         machine.edges += this
 
@@ -168,6 +182,8 @@ data class MakeArrayEdge(override val machine: StateMachine,
 
                          val getSize: CallEdge,
                            val getItem: CallEdge) : Edge {
+    override fun getStyle() = "solid"
+
     init { machine.edges += this }
 
     override fun label(library: Library) = "Array of %s with size %s".format(getItem.label(library), getSize.label(library))
@@ -180,6 +196,8 @@ data class TemplateEdge(override val machine: StateMachine,
                         val template: String,
                         val params: Map<String, State>,
                         override val isStatic: Boolean = false) : ExpressionEdge {
+    override fun getStyle() = "solid"
+
     override var linkedEdge: LinkedEdge? = null
     val usageEdges: MutableSet<UsageEdge> = mutableSetOf()
 
@@ -195,7 +213,7 @@ data class TemplateEdge(override val machine: StateMachine,
         }
     }
 
-    override fun label(library: Library) = "Template with " + params.map { param -> param.value.stateAndMachineName() }.joinToString()
+    override fun label(library: Library) = "Template"
 }
 
 data class UsageEdge(override val machine: StateMachine,
@@ -203,6 +221,8 @@ data class UsageEdge(override val machine: StateMachine,
                      override val dst: State = src,
 
                      val edge: Edge) : Edge {
+    override fun getStyle() = "dashed"
+
     init { machine.edges += this }
 
     override fun label(library: Library) = "Usage in " + edge.label(library)
