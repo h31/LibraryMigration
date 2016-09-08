@@ -17,7 +17,7 @@ import java.io.StringReader
  * Created by artyom on 16.06.16.
  */
 
-fun toDOT(library: Library, visited: Map<Edge, Boolean> = mapOf()): String {
+fun toDOT(library: Library, visited: List<Edge> = listOf()): String {
     val edges = mutableListOf<Map<String, Any>>()
     val virtuals = library.stateMachines.map { it -> it to mutableListOf<Int>() }.toMap()
     val displayerMachines = library.stateMachines.filter { it -> it.inherits == null }

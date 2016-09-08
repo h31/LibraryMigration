@@ -100,7 +100,7 @@ class Migration(val library1: Library,
                 println(edge.label(library1))
             }
             println("---")
-            graphvizRender(toDOT(library1, usedEdges.map { edge -> edge to true }.toMap()), "extracted_" + functionName)
+            graphvizRender(toDOT(library1, usedEdges), "extracted_" + functionName)
         }
     }
 
@@ -292,7 +292,16 @@ class Migration(val library1: Library,
 
     private fun findRoute(graph: DirectedPseudograph<State, Edge>, src: State, dst: State): List<Edge> {
         println("  Searching route from %s to %s".format(src.stateAndMachineName(), dst.stateAndMachineName()))
-        return DijkstraShortestPath.findPathBetween(graph, src, dst)
+        val edges = library2.stateMachines.flatMap { machine -> machine.edges }.toSet()
+        val pathFinder = PathFinder(edges)
+        val path1 = DijkstraShortestPath.findPathBetween(graph, src, dst)
+        val path2 = pathFinder.findPath(src, dst)
+        if (path1 != path2) {
+            graphvizRender(toDOT(library1, path1), "path1")
+            graphvizRender(toDOT(library1, path2), "path2")
+            error("Paths are not equal")
+        }
+        return path2
     }
 
     private fun getUsages(methodName: String) =
