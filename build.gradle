@@ -2,10 +2,10 @@ apply plugin: 'java'
 apply plugin: 'idea'
 apply plugin: "kotlin"
 
-version = '1.0.3'
+version = '1.0.4'
 
 buildscript {
-   ext.kotlin_version = "1.0.3"
+   ext.kotlin_version = "1.0.4"
 
    repositories {
      mavenCentral()
@@ -28,6 +28,8 @@ dependencies {
     compile 'com.samskivert:jmustache:1.12'
     compile 'com.github.javaparser:javaparser-core:2.4.0'
     compile 'ch.qos.logback:logback-classic:1.1.7'
+    compile files('soot-trunk.jar')
+    compile files('sootjavadoc-trunk.jar')
 }
 
 idea {

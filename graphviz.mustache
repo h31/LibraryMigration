@@ -12,7 +12,7 @@ digraph G {
 {{/machines}}
 {{#edges}}
     {{#linkedEdge}}
-        {{src}} -> virtual{{counter}} [ label="{{edge}}" {{#visited}}, color = red{{/visited}} ];
+        {{src}} -> virtual{{counter}} [ style = "{{style}}" label="{{edge}}" {{#visited}}, color = red{{/visited}} ];
         virtual{{counter}} -> {{dst}} [ style = "{{style}}" {{#visited}}, color = red{{/visited}} ];
         virtual{{counter}} -> {{machine}} [ label="{{linkedEdge}}" {{#linkedVisited}}, color = red{{/linkedVisited}} ];
     {{/linkedEdge}}
