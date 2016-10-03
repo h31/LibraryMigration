@@ -22,6 +22,7 @@ import sun.misc.ExtensionDependency
 import java.io.File
 import java.io.FileInputStream
 import java.io.FileWriter
+import java.io.IOException
 import java.nio.charset.Charset
 import java.nio.file.Files
 import java.nio.file.Path
@@ -131,7 +132,7 @@ fun migrateHTTP() {
 
     val migratedCode = cu.toString()
     println(migratedCode);
-    checkMigrationCorrectness(source, originalCode, migratedCode)
+    checkMigrationCorrectness(source, Paths.get("HTTP/"), migratedCode)
 //    val mainClass = CompilerUtils.CACHED_COMPILER.loadFromJava("Main", migratedCode)
 //    val javaMethod = mainClass.getMethod("java")
 //    val result = javaMethod.invoke(null)
@@ -479,32 +480,36 @@ class MethodOrConstructorDeclaration(val node: BodyDeclaration) {
 data class ClassDiff(val name: String,
                      val methodsChanged: Map<MethodDeclaration, MethodDiff>)
 
-fun checkMigrationCorrectness(path: Path, originalCode: String, migratedCode: String) {
+fun checkMigrationCorrectness(migratedFile: Path, projectDir: Path, migratedCode: String) {
     val rt = Runtime.getRuntime();
     val command = "./gradlew -q run"
+    val testDir = projectDir.resolveSibling(projectDir.fileName.toString() + "_test")
+    val relativePath = projectDir.relativize(migratedFile)
+    Files.deleteIfExists(testDir)
 
     println("Running original code")
 
-    val process1 = rt.exec(command, null, File("HTTP/"))
+    val process1 = rt.exec(command, null, projectDir.toFile())
     val originalOutput = process1.inputStream.readBytes().toString(Charset.defaultCharset())
 
-    Files.write(path, migratedCode.toByteArray())
+    Files.walk(projectDir).forEach { path ->
+            Files.copy(path, testDir.resolve(projectDir.relativize(path)))
+    }
+
+    Files.write(testDir.resolve(relativePath), migratedCode.toByteArray())
 
     println("Running migrated code")
 
-    val build = rt.exec("./gradlew --console rich build", null, File("HTTP/"))
+    val build = rt.exec("./gradlew --console rich build", null, testDir.toFile())
     build.waitFor()
     if (build.exitValue() != 0) {
         println("Compilation failed!")
         println(build.inputStream.readBytes().toString(Charset.defaultCharset()))
-        Files.write(path, originalCode.toByteArray())
         return
     }
 
-    val process2 = rt.exec(command, null, File("HTTP/"))
+    val process2 = rt.exec(command, null, testDir.toFile())
     val migratedOutput = process2.inputStream.readBytes().toString(Charset.defaultCharset())
-
-    Files.write(path, originalCode.toByteArray())
 
     if (originalOutput == migratedOutput) {
         println("Migration OK")
