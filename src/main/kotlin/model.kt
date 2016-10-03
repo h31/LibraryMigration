@@ -54,7 +54,7 @@ data class StateMachine(val entity: Entity,
         return copy
     }
 
-    fun type(library: Library) = library.machineTypes[this]
+    fun type(library: Library) = library.machineTypes[this] ?: error("No such type")
 }
 
 data class State(val name: String,

@@ -1,3 +1,6 @@
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties
+import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.module.kotlin.KotlinModule
 import com.github.javaparser.ASTHelper
 import com.github.javaparser.ast.Node
 import com.github.javaparser.ast.body.VariableDeclarator
@@ -7,7 +10,9 @@ import com.github.javaparser.ast.stmt.ExpressionStmt
 import com.github.javaparser.ast.stmt.Statement
 import com.github.javaparser.ast.type.ClassOrInterfaceType
 import org.jgrapht.alg.DijkstraShortestPath
+import com.fasterxml.jackson.module.kotlin.*
 import org.jgrapht.graph.DirectedPseudograph
+import java.io.File
 
 /**
  * Created by artyom on 22.08.16.
@@ -22,7 +27,8 @@ class Migration(val library1: Library,
                 val codeElements: CodeElements,
                 val graph1: DirectedPseudograph<State, Edge> = toJGrapht(library1),
                 val graph2: DirectedPseudograph<State, Edge> = toJGrapht(library2),
-                val functionName: String) {
+                val functionName: String,
+                val traceFile: File) {
     val dependencies: MutableMap<StateMachine, Expression> = mutableMapOf()
     // val pendingStmts = mutableListOf<Statement>()
     var nameGeneratorCounter = 0
@@ -38,30 +44,28 @@ class Migration(val library1: Library,
 
     fun doMigration() {
         println("Migrate " + functionName)
-        extractRoutes()
+        val (path, nodeMap) = extractRouteFromJSON(traceFile)
 
-        val edges = library1.stateMachines.flatMap { it -> it.edges }
-        for (edge in edges) {
+//        val edges = library1.stateMachines.flatMap { it -> it.edges }
+        for (edge in path) {
             println("Processing " + edge.label(library1) + "... ")
             if (edge.src == edge.dst) {
                 println("  Makes a loop, skipping")
                 continue
             }
             when (edge) {
-                is AutoEdge -> println("  Has an auto action, skipping")
+                is AutoEdge -> println("  Has an auto action, skipping") // TODO: Should be error
                 is CallEdge -> {
                     println("  Has a call action")
-                    if (getUsages(edge.methodName).isNotEmpty()) {
-                        val route = findRoute(graph2, edge.src, edge.dst)
-                        migrateMethodCall(edge, route)
-                    }
+                    val route = findRoute(graph2, edge.src, edge.dst)
+                    migrateMethodCall(edge, route, nodeMap[edge] as MethodCallExpr)
                 }
                 is LinkedEdge -> {
                     println("  Has a linked action")
                     val dependency = edge.edge
-                    if (dependency is CallEdge && getUsages(dependency.methodName).isNotEmpty()) {
+                    if (dependency is CallEdge) {
                         val route = findRoute(graph2, edge.src, edge.dst)
-                        migrateMethodCall(dependency, route)
+                        migrateMethodCall(dependency, route, nodeMap[dependency] as MethodCallExpr)
                     }
                 }
             }
@@ -104,18 +108,79 @@ class Migration(val library1: Library,
         }
     }
 
-    private fun migrateMethodCall(edge: CallEdge, route: List<Edge>) {
-        val usages = getUsages(edge.methodName)
-        if (usages.isNotEmpty()) {
-            println("  Has %d usage(s)!".format(usages.size))
+    @JsonIgnoreProperties("node")
+    data class Invocation(
+            var name: String,
+            var filename: String,
+            var line: Int = 0,
+            var type: String,
+            var callerName: String,
+            var kind: String) {
+        fun simpleType() = type.substring(type.lastIndexOf('.') + 1)
+    }
+
+    private fun extractRouteFromJSON(file: File): Pair<List<Edge>, Map<Edge, Node>> {
+        val invocations = ObjectMapper().registerKotlinModule().readValue<List<Invocation>>(file)
+
+        val usedEdges: MutableList<Edge> = mutableListOf()
+        val edges = library1.stateMachines.flatMap { machine -> machine.edges }
+        val nodeMap = mutableMapOf<Edge, Node>()
+        for (invocation in invocations) {
+            if (invocation.kind == "method-call") {
+                val callEdge = edges.firstOrNull { edge ->
+                    edge is CallEdge &&
+                            edge.methodName == invocation.name &&
+                            invocation.simpleType() == edge.machine.type(library1)
+                } as CallEdge?
+                if (callEdge == null) {
+                    println("Cannot find edge for $invocation")
+                    continue
+                }
+                usedEdges += callEdge
+                val methodCall = codeElements.methodCalls.first { call -> call.name == invocation.name && call.beginLine == invocation.line }
+                nodeMap[callEdge] = methodCall
+                if (methodCall.parentNode is ExpressionStmt == false) {
+                    val linkedEdge = callEdge.linkedEdge
+                    if (linkedEdge != null) {
+                        usedEdges += linkedEdge
+                        usedEdges += linkedEdge.getSubsequentAutoEdges()
+                    } else {
+                        error("Missing linked node")
+                    }
+                }
+                usedEdges += callEdge.usageEdges
+            } else if (invocation.kind == "constructor-call") {
+                val constructorEdge = edges.firstOrNull { edge -> edge is ConstructorEdge && invocation.simpleType() == edge.machine.type(library1) } as ConstructorEdge?
+                if (constructorEdge == null) {
+                    println("Cannot find edge for $invocation")
+                    continue
+                }
+                val constructorCall = codeElements.objectCreation.firstOrNull { objectCreation -> (objectCreation.type.toString() == invocation.simpleType()) && (objectCreation.beginLine == invocation.line) }
+                if (constructorCall == null) {
+                    error("Cannot find node for $invocation")
+                }
+                nodeMap[constructorEdge] = constructorCall
+                usedEdges += constructorEdge
+                usedEdges += constructorEdge.usageEdges
+            }
         }
-        for (usage in usages) {
+        if (usedEdges.isNotEmpty()) {
+            println("--- Used edges:")
+            for (edge in usedEdges) {
+                println(edge.label(library1))
+            }
+            println("---")
+            graphvizRender(toDOT(library1, usedEdges), "extracted_" + functionName)
+        }
+        return Pair(usedEdges, nodeMap)
+    }
+
+    private fun migrateMethodCall(edge: CallEdge, route: List<Edge>, usage: MethodCallExpr) {
             val oldVarName = getVariableNameFromExpression(usage)
             dependencies.putAll(extractDependenciesFromMethod(edge, usage))
             // makeDependenciesFromEdge(edge)
             val pendingStmts = applySteps(route, oldVarName)
             replaceMethodCall(usage, pendingStmts, oldVarName)
-        }
     }
 
     private fun applySteps(steps: List<Edge>, oldVarName: String?): List<PendingStatement> {

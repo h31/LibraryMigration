@@ -1,5 +1,6 @@
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
+import org.aspectj.lang.Signature;
 
 import java.io.File;
 import java.io.IOException;
@@ -22,7 +23,9 @@ public aspect MainAspect {
                 thisJoinPoint.getSignature().getName(),
                 thisJoinPoint.getSourceLocation().getFileName(),
                 thisJoinPoint.getSourceLocation().getLine(),
-                thisJoinPoint.getSignature().getDeclaringTypeName()));
+                thisJoinPoint.getSignature().getDeclaringTypeName(),
+                thisEnclosingJoinPointStaticPart.getSignature().getName(),
+                thisJoinPoint.getKind()));
     }
 
     after() : theEnd() {
@@ -41,12 +44,16 @@ public aspect MainAspect {
         public String filename;
         public int line;
         public String type;
+        public String callerName;
+        public String kind;
 
-        Invocation(String name, String filename, int line, String type) {
+        Invocation(String name, String filename, int line, String type, String callerName, String kind) {
             this.name = name;
             this.filename = filename;
             this.line = line;
             this.type = type;
+            this.callerName = callerName;
+            this.kind = kind;
         }
     }
 

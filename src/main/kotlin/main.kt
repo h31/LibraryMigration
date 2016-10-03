@@ -147,13 +147,14 @@ fun graphNode1ToNode2(graph1: Library, graph2: Library, codeElements: CodeElemen
             library1 = graph2,
             library2 = graph1,
             codeElements = codeElements,
-            functionName = "abc")
+            functionName = "abc",
+            traceFile = File("HTTP/log.json"))
 
     migration.makeRoute(src, dst)
 
     migration.doMigration()
 
-    fixEntityTypes(codeElements, graph1, graph2)
+    fixEntityTypes(codeElements, graph1, graph2, 0, 100)
 }
 
 fun graphNode2ToNode1(graph1: Library, graph2: Library, codeElements: CodeElements) {
@@ -169,12 +170,13 @@ fun graphNode2ToNode1(graph1: Library, graph2: Library, codeElements: CodeElemen
                 library1 = graph1,
                 library2 = graph2,
                 codeElements = methodLocalCodeElements,
-                functionName = "abc")
+                functionName = "abc",
+                traceFile = File("HTTP/log.json"))
 
         migration.doMigration()
     }
 
-    fixEntityTypes(codeElements, graph2, graph1)
+    fixEntityTypes(codeElements, graph2, graph1, 0, 100)
 }
 
 fun javaToApache(java: Library, apache: Library, codeElements: CodeElements) {
@@ -184,19 +186,19 @@ fun javaToApache(java: Library, apache: Library, codeElements: CodeElements) {
 //    migration.makeRoute(src, dst)
 
     for (methodDecl in codeElements.methodDecls) {
-        if (methodDecl.name().startsWith("java") == false) continue
+        if ((methodDecl.name() == "java") == false) continue
         val methodLocalCodeElements = methodDecl.getCodeElements()
 
         val migration = Migration(
                 library1 = java,
                 library2 = apache,
                 codeElements = methodLocalCodeElements,
-                functionName = methodDecl.name())
+                functionName = methodDecl.name(),
+                traceFile = File("HTTP/log.json"))
 
         migration.doMigration()
+        fixEntityTypes(codeElements, java, apache, methodDecl.get().beginLine, methodDecl.get().endLine)
     }
-
-    fixEntityTypes(codeElements, java, apache)
 }
 
 fun findActionsInCode(srcLibrary: Library, codeElements: CodeElements) {
@@ -286,18 +288,20 @@ var listNameCounter = 0;
 ////    }
 //}
 
-private fun fixEntityTypes(codeElements: CodeElements, graph1: Library, graph2: Library) {
+private fun fixEntityTypes(codeElements: CodeElements, graph1: Library, graph2: Library, beginLine: Int, endLine: Int) {
     for (type in graph1.machineTypes) {
-        val declarations = codeElements.variableDeclarations.filter { it -> it.type.toString() == type.value }
+        val declarations = codeElements.variableDeclarations.filter { it -> it.type.toString() == type.value && checkNodePosition(it, beginLine, endLine) }
         for (decl in declarations) {
             decl.type = ClassOrInterfaceType(graph2.machineTypes.get(type.key))
         }
-        val objectCreations = codeElements.objectCreation.filter { it -> it.type.toString() == type.value }
+        val objectCreations = codeElements.objectCreation.filter { it -> it.type.toString() == type.value  && checkNodePosition(it, beginLine, endLine) }
         for (obj in objectCreations) {
             obj.type = ClassOrInterfaceType(graph2.machineTypes.get(type.key))
         }
     }
 }
+
+private fun checkNodePosition(node: Node, beginLine: Int, endLine: Int) = node.beginLine >= beginLine && node.endLine <= endLine
 
 //fun doMigration(srcLib: Library, dstLib: Library) {
 //    assert(srcLib.stateMachines.size == dstLib.stateMachines.size)
