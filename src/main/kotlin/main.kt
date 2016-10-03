@@ -485,7 +485,7 @@ fun checkMigrationCorrectness(migratedFile: Path, projectDir: Path, migratedCode
     val command = "./gradlew -q run"
     val testDir = projectDir.resolveSibling(projectDir.fileName.toString() + "_test")
     val relativePath = projectDir.relativize(migratedFile)
-    Files.deleteIfExists(testDir)
+    testDir.toFile().walk(FileWalkDirection.BOTTOM_UP).forEach { file -> file.delete() }
 
     println("Running original code")
 
