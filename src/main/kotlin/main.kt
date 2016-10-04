@@ -1,4 +1,3 @@
-import com.github.javaparser.ASTHelper
 import com.github.javaparser.JavaParser
 import com.github.javaparser.ast.CompilationUnit
 import com.github.javaparser.ast.ImportDeclaration
@@ -7,22 +6,10 @@ import com.github.javaparser.ast.body.*
 import com.github.javaparser.ast.expr.*
 import com.github.javaparser.ast.stmt.BlockStmt
 import com.github.javaparser.ast.stmt.ExpressionStmt
-import com.github.javaparser.ast.stmt.ForStmt
-import com.github.javaparser.ast.stmt.Statement
 import com.github.javaparser.ast.type.ClassOrInterfaceType
-import com.github.javaparser.ast.type.PrimitiveType
-import com.github.javaparser.ast.type.ReferenceType
 import com.github.javaparser.ast.visitor.VoidVisitorAdapter
-import org.jgrapht.alg.DijkstraShortestPath
-import org.jgrapht.ext.DOTExporter
-import org.jgrapht.ext.EdgeNameProvider
-import org.jgrapht.ext.VertexNameProvider
-import org.jgrapht.graph.*
-import sun.misc.ExtensionDependency
 import java.io.File
 import java.io.FileInputStream
-import java.io.FileWriter
-import java.io.IOException
 import java.nio.charset.Charset
 import java.nio.file.Files
 import java.nio.file.Path
@@ -33,159 +20,31 @@ import java.nio.file.Paths
  */
 
 fun main(args: Array<String>) {
-//    migrateGraphs()
-    migrateHTTP()
-//    // val source = Paths.get("../spark1/src/main/java/Main.java");
-//    val source = Paths.get("Graphs/src/Main.java")
-//    val destination = source // source.resolveSibling(source.fileName.toString().replace(".java", "-migrated.java"))
-//    // val destination = Paths.get("../spark2/src/main/java/Main.java");
-//
-////    val lib_src = Paths.get("src.java")
-////    val lib_dst = Paths.get("dst.java")
-//
-//    val cu = readLib(source)
-//
-////    val srcLib = readLib(lib_src)
-////    val dstLib = readLib(lib_dst)
-//
-//    val codeElements = CodeElements();
-//    CodeElementsVisitor().visit(cu, codeElements);
-//
-//    parseImports(cu.imports)
-//
-////    val srcElements = CodeElements();
-////    CodeElementsVisitor().visit(srcLib, srcElements);
-////
-////    val dstElements = CodeElements();
-////    CodeElementsVisitor().visit(dstLib, dstElements);
-//
-////    val path = Entity("path", "String")
-////    val route = Entity("route", "Route")
-////    val filter = Entity("filter", "Filter")
-////    val server = Entity("server", "static")
-////    val acceptType = Entity("acceptType", "String")
-////    val transformer = Entity("transformer", "JsonTransformer")
-////    val entityMap = listOf(path, route, filter, server, acceptType, transformer).map { it -> it.name to it }.toMap()
-//
-////    val spark1 = makeSpark1(entityMap)
-////    val spark2 = makeSpark2(entityMap)
-//
-////    makeGraph(spark1, Paths.get("graph1.dot"))
-////    makeGraph(spark2, Paths.get("graph2.dot"))
-//
-//    val graph1 = makeGraph1()
-//    val graph2 = makeGraph2()
-////    makeGraph(graph1, Paths.get("graph1.dot"), true)
-////    makeGraph(graph2, Paths.get("graph2.dot"), false)
-//
-//    graphvizRender(toDOT(graph1), "graph1")
-//    graphvizRender(toDOT(graph2), "graph2")
-//
-//    graphNode2ToNode1(graph1, graph2, codeElements)
-//
-////    println(cu);
-//    Files.write(destination, cu.toString().toByteArray());
+    migrateHTTP(projectPath = Paths.get("HTTP/"))
 }
 
-fun migrateGraphs() {
-    val source = Paths.get("Graphs/src/Main.java")
-    val destination = source // source.resolveSibling(source.fileName.toString().replace(".java", "-migrated.java"))
+fun migrateHTTP(projectPath: Path) {
+    val source = findJavaCode(projectPath)
 
     val cu = readLib(source)
 
     val codeElements = CodeElements();
     CodeElementsVisitor().visit(cu, codeElements);
-
-    parseImports(cu.imports)
-
-    val graph1 = makeGraph1()
-    val graph2 = makeGraph2()
-
-    graphvizRender(toDOT(graph1), "graph1")
-    graphvizRender(toDOT(graph2), "graph2")
-
-    graphNode2ToNode1(graph1, graph2, codeElements)
-
-    println(cu);
-//    Files.write(destination, cu.toString().toByteArray());
-}
-
-fun migrateHTTP() {
-    val source = Paths.get("HTTP/src/main/java/Main.java")
-    val destination = source
-
-    val cu = readLib(source)
-    val originalCode = Files.readAllBytes(source).toString(Charset.defaultCharset())
-
-    val codeElements = CodeElements();
-    CodeElementsVisitor().visit(cu, codeElements);
-
-    parseImports(cu.imports)
 
     val java = makeJava()
     val apache = makeApache()
 
-    graphvizRender(toDOT(java), "java")
-    graphvizRender(toDOT(apache), "apache")
+    graphvizRender(toDOT(java), java.name)
+    graphvizRender(toDOT(apache), apache.name)
 
     javaToApache(java, apache, codeElements)
 
     val migratedCode = cu.toString()
     println(migratedCode);
-    checkMigrationCorrectness(source, Paths.get("HTTP/"), migratedCode)
-//    val mainClass = CompilerUtils.CACHED_COMPILER.loadFromJava("Main", migratedCode)
-//    val javaMethod = mainClass.getMethod("java")
-//    val result = javaMethod.invoke(null)
-//    System.out.println(result)
-//    Files.write(destination, cu.toString().toByteArray());
-}
-
-fun graphNode1ToNode2(graph1: Library, graph2: Library, codeElements: CodeElements) {
-    val src = graph2.stateMachines.first { m -> m.name == "Node" }.getConstructedState()
-    val dst = graph2.stateMachines.first { m -> m.name == "child" }.getDefaultState()
-
-    val migration = Migration(
-            library1 = graph2,
-            library2 = graph1,
-            codeElements = codeElements,
-            functionName = "abc",
-            traceFile = File("HTTP/log.json"))
-
-    migration.makeRoute(src, dst)
-
-    migration.doMigration()
-
-    fixEntityTypes(codeElements, graph1, graph2, 0, 100)
-}
-
-fun graphNode2ToNode1(graph1: Library, graph2: Library, codeElements: CodeElements) {
-//    val src = graph1.stateMachines.first { m -> m.name == "Node" }.getConstructedState()
-//    val dst = graph1.stateMachines.first { m -> m.name == "NodeList" }.getInitState()
-
-//    migration.makeRoute(src, dst)
-
-    for (methodDecl in codeElements.methodDecls) {
-        val methodLocalCodeElements = methodDecl.getCodeElements()
-
-        val migration = Migration(
-                library1 = graph1,
-                library2 = graph2,
-                codeElements = methodLocalCodeElements,
-                functionName = "abc",
-                traceFile = File("HTTP/log.json"))
-
-        migration.doMigration()
-    }
-
-    fixEntityTypes(codeElements, graph2, graph1, 0, 100)
+    checkMigrationCorrectness(source.toPath(), projectPath, migratedCode)
 }
 
 fun javaToApache(java: Library, apache: Library, codeElements: CodeElements) {
-//    val src = apache.stateMachines.first { m -> m.name == "URL" }.getConstructedState()
-//    val dst = apache.stateMachines.first { m -> m.name == "Body" }.getInitState()
-
-//    migration.makeRoute(src, dst)
-
     for (methodDecl in codeElements.methodDecls) {
         if ((methodDecl.name() == "java") == false) continue
         val methodLocalCodeElements = methodDecl.getCodeElements()
@@ -208,6 +67,8 @@ fun findActionsInCode(srcLibrary: Library, codeElements: CodeElements) {
         val calls = codeElements.methodCalls
     }
 }
+
+private fun findJavaCode(path: Path) = path.toFile().walk().single { file -> file.endsWith(".java") }
 
 private fun prettyPrinter(string: String): String {
     var intend = 0
@@ -394,8 +255,8 @@ fun isChildOf(parent: Node, child: Node): Boolean {
 //    return users;
 //}
 
-fun readLib(path: Path): CompilationUnit {
-    val fis = FileInputStream(path.toFile())
+fun readLib(file: File): CompilationUnit {
+    val fis = FileInputStream(file)
     return JavaParser.parse(fis);
 }
 

@@ -81,6 +81,7 @@ fun makeJava(): Library {
     )
 
     return Library(
+            name = "java",
             stateMachines = listOf(url, request, connection, body, inputStream, contentLength),
             machineTypes = mapOf(
                     request to "URL",
@@ -182,6 +183,7 @@ fun makeApache(): Library {
     )
 
     return Library(
+            name = "apache",
             stateMachines = listOf(url, request, client, connection, body, httpClients, main, inputStream, contentLength),
             machineTypes = mapOf(
                     request to "HttpGet",

@@ -12,7 +12,8 @@ interface Identifiable {
 
 data class Entity(val name: String)
 
-data class Library(val stateMachines: List<StateMachine>,
+data class Library(val name: String,
+                   val stateMachines: List<StateMachine>,
                    val machineTypes: Map<StateMachine, String>) {
 //    init {
 //        for ((key, value) in entityTypes) {
