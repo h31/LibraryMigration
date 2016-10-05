@@ -47,6 +47,7 @@ class Migration(val library1: Library,
         val (path, nodeMap) = extractRouteFromJSON(traceFile)
 
 //        val edges = library1.stateMachines.flatMap { it -> it.edges }
+        println("Function: $functionName")
         for (edge in path) {
             println("Processing " + edge.label(library1) + "... ")
             if (edge.src == edge.dst) {
@@ -121,11 +122,12 @@ class Migration(val library1: Library,
 
     private fun extractRouteFromJSON(file: File): Pair<List<Edge>, Map<Edge, Node>> {
         val invocations = ObjectMapper().registerKotlinModule().readValue<List<Invocation>>(file)
+        val localInvocations = invocations.filter { inv -> inv.callerName == functionName }
 
         val usedEdges: MutableList<Edge> = mutableListOf()
         val edges = library1.stateMachines.flatMap { machine -> machine.edges }
         val nodeMap = mutableMapOf<Edge, Node>()
-        for (invocation in invocations) {
+        for (invocation in localInvocations) {
             if (invocation.kind == "method-call") {
                 val callEdge = edges.firstOrNull { edge ->
                     edge is CallEdge &&

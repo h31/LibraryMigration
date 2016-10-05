@@ -28,12 +28,12 @@ public class Main {
 
     public static void main(String[] args) throws IOException {
         java();
-//        System.out.println("----------------------------------------");
-//        javaOfficial();
-//        System.out.println("----------------------------------------");
-//        javaIf();
-//        System.out.println("----------------------------------------");
-//        apache();
+        System.out.println("----------------------------------------");
+        javaOfficial();
+        System.out.println("----------------------------------------");
+        javaIf();
+        System.out.println("----------------------------------------");
+        apache();
     }
 
     private static void java() throws IOException {
