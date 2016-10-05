@@ -19,13 +19,19 @@ public aspect MainAspect {
 //                thisJoinPoint.getSignature().getName(),
 //                thisJoinPoint.getSourceLocation().getFileName(),
 //                thisJoinPoint.getSourceLocation().getLine()));
+        List<String> args = new ArrayList<>();
+        for (Object arg: thisJoinPoint.getArgs()) {
+            args.add(defaultToString(arg));
+        }
         invocations.add(new Invocation(
                 thisJoinPoint.getSignature().getName(),
                 thisJoinPoint.getSourceLocation().getFileName(),
                 thisJoinPoint.getSourceLocation().getLine(),
                 thisJoinPoint.getSignature().getDeclaringTypeName(),
                 thisEnclosingJoinPointStaticPart.getSignature().getName(),
-                thisJoinPoint.getKind()));
+                thisJoinPoint.getKind(),
+                args,
+                defaultToString(thisJoinPoint.getTarget())));
     }
 
     after() : theEnd() {
@@ -46,14 +52,27 @@ public aspect MainAspect {
         public String type;
         public String callerName;
         public String kind;
+        public List<String> args;
+        public String id;
 
-        Invocation(String name, String filename, int line, String type, String callerName, String kind) {
+        public Invocation(String name, String filename, int line, String type, String callerName, String kind, List<String> args, String id) {
             this.name = name;
             this.filename = filename;
             this.line = line;
             this.type = type;
             this.callerName = callerName;
             this.kind = kind;
+            this.args = args;
+            this.id = id;
+        }
+    }
+
+    public static String defaultToString(Object o) {
+        if (o == null) {
+            return "null";
+        } else {
+            return o.getClass().getName() + "@" +
+                    Integer.toHexString(System.identityHashCode(o));
         }
     }
 

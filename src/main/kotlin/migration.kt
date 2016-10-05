@@ -116,8 +116,10 @@ class Migration(val library1: Library,
             var line: Int = 0,
             var type: String,
             var callerName: String,
-            var kind: String) {
-        fun simpleType() = type.substring(type.lastIndexOf('.') + 1)
+            var kind: String,
+            var args: List<String>,
+            var id: String) {
+        fun simpleType() = type.substringAfterLast('.')
     }
 
     private fun extractRouteFromJSON(file: File): Pair<List<Edge>, Map<Edge, Node>> {
