@@ -111,14 +111,15 @@ class Migration(val library1: Library,
 
     @JsonIgnoreProperties("node")
     data class Invocation(
-            var name: String,
-            var filename: String,
-            var line: Int = 0,
-            var type: String,
-            var callerName: String,
-            var kind: String,
-            var args: List<String>,
-            var id: String) {
+            val name: String,
+            val filename: String,
+            val line: Int = 0,
+            val type: String,
+            val callerName: String,
+            val kind: String,
+            val args: List<String>,
+            val id: String,
+            val place: String) {
         fun simpleType() = type.substringAfterLast('.')
     }
 

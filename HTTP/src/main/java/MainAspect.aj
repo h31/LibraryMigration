@@ -31,7 +31,8 @@ public aspect MainAspect {
                 thisEnclosingJoinPointStaticPart.getSignature().getName(),
                 thisJoinPoint.getKind(),
                 args,
-                defaultToString(thisJoinPoint.getTarget())));
+                defaultToString(thisJoinPoint.getTarget()),
+                "before"));
     }
 
     after() : theEnd() {
@@ -54,8 +55,9 @@ public aspect MainAspect {
         public String kind;
         public List<String> args;
         public String id;
+        public String place;
 
-        public Invocation(String name, String filename, int line, String type, String callerName, String kind, List<String> args, String id) {
+        public Invocation(String name, String filename, int line, String type, String callerName, String kind, List<String> args, String id, String place) {
             this.name = name;
             this.filename = filename;
             this.line = line;
@@ -64,6 +66,7 @@ public aspect MainAspect {
             this.kind = kind;
             this.args = args;
             this.id = id;
+            this.place = place;
         }
     }
 

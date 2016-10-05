@@ -90,7 +90,7 @@ interface Edge : Labelable {
     val machine: StateMachine
     val src: State
     val dst: State
-    val sideEffect: SideEffect?
+    val action: Action?
 
     fun createUsageEdges(params: List<Param>, dst: State) = params.map { param ->
         UsageEdge(
@@ -113,7 +113,7 @@ interface ExpressionEdge : Edge {
 data class CallEdge(override val machine: StateMachine,
                     override val src: State = makeConstructedState(machine),
                     override val dst: State = src,
-                    override val sideEffect: SideEffect? = null,
+                    override val action: Action? = null,
 
                     val methodName: String,
                     val param: List<Param> = listOf(),
@@ -134,7 +134,7 @@ data class CallEdge(override val machine: StateMachine,
 data class AutoEdge(override val machine: StateMachine,
                     override val src: State = makeConstructedState(machine),
                     override val dst: State = src,
-                    override val sideEffect: SideEffect? = null) : Edge {
+                    override val action: Action? = null) : Edge {
     override fun getStyle() = "solid"
 
     init {
@@ -147,7 +147,7 @@ data class AutoEdge(override val machine: StateMachine,
 data class ConstructorEdge(override val machine: StateMachine,
                            override val src: State = makeConstructedState(machine),
                            override val dst: State = src,
-                           override val sideEffect: SideEffect? = null,
+                           override val action: Action? = null,
 
                            val param: List<Param> = listOf()) : ExpressionEdge {
     override fun getStyle() = "bold"
@@ -169,7 +169,7 @@ data class ConstructorEdge(override val machine: StateMachine,
 data class LinkedEdge(override val machine: StateMachine,
                       override val src: State = makeConstructedState(machine),
                       override val dst: State = src,
-                      override val sideEffect: SideEffect? = null,
+                      override val action: Action? = null,
 
                       val edge: ExpressionEdge) : Edge {
     override fun getStyle() = "dotted"
@@ -189,7 +189,7 @@ data class LinkedEdge(override val machine: StateMachine,
 data class MakeArrayEdge(override val machine: StateMachine,
                          override val src: State = makeConstructedState(machine),
                          override val dst: State = src,
-                         override val sideEffect: SideEffect? = null,
+                         override val action: Action? = null,
 
                          val getSize: CallEdge,
                          val getItem: CallEdge) : Edge {
@@ -205,7 +205,7 @@ data class MakeArrayEdge(override val machine: StateMachine,
 data class TemplateEdge(override val machine: StateMachine,
                         override val src: State = makeConstructedState(machine),
                         override val dst: State = src,
-                        override val sideEffect: SideEffect? = null,
+                        override val action: Action? = null,
 
                         val template: String,
                         val params: Map<String, State>,
@@ -233,7 +233,7 @@ data class TemplateEdge(override val machine: StateMachine,
 data class UsageEdge(override val machine: StateMachine,
                      override val src: State = makeConstructedState(machine),
                      override val dst: State = src,
-                     override val sideEffect: SideEffect? = null,
+                     override val action: Action? = null,
 
                      val edge: Edge) : Edge {
     override fun getStyle() = "dashed"
@@ -276,5 +276,5 @@ data class Param(val machine: StateMachine,
     override fun label(library: Library) = machine.label(library)
 }
 
-data class SideEffect(val name: String,
-                      val feature: String)
+data class Action(val name: String,
+                  val feature: String)
