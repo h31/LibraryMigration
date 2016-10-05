@@ -66,6 +66,7 @@ fun makeGraph1(): Library {
 //    )
 
     return Library(
+            name = "graph1",
             stateMachines = listOf(node, nodeList, parent, child),
             machineTypes = mapOf(
                     node to "Node1",
@@ -121,6 +122,7 @@ fun makeGraph2(): Library {
     )
 
     return Library(
+            name = "graph2",
             stateMachines = listOf(node, nodeList, parent, child),
             machineTypes = mapOf(
                     node to "Node2",

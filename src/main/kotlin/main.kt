@@ -61,7 +61,7 @@ fun javaToApache(java: Library, apache: Library, codeElements: CodeElements) {
     }
 }
 
-private fun findJavaCode(path: Path) = path.toFile().walk().single { file -> file.endsWith(".java") }
+private fun findJavaCode(path: Path) = path.toFile().walk().single { file -> file.extension == "java" }
 
 private fun prettyPrinter(string: String): String {
     var intend = 0
@@ -195,7 +195,7 @@ fun checkMigrationCorrectness(migratedFile: Path, projectDir: Path, migratedCode
     val command = "./gradlew -q run"
     val testDir = projectDir.resolveSibling(projectDir.fileName.toString() + "_test")
     val relativePath = projectDir.relativize(migratedFile)
-    testDir.toFile().walk(FileWalkDirection.BOTTOM_UP).forEach { file -> file.delete() }
+    testDir.toFile().deleteRecursively()
 
     println("Running original code")
 
