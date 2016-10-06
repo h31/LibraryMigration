@@ -33,18 +33,10 @@ class Migration(val library1: Library,
     // val pendingStmts = mutableListOf<Statement>()
     var nameGeneratorCounter = 0
 
-    fun makeRoute(src: State, dst: State) {
-        val route = DijkstraShortestPath.findPathBetween(graph2, src, dst)
-        println("Route from %s to %s: ".format(src.stateAndMachineName(),
-                dst.stateAndMachineName()))
-        for (state in route.withIndex()) {
-            println("%d: %s".format(state.index, state.value.label(library2)))
-        }
-    }
-
     fun doMigration() {
         println("Migrate " + functionName)
         val (path, nodeMap) = extractRouteFromJSON(traceFile)
+        checkRoute(path)
 
 //        val edges = library1.stateMachines.flatMap { it -> it.edges }
         println("Function: $functionName")
@@ -71,6 +63,24 @@ class Migration(val library1: Library,
                 }
             }
         }
+    }
+
+    private fun printRoute(route: List<Edge>) {
+//        println("Route from %s to %s: ".format(src.stateAndMachineName(),
+//                dst.stateAndMachineName()))
+        for (state in route.withIndex()) {
+            println("%d: %s".format(state.index, state.value.label(library1)))
+        }
+    }
+
+    private fun checkRoute(route: List<Edge>) {
+        route.filterNot { edge -> edge is UsageEdge }.fold(listOf<Edge>(), { visited, edge ->
+            if (visited.isEmpty() || visited.any { prevEdge -> edge.src == prevEdge.dst }) {
+                visited + edge
+            } else {
+                error("Unexpected edge! Visited: ${printRoute(visited)}, edge: ${edge.label(library1)}")
+            }
+        })
     }
 
     private fun extractRoutes() {

@@ -62,7 +62,7 @@ fun javaToApache(java: Library, apache: Library, codeElements: CodeElements) {
 
 private fun findJavaCode(path: Path) = path.toFile().walk().single { file -> file.extension == "java" }
 
-private fun prettyPrinter(string: String): String {
+fun prettyPrinter(string: String): String {
     var intend = 0
     val buffer = StringBuilder()
     for (char in string) {
