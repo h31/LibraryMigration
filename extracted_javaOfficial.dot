@@ -1,0 +1,47 @@
+digraph G {
+    bgcolor="transparent";
+    subgraph cluster0 {
+    label = <<B>URL: String</B>>;
+        Constructed_URL [ label="Constructed" ];
+    }
+    subgraph cluster1 {
+    label = <<B>Request: URL</B>>;
+        Constructed_Request [ label="Constructed" ];
+        hasURL_Request [ label="hasURL" ];
+        virtual0 [ shape = point ];
+    }
+    subgraph cluster2 {
+    label = <<B>Connection: URLConnection</B>>;
+        Constructed_Connection [ label="Constructed" ];
+        virtual1 [ shape = point ];
+        virtual2 [ shape = point ];
+        virtual3 [ shape = point ];
+    }
+    subgraph cluster3 {
+    label = <<B>Body: String</B>>;
+        Constructed_Body [ label="Constructed" ];
+    }
+    subgraph cluster4 {
+    label = <<B>InputStream: InputStream</B>>;
+        Constructed_InputStream [ label="Constructed" ];
+    }
+    subgraph cluster5 {
+    label = <<B>ContentLength: long</B>>;
+        Constructed_ContentLength [ label="Constructed" ];
+    }
+        Constructed_URL -> hasURL_Request [ label="Usage in new Request: URL(URL: String)", style = "dashed" , color = red ];
+        Constructed_Request -> hasURL_Request [ label="new Request: URL(URL: String)", style = "bold" , color = red ];
+        hasURL_Request -> virtual0 [ style = "bold" label="openConnection()" , color = red ];
+        virtual0 -> hasURL_Request [ style = "bold" , color = red ];
+        virtual0 -> Constructed_Connection [ label="return URLConnection()" , color = red ];
+        Constructed_Connection -> virtual1 [ style = "bold" label="readerToString(Connection: URLConnection)"  ];
+        virtual1 -> Constructed_Connection [ style = "bold"  ];
+        virtual1 -> Constructed_Body [ label="return String()"  ];
+        Constructed_Connection -> Constructed_Connection [ label="Usage in readerToString(Connection: URLConnection)", style = "dashed"  ];
+        Constructed_Connection -> virtual2 [ style = "bold" label="getInputStream()" , color = red ];
+        virtual2 -> Constructed_Connection [ style = "bold" , color = red ];
+        virtual2 -> Constructed_InputStream [ label="return InputStream()" , color = red ];
+        Constructed_Connection -> virtual3 [ style = "bold" label="getContentLengthLong()"  ];
+        virtual3 -> Constructed_Connection [ style = "bold"  ];
+        virtual3 -> Constructed_ContentLength [ label="return long()"  ];
+}
