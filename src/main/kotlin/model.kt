@@ -10,7 +10,7 @@ interface Identifiable {
     fun id(): String
 }
 
-data class Entity(val name: String)
+//data class Entity(val name: String)
 
 data class Library(val name: String,
                    val stateMachines: List<StateMachine>,
@@ -22,11 +22,10 @@ data class Library(val name: String,
     }
 }
 
-data class Type(val entity: Entity,
-                val type: String)
+//data class Type(val entity: Entity,
+//                val type: String)
 
-data class StateMachine(val entity: Entity,
-                        val name: String = entity.name,
+data class StateMachine(val name: String,
                         val inherits: StateMachine? = null) : Labelable {
     val states: MutableSet<State> = mutableSetOf()
     val edges: MutableSet<Edge> = mutableSetOf()

@@ -2,15 +2,9 @@
  * Created by artyom on 16.06.16.
  */
 
-object GraphEntities {
-    val node: Entity = Entity(name = "Node")
-    val nodeList: Entity = Entity(name = "NodeList")
-    val num: Entity = Entity(name = "Number")
-}
-
 fun makeGraph1(): Library {
-    val node = StateMachine(entity = GraphEntities.node)
-    val num = StateMachine(entity = GraphEntities.num)
+    val node = StateMachine(name = "Node")
+    val num = StateMachine(name = "Number")
     val parent = node.inherit(name = "parent")
     val child = node.inherit(name = "child")
     val getNode = CallEdge(
@@ -44,7 +38,7 @@ fun makeGraph1(): Library {
             edge = getParent
     )
 
-    val nodeList = StateMachine(entity = GraphEntities.nodeList)
+    val nodeList = StateMachine(name = "NodeList")
 
     MakeArrayEdge(
             machine = node,
@@ -77,8 +71,8 @@ fun makeGraph1(): Library {
 }
 
 fun makeGraph2(): Library {
-    val nodeList = StateMachine(entity = GraphEntities.nodeList)
-    val num = StateMachine(entity = GraphEntities.num)
+    val nodeList = StateMachine(name = "NodeList")
+    val num = StateMachine(name = "Number")
 
     val listGet = CallEdge(
             machine = nodeList,
@@ -89,7 +83,7 @@ fun makeGraph2(): Library {
             )
     )
 
-    val node = StateMachine(entity = GraphEntities.node)
+    val node = StateMachine(name = "Node")
     val parent = node.inherit(name = "parent")
     val child = node.inherit(name = "child")
 

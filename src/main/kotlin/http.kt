@@ -2,25 +2,15 @@
  * Created by artyom on 05.07.16.
  */
 
-object HTTPEntities {
-    val request: Entity = Entity(name = "Request")
-    val url: Entity = Entity(name = "URL")
-    val connection: Entity = Entity(name = "Connection")
-    val inputStream = Entity(name = "InputStream")
-    val body: Entity = Entity(name = "Body")
-    val client: Entity = Entity(name = "Client")
-    val contentLength: Entity = Entity(name = "ContentLength")
-}
-
 fun makeJava(): Library {
-    val url = StateMachine(entity = HTTPEntities.url)
+    val url = StateMachine(name = "URL")
 
-    val request = StateMachine(entity = HTTPEntities.request)
-    val connection = StateMachine(entity = HTTPEntities.connection)
+    val request = StateMachine(name = "Request")
+    val connection = StateMachine(name = "Connection")
 
     val hasURL = State(name = "hasURL", machine = request)
-    val inputStream = StateMachine(entity = HTTPEntities.inputStream)
-    val contentLength = StateMachine(entity = HTTPEntities.contentLength)
+    val inputStream = StateMachine(name = "InputStream")
+    val contentLength = StateMachine(name = "ContentLength")
 
     ConstructorEdge(
             machine = request,
@@ -50,7 +40,7 @@ fun makeJava(): Library {
 //            )
 //    )
 
-    val body = StateMachine(entity = HTTPEntities.body)
+    val body = StateMachine(name = "Body")
 
     makeLinkedEdge(
             machine = connection,
@@ -95,13 +85,13 @@ fun makeJava(): Library {
 }
 
 fun makeApache(): Library {
-    val url = StateMachine(entity = HTTPEntities.url)
-    val client = StateMachine(entity = HTTPEntities.client)
-    val request = StateMachine(entity = HTTPEntities.request)
-    val connection = StateMachine(entity = HTTPEntities.connection)
-    val httpClients = StateMachine(entity = Entity("httpClients"))
-    val inputStream = StateMachine(entity = HTTPEntities.inputStream)
-    val contentLength = StateMachine(entity = HTTPEntities.contentLength)
+    val url = StateMachine(name = "URL")
+    val client = StateMachine(name = "Client")
+    val request = StateMachine(name = "Request")
+    val connection = StateMachine(name = "Connection")
+    val httpClients = StateMachine(name = "httpClients")
+    val inputStream = StateMachine(name = "InputStream")
+    val contentLength = StateMachine(name = "ContentLength")
 
     val hasURL = State(name = "hasURL", machine = request)
 
@@ -146,8 +136,8 @@ fun makeApache(): Library {
             )
     )
 
-    val body = StateMachine(entity = HTTPEntities.body)
-    val main = StateMachine(entity = Entity("Main"))
+    val body = StateMachine(name = "Body")
+    val main = StateMachine(name = "Main")
 
     val toStringTemplate = TemplateEdge(
             machine = main,

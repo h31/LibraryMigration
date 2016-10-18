@@ -8,8 +8,7 @@ class PathFinder(val edges: Set<Edge>) {
         pending += Model(state = start, path = listOf())
         while (true) {
             if (pending.isEmpty()) {
-                println("Empty pendings!")
-                throw Exception()
+                error("Empty pendings!")
             }
             val model = pending.poll()
             if (aStar(model, goal, edges)) {

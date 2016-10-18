@@ -24,7 +24,7 @@ fun generateCode(edge: Edge, obj: String?): String = when (edge) {
 }
 
 fun main(args: Array<String>) {
-    val machine = StateMachine(entity = Entity("test"))
+    val machine = StateMachine(name = "Test")
     val edge = CallEdge(machine = machine, methodName = "method")
 
 //    println(fillPlaceholders("Hello {{ obj }}", params = mapOf("obj" to edge), variables = mapOf(machine to "object")))
