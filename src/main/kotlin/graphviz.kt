@@ -28,7 +28,7 @@ fun toDOT(library: Library, visited: List<Edge> = listOf()): String {
             val baseMap = mapOf<String, Any>(
                     "src" to edge.src.id(),
                     "dst" to edge.dst.id(),
-                    "edge" to edge.label(library),
+                    "edge" to edge.label(),
                     "visited" to visited.contains(edge),
                     "style" to edge.getStyle())
             val values = if (edge is ExpressionEdge && edge.linkedEdge != null) {
@@ -36,7 +36,7 @@ fun toDOT(library: Library, visited: List<Edge> = listOf()): String {
                 virtuals.get(machine)!!.add(counter)
                 baseMap + mapOf(
                         "machine" to edge.linkedEdge!!.dst.id(),
-                        "linkedEdge" to edge.linkedEdge!!.label(library),
+                        "linkedEdge" to edge.linkedEdge!!.label(),
                         "counter" to counter++,
                         "linkedVisited" to visited.contains(edge.linkedEdge!!))
             } else baseMap
@@ -47,7 +47,7 @@ fun toDOT(library: Library, visited: List<Edge> = listOf()): String {
     val machines = library.stateMachines.mapIndexed {
         num, machine ->
         mapOf("num" to num,
-                "name" to machine.label(library),
+                "name" to machine.label(),
                 "vertices" to machine.states,
                 "virtuals" to virtuals.get(machine)!!.map {
                     count ->
@@ -81,7 +81,7 @@ fun toJGrapht(library: Library): DirectedPseudograph<State, Edge> {
     )
 
     val exporter = DOTExporter<State, Edge>(VertexNameProvider { it.id() },
-            VertexNameProvider { it -> it.machine.name + " " + it.label(library) }, EdgeNameProvider { it.label(library) })
+            VertexNameProvider { it -> it.machine.name + " " + it.label() }, EdgeNameProvider { it.label() })
 
     for (fsm in library.stateMachines) {
 //        System.out.println("FSM: " + fsm.toString())

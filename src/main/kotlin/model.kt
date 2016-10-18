@@ -3,7 +3,7 @@
  */
 
 interface Labelable {
-    fun label(library: Library): String
+    fun label(): String
 }
 
 interface Identifiable {
@@ -15,11 +15,11 @@ data class Entity(val name: String)
 data class Library(val name: String,
                    val stateMachines: List<StateMachine>,
                    val machineTypes: Map<StateMachine, String>) {
-//    init {
-//        for ((key, value) in entityTypes) {
-//            stateMachines.first { it -> it.entity == key }.type = value
-//        }
-//    }
+    init {
+        for (machine in stateMachines) {
+            machine.library = this
+        }
+    }
 }
 
 data class Type(val entity: Entity,
@@ -30,6 +30,7 @@ data class StateMachine(val entity: Entity,
                         val inherits: StateMachine? = null) : Labelable {
     val states: MutableSet<State> = mutableSetOf()
     val edges: MutableSet<Edge> = mutableSetOf()
+    var library: Library? = null
 
     init {
 //        states += makeInitState(this)
@@ -48,14 +49,14 @@ data class StateMachine(val entity: Entity,
 
     fun getDisplayedEdges() = edges.filterNot { edge -> edge is LinkedEdge }
 
-    override fun label(library: Library) = name + ": " + type(library)
+    override fun label() = name + ": " + type()
 
     fun inherit(name: String): StateMachine {
         val copy = copy(name = name, inherits = this)
         return copy
     }
 
-    fun type(library: Library) = library.machineTypes[this] ?: error("No such type")
+    fun type() = library?.machineTypes?.get(this) ?: error("No such type")
 }
 
 data class State(val name: String,
@@ -76,8 +77,7 @@ data class State(val name: String,
     }
 
     override fun id() = name + "_" + machine.name
-    override fun label(library: Library) = name
-    fun label() = name
+    override fun label() = name
     fun stateAndMachineName() = machine.name + "." + name
     fun isInit() = name == "Init"
 }
@@ -86,7 +86,7 @@ data class State(val name: String,
 fun makeConstructedState(machine: StateMachine) = State("Constructed", machine)
 
 interface Edge : Labelable {
-    override fun label(library: Library): String
+    override fun label(): String
     val machine: StateMachine
     val src: State
     val dst: State
@@ -128,7 +128,7 @@ data class CallEdge(override val machine: StateMachine,
         usageEdges += createUsageEdges(param, dst)
     }
 
-    override fun label(library: Library) = "%s(%s)".format(methodName, param.map { it.label(library) }.joinToString())
+    override fun label() = "%s(%s)".format(methodName, param.map(Param::label).joinToString())
 }
 
 data class AutoEdge(override val machine: StateMachine,
@@ -141,7 +141,7 @@ data class AutoEdge(override val machine: StateMachine,
         machine.edges += this
     }
 
-    override fun label(library: Library) = ""
+    override fun label() = ""
 }
 
 data class ConstructorEdge(override val machine: StateMachine,
@@ -163,7 +163,7 @@ data class ConstructorEdge(override val machine: StateMachine,
         usageEdges += createUsageEdges(param, dst)
     }
 
-    override fun label(library: Library) = "new %s(%s)".format(constructedMachine?.label(library), param.map { it.label(library) }.joinToString())
+    override fun label() = "new %s(%s)".format(constructedMachine?.label(), param.map(Param::label).joinToString())
 }
 
 data class LinkedEdge(override val machine: StateMachine,
@@ -183,7 +183,7 @@ data class LinkedEdge(override val machine: StateMachine,
         edge.linkedEdge = this
     }
 
-    override fun label(library: Library) = "return " + edge.linkedEdge?.dst?.machine?.type(library) + "()"
+    override fun label() = "return " + edge.linkedEdge?.dst?.machine?.type() + "()"
 }
 
 data class MakeArrayEdge(override val machine: StateMachine,
@@ -199,7 +199,7 @@ data class MakeArrayEdge(override val machine: StateMachine,
         machine.edges += this
     }
 
-    override fun label(library: Library) = "Array of %s with size %s".format(getItem.label(library), getSize.label(library))
+    override fun label() = "Array of %s with size %s".format(getItem.label(), getSize.label())
 }
 
 data class TemplateEdge(override val machine: StateMachine,
@@ -227,7 +227,7 @@ data class TemplateEdge(override val machine: StateMachine,
         }
     }
 
-    override fun label(library: Library) = "Template"
+    override fun label() = "Template"
 }
 
 data class UsageEdge(override val machine: StateMachine,
@@ -242,7 +242,7 @@ data class UsageEdge(override val machine: StateMachine,
         machine.edges += this
     }
 
-    override fun label(library: Library) = "Usage in " + edge.label(library)
+    override fun label() = "Usage in " + edge.label()
 }
 
 fun makeLinkedEdge(machine: StateMachine,
@@ -273,7 +273,7 @@ fun makeLinkedEdge(machine: StateMachine,
 data class Param(val machine: StateMachine,
                  val state: State = machine.getConstructedState()) : Labelable {
     override fun toString() = machine.name
-    override fun label(library: Library) = machine.label(library)
+    override fun label() = machine.label()
 }
 
 data class Action(val name: String,

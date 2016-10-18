@@ -41,7 +41,7 @@ class Migration(val library1: Library,
 //        val edges = library1.stateMachines.flatMap { it -> it.edges }
         println("Function: $functionName")
         for (edge in path) {
-            println("Processing " + edge.label(library1) + "... ")
+            println("Processing " + edge.label() + "... ")
             if (edge.src == edge.dst) {
                 println("  Makes a loop, skipping")
                 continue
@@ -69,7 +69,7 @@ class Migration(val library1: Library,
 //        println("Route from %s to %s: ".format(src.stateAndMachineName(),
 //                dst.stateAndMachineName()))
         for (state in route.withIndex()) {
-            println("%d: %s".format(state.index, state.value.label(library1)))
+            println("%d: %s".format(state.index, state.value.label()))
         }
     }
 
@@ -78,7 +78,7 @@ class Migration(val library1: Library,
             if (visited.isEmpty() || visited.any { prevEdge -> edge.src == prevEdge.dst }) {
                 visited + edge
             } else {
-                error("Unexpected edge! Visited: ${printRoute(visited)}, edge: ${edge.label(library1)}")
+                error("Unexpected edge! Visited: ${printRoute(visited)}, edge: ${edge.label()}")
             }
         })
     }
@@ -103,7 +103,7 @@ class Migration(val library1: Library,
             }
         }
         for (objectCreation in codeElements.objectCreation) {
-            val constructorEdges = edges.firstOrNull { edge -> edge is ConstructorEdge && edge.machine.type(library1) == objectCreation.type.name } as ConstructorEdge?
+            val constructorEdges = edges.firstOrNull { edge -> edge is ConstructorEdge && edge.machine.type() == objectCreation.type.name } as ConstructorEdge?
             if (constructorEdges != null) {
                 usedEdges += constructorEdges
                 usedEdges += constructorEdges.usageEdges
@@ -112,7 +112,7 @@ class Migration(val library1: Library,
         if (usedEdges.isNotEmpty()) {
             println("--- Used edges:")
             for (edge in usedEdges) {
-                println(edge.label(library1))
+                println(edge.label())
             }
             println("---")
             graphvizRender(toDOT(library1, usedEdges), "extracted_" + functionName)
@@ -145,7 +145,7 @@ class Migration(val library1: Library,
                 val callEdge = edges.firstOrNull { edge ->
                     edge is CallEdge &&
                             edge.methodName == invocation.name &&
-                            invocation.simpleType() == edge.machine.type(library1)
+                            invocation.simpleType() == edge.machine.type()
                 } as CallEdge?
                 if (callEdge == null) {
                     println("Cannot find edge for $invocation")
@@ -165,7 +165,7 @@ class Migration(val library1: Library,
                 }
                 usedEdges += callEdge.usageEdges
             } else if (invocation.kind == "constructor-call") {
-                val constructorEdge = edges.firstOrNull { edge -> edge is ConstructorEdge && invocation.simpleType() == edge.machine.type(library1) } as ConstructorEdge?
+                val constructorEdge = edges.firstOrNull { edge -> edge is ConstructorEdge && invocation.simpleType() == edge.machine.type() } as ConstructorEdge?
                 if (constructorEdge == null) {
                     println("Cannot find edge for $invocation")
                     continue
@@ -182,7 +182,7 @@ class Migration(val library1: Library,
         if (usedEdges.isNotEmpty()) {
             println("--- Used edges:")
             for (edge in usedEdges) {
-                println(edge.label(library1))
+                println(edge.label())
             }
             println("---")
             graphvizRender(toDOT(library1, usedEdges), "extracted_" + functionName)
@@ -201,7 +201,7 @@ class Migration(val library1: Library,
     private fun applySteps(steps: List<Edge>, oldVarName: String?): List<PendingStatement> {
         val pendingStmts = mutableListOf<PendingStatement>()
         for (step in steps) {
-            println("    Step: " + step.label(library2))
+            println("    Step: " + step.label())
 
             val newStatements: List<PendingStatement> = when (step) {
                 is CallEdge -> makeCallStatement(step)
@@ -309,7 +309,7 @@ class Migration(val library1: Library,
 
     private fun makeCallExpressionParams(edge: CallEdge): CallExpressionParams {
         val scope = if (edge.isStatic) {
-            NameExpr(edge.machine.type(library2))
+            NameExpr(edge.machine.type())
         } else {
             checkNotNull(dependencies[edge.machine])
         }
