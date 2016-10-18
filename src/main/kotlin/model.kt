@@ -19,6 +19,7 @@ data class Library(val name: String,
         for (machine in stateMachines) {
             machine.library = this
         }
+        if (machineTypes.size != stateMachines.size) error("")
     }
 }
 
@@ -259,7 +260,7 @@ fun makeLinkedEdge(machine: StateMachine,
             param = param,
             isStatic = isStatic
     )
-    val linkedEdge = LinkedEdge(
+    LinkedEdge(
             machine = machine,
             src = src,
             dst = dst,

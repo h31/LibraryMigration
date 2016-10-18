@@ -61,9 +61,12 @@ fun toDOT(library: Library, visited: List<Edge> = listOf()): String {
 }
 
 fun graphvizRender(graph: String, prefix: String) {
-    val dotPath = Paths.get(prefix + ".dot")
+    val folder = "pictures/"
+    val folderPath = Paths.get(folder)
+    if (Files.isDirectory(folderPath) == false) Files.createDirectory(folderPath)
+    val dotPath = Paths.get(folder + prefix + ".dot")
     Files.write(dotPath, graph.toByteArray());
-    DOTtoPDF(prefix)
+    DOTtoPDF(folder + prefix)
 }
 
 fun DOTtoPDF(prefix: String) {
