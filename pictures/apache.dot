@@ -18,7 +18,6 @@ digraph G {
     label = <<B>Connection: CloseableHttpResponse</B>>;
         Constructed_Connection [ label="Constructed" ];
         virtual1 [ shape = point ];
-        virtual2 [ shape = point ];
     }
     subgraph cluster4 {
     label = <<B>Body: String</B>>;
@@ -27,12 +26,11 @@ digraph G {
     subgraph cluster5 {
     label = <<B>httpClients: HttpClients</B>>;
         Constructed_httpClients [ label="Constructed" ];
-        virtual3 [ shape = point ];
+        virtual2 [ shape = point ];
     }
     subgraph cluster6 {
     label = <<B>Main: String</B>>;
         Constructed_Main [ label="Constructed" ];
-        virtual4 [ shape = point ];
     }
     subgraph cluster7 {
     label = <<B>InputStream: InputStream</B>>;
@@ -42,6 +40,17 @@ digraph G {
     label = <<B>ContentLength: long</B>>;
         Constructed_ContentLength [ label="Constructed" ];
     }
+    subgraph cluster9 {
+    label = <<B>Entity: Entity</B>>;
+        Constructed_Entity [ label="Constructed" ];
+        virtual3 [ shape = point ];
+        virtual4 [ shape = point ];
+    }
+    subgraph cluster10 {
+    label = <<B>EntityUtils: EntityUtils</B>>;
+        Constructed_EntityUtils [ label="Constructed" ];
+        virtual5 [ shape = point ];
+    }
         Constructed_URL -> hasURL_Request [ label="Usage in new Request: HttpGet(URL: String)", style = "dashed"  ];
         Constructed_URL -> hasURL_Request [ label="Usage in setURI(URL: String)", style = "dashed"  ];
         Constructed_Request -> hasURL_Request [ label="new Request: HttpGet(URL: String)", style = "bold"  ];
@@ -50,19 +59,20 @@ digraph G {
         Constructed_Client -> virtual0 [ style = "bold" label="execute(Request: HttpGet)"  ];
         virtual0 -> Constructed_Client [ style = "bold"  ];
         virtual0 -> Constructed_Connection [ label="return CloseableHttpResponse()"  ];
-        Constructed_Connection -> Constructed_Main [ label="Usage in Template", style = "dashed"  ];
-        Constructed_Connection -> virtual1 [ style = "bold" label="Template"  ];
+        Constructed_Connection -> virtual1 [ style = "bold" label="getEntity()"  ];
         virtual1 -> Constructed_Connection [ style = "bold"  ];
-        virtual1 -> Constructed_InputStream [ label="return InputStream()"  ];
-        Constructed_Connection -> Constructed_Connection [ label="Usage in Template", style = "dashed"  ];
-        Constructed_Connection -> virtual2 [ style = "bold" label="Template"  ];
-        virtual2 -> Constructed_Connection [ style = "bold"  ];
-        virtual2 -> Constructed_ContentLength [ label="return long()"  ];
-        Constructed_Connection -> Constructed_Connection [ label="Usage in Template", style = "dashed"  ];
-        Constructed_httpClients -> virtual3 [ style = "bold" label="createDefault()"  ];
-        virtual3 -> Constructed_httpClients [ style = "bold"  ];
-        virtual3 -> Constructed_Client [ label="return CloseableHttpClient()"  ];
-        Constructed_Main -> virtual4 [ style = "bold" label="Template"  ];
-        virtual4 -> Constructed_Main [ style = "bold"  ];
-        virtual4 -> Constructed_Body [ label="return String()"  ];
+        virtual1 -> Constructed_Entity [ label="return Entity()"  ];
+        Constructed_httpClients -> virtual2 [ style = "bold" label="createDefault()"  ];
+        virtual2 -> Constructed_httpClients [ style = "bold"  ];
+        virtual2 -> Constructed_Client [ label="return CloseableHttpClient()"  ];
+        Constructed_Entity -> Constructed_EntityUtils [ label="Usage in EntityUtils.toString(Entity: Entity)", style = "dashed"  ];
+        Constructed_Entity -> virtual3 [ style = "bold" label="getContent()"  ];
+        virtual3 -> Constructed_Entity [ style = "bold"  ];
+        virtual3 -> Constructed_InputStream [ label="return InputStream()"  ];
+        Constructed_Entity -> virtual4 [ style = "bold" label="getContentLength()"  ];
+        virtual4 -> Constructed_Entity [ style = "bold"  ];
+        virtual4 -> Constructed_ContentLength [ label="return long()"  ];
+        Constructed_EntityUtils -> virtual5 [ style = "bold" label="EntityUtils.toString(Entity: Entity)"  ];
+        virtual5 -> Constructed_EntityUtils [ style = "bold"  ];
+        virtual5 -> Constructed_Body [ label="return String()"  ];
 }

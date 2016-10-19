@@ -92,6 +92,8 @@ fun makeApache(): Library {
     val httpClients = StateMachine(name = "httpClients")
     val inputStream = StateMachine(name = "InputStream")
     val contentLength = StateMachine(name = "ContentLength")
+    val entity = StateMachine(name = "Entity")
+    val entityUtils = StateMachine(name = "EntityUtils")
 
     val hasURL = State(name = "hasURL", machine = request)
 
@@ -139,52 +141,80 @@ fun makeApache(): Library {
     val body = StateMachine(name = "Body")
     val main = StateMachine(name = "Main")
 
-    val toStringTemplate = TemplateEdge(
-            machine = main,
-            template = "EntityUtils.toString({{ httpResponse }}.getEntity())",
-            params = mapOf("httpResponse" to connection.getConstructedState()),
+    makeLinkedEdge(
+            machine = connection,
+            dst = entity.getDefaultState(),
+            methodName = "getEntity"
+    )
+
+    makeLinkedEdge(
+            machine = entityUtils,
+            dst = body.getDefaultState(),
+            methodName = "EntityUtils.toString",
+            param = listOf(Param(machine = entity)),
             isStatic = true
     )
 
-    LinkedEdge(
-            machine = main,
-            dst = body.getDefaultState(),
-            edge = toStringTemplate
-    )
+//    val toStringTemplate = TemplateEdge(
+//            machine = main,
+//            template = "EntityUtils.toString({{ httpResponse }}.getEntity())",
+//            params = mapOf("httpResponse" to connection.getConstructedState()),
+//            isStatic = true
+//    )
 
-    LinkedEdge(
-            machine = connection,
+//    LinkedEdge(
+//            machine = main,
+//            dst = body.getDefaultState(),
+//            edge = toStringTemplate
+//    )
+
+    makeLinkedEdge(
+            machine = entity,
             dst = inputStream.getDefaultState(),
-            edge = TemplateEdge(
-                    machine = connection,
-                    template = "{{ httpResponse }}.getEntity().getContent()",
-                    params = mapOf("httpResponse" to connection.getConstructedState())
-            )
+            methodName = "getContent"
     )
 
-    LinkedEdge(
-            machine = connection,
+//    LinkedEdge(
+//            machine = connection,
+//            dst = inputStream.getDefaultState(),
+//            edge = TemplateEdge(
+//                    machine = connection,
+//                    template = "{{ httpResponse }}.getEntity().getContent()",
+//                    params = mapOf("httpResponse" to connection.getConstructedState())
+//            )
+//    )
+
+    makeLinkedEdge(
+            machine = entity,
             dst = contentLength.getDefaultState(),
-            edge = TemplateEdge(
-                    machine = connection,
-                    template = "{{ httpResponse }}.getEntity().getContentLength()",
-                    params = mapOf("httpResponse" to connection.getConstructedState())
-            )
+            methodName = "getContentLength"
     )
+
+//    LinkedEdge(
+//            machine = connection,
+//            dst = contentLength.getDefaultState(),
+//            edge = TemplateEdge(
+//                    machine = connection,
+//                    template = "{{ httpResponse }}.getEntity().getContentLength()",
+//                    params = mapOf("httpResponse" to connection.getConstructedState())
+//            )
+//    )
 
     return Library(
             name = "apache",
-            stateMachines = listOf(url, request, client, connection, body, httpClients, main, inputStream, contentLength),
+            stateMachines = listOf(url, request, client, connection, body, httpClients, main, inputStream, contentLength, entity, entityUtils),
             machineTypes = mapOf(
-                    request to "HttpGet",
                     url to "String",
+                    request to "HttpGet",
+                    client to "CloseableHttpClient",
                     connection to "CloseableHttpResponse",
+                    body to "String",
+                    httpClients to "HttpClients",
+                    main to "String",
                     inputStream to "InputStream",
                     contentLength to "long",
-                    body to "String",
-                    client to "CloseableHttpClient",
-                    httpClients to "HttpClients",
-                    main to "String"
+                    entity to "Entity",
+                    entityUtils to "EntityUtils"
             )
     )
 }
