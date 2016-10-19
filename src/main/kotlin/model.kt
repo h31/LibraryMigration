@@ -19,7 +19,7 @@ data class Library(val name: String,
         for (machine in stateMachines) {
             machine.library = this
         }
-        if (machineTypes.size != stateMachines.size) error("")
+        if (machineTypes.size != stateMachines.size) error("Types: ${machineTypes.size}, machines: ${stateMachines.size}")
     }
 }
 

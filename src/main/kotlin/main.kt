@@ -49,15 +49,15 @@ fun javaToApache(java: Library, apache: Library, codeElements: CodeElements) {
         val methodLocalCodeElements = methodDecl.getCodeElements()
 
         val migration = Migration(
-                library1 = java,
-                library2 = apache,
+                library1 = apache,
+                library2 = java,
                 codeElements = methodLocalCodeElements,
                 functionName = methodDecl.name(),
                 traceFile = File("HTTP/log.json"))
 
         migration.doMigration()
     }
-    fixEntityTypes(codeElements, java, apache)
+    fixEntityTypes(codeElements, apache, java)
 }
 
 private fun findJavaCode(path: Path) = path.toFile().walk().single { file -> file.extension == "java" }
@@ -99,13 +99,16 @@ var listNameCounter = 0;
 
 private fun fixEntityTypes(codeElements: CodeElements, graph1: Library, graph2: Library) {
     for (type in graph1.machineTypes) {
-        val declarations = codeElements.variableDeclarations.filter { it -> it.type.toString() == type.value }
-        for (decl in declarations) {
-            decl.type = ClassOrInterfaceType(graph2.machineTypes.get(type.key))
-        }
-        val objectCreations = codeElements.objectCreation.filter { it -> it.type.toString() == type.value }
-        for (obj in objectCreations) {
-            obj.type = ClassOrInterfaceType(graph2.machineTypes.get(type.key))
+        val newType = graph2.machineTypes[type.key]
+        if (newType != null) {
+            val declarations = codeElements.variableDeclarations.filter { it -> it.type.toString() == type.value }
+            for (decl in declarations) {
+                decl.type = ClassOrInterfaceType(newType)
+            }
+            val objectCreations = codeElements.objectCreation.filter { it -> it.type.toString() == type.value }
+            for (obj in objectCreations) {
+                obj.type = ClassOrInterfaceType(newType)
+            }
         }
     }
 }

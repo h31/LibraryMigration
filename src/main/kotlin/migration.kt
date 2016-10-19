@@ -37,7 +37,7 @@ class Migration(val library1: Library,
     fun doMigration() {
         println("Migrate " + functionName)
         val (path, nodeMap) = extractRouteFromJSON(traceFile)
-        checkRoute(path)
+//        checkRoute(path)
 
 //        val edges = library1.stateMachines.flatMap { it -> it.edges }
         println("Function: $functionName")
@@ -47,6 +47,10 @@ class Migration(val library1: Library,
                 println("  Makes a loop, skipping")
                 continue
             }
+            if (edge.dst.machine in library2.stateMachines == false) {
+                println("No such machine, skipped")
+                continue
+            }
             when (edge) {
                 is AutoEdge -> println("  Has an auto action, skipping") // TODO: Should be error
                 is CallEdge -> {
@@ -54,6 +58,13 @@ class Migration(val library1: Library,
                     extractDependenciesFromMethod(edge, nodeMap[edge] as MethodCallExpr)
                     val route = findRoute(context, edge.dst)
                     migrateMethodCall(edge, route, nodeMap[edge] as MethodCallExpr)
+                }
+                is ConstructorEdge -> {
+                    println("  Has a constructor action")
+                    extractDependenciesFromConstructor(edge, nodeMap[edge] as ObjectCreationExpr)
+                    val route = findRoute(context, edge.dst)
+                    // TODO
+//                    migrateMethodCall(edge, route, nodeMap[edge] as MethodCallExpr)
                 }
                 is LinkedEdge -> {
                     println("  Has a linked action")
@@ -391,6 +402,17 @@ class Migration(val library1: Library,
         val args = edge.param.mapIndexed { i, param -> param.state to methodCall.args[i] }.toMap()
         val scope = (edge.src to methodCall.scope)
         val deps = args + scope
+        fillContext(deps)
+    }
+
+    private fun extractDependenciesFromConstructor(edge: ConstructorEdge, constructorCall: ObjectCreationExpr) {
+        val args = edge.param.mapIndexed { i, param -> param.state to constructorCall.args[i] }.toMap()
+//        val scope = (edge.src to methodCall.scope)
+        val deps = args // TODO: scope
+        fillContext(deps)
+    }
+
+    private fun fillContext(deps: Map<State, Expression?>) {
         for ((dep, expr) in deps) {
             println("Machine ${dep.machine.label()} is now in state ${dep.label()}")
             val previousStates = context.filter { state -> state.machine == dep.machine }
