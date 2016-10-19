@@ -34,10 +34,10 @@ digraph G {
         hasURL_Request -> virtual0 [ style = "bold" label="openConnection()"  ];
         virtual0 -> hasURL_Request [ style = "bold"  ];
         virtual0 -> Constructed_Connection [ label="return URLConnection()"  ];
-        Constructed_Connection -> virtual1 [ style = "bold" label="readerToString(Connection: URLConnection)"  ];
+        Constructed_Connection -> virtual1 [ style = "bold" label="Template"  ];
         virtual1 -> Constructed_Connection [ style = "bold"  ];
         virtual1 -> Constructed_Body [ label="return String()"  ];
-        Constructed_Connection -> Constructed_Connection [ label="Usage in readerToString(Connection: URLConnection)", style = "dashed"  ];
+        Constructed_Connection -> Constructed_Connection [ label="Usage in Template", style = "dashed"  ];
         Constructed_Connection -> virtual2 [ style = "bold" label="getInputStream()"  ];
         virtual2 -> Constructed_Connection [ style = "bold"  ];
         virtual2 -> Constructed_InputStream [ label="return InputStream()"  ];

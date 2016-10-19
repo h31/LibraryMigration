@@ -30,7 +30,7 @@ class Migration(val library1: Library,
                 val functionName: String,
                 val traceFile: File) {
     val dependencies: MutableMap<StateMachine, Expression> = mutableMapOf()
-    val context: MutableSet<State> = mutableSetOf()
+    val context: MutableMap<StateMachine, State> = mutableMapOf()
     // val pendingStmts = mutableListOf<Statement>()
     var nameGeneratorCounter = 0
 
@@ -56,13 +56,13 @@ class Migration(val library1: Library,
                 is CallEdge -> {
                     println("  Has a call action")
                     extractDependenciesFromMethod(edge, nodeMap[edge] as MethodCallExpr)
-                    val route = findRoute(context, edge.dst)
+                    val route = findRoute(context.values.toSet(), edge.dst)
                     migrateMethodCall(edge, route, nodeMap[edge] as MethodCallExpr)
                 }
                 is ConstructorEdge -> {
                     println("  Has a constructor action")
                     extractDependenciesFromConstructor(edge, nodeMap[edge] as ObjectCreationExpr)
-                    val route = findRoute(context, edge.dst)
+                    val route = findRoute(context.values.toSet(), edge.dst)
                     // TODO
 //                    migrateMethodCall(edge, route, nodeMap[edge] as MethodCallExpr)
                 }
@@ -71,7 +71,7 @@ class Migration(val library1: Library,
                     val dependency = edge.edge
                     if (dependency is CallEdge) {
                         extractDependenciesFromMethod(dependency, nodeMap[dependency] as MethodCallExpr)
-                        val route = findRoute(context, edge.dst)
+                        val route = findRoute(context.values.toSet(), edge.dst)
                         migrateMethodCall(dependency, route, nodeMap[dependency] as MethodCallExpr)
                     }
                 }
@@ -243,6 +243,7 @@ class Migration(val library1: Library,
 
         val newVariable = makeNewVariable(type, name, expr)
         dependencies[step.dst.machine] = NameExpr(name)
+        context[step.dst.machine] = step.dst
         return listOf(PendingStatement(statement = newVariable, provides = name))
     }
 
@@ -252,6 +253,7 @@ class Migration(val library1: Library,
         }
         val (usedVariableName, newVariableStatement) = makeMissingDependency(step.edge.machine, step.dst)
         dependencies[step.edge.machine] = NameExpr(usedVariableName)
+        context[step.dst.machine] = step.dst
 //        val callStatement = makeCallStatement(step.edge as CallEdge)
         return listOf(PendingStatement(statement = newVariableStatement, provides = usedVariableName))
     }
@@ -415,12 +417,7 @@ class Migration(val library1: Library,
     private fun fillContext(deps: Map<State, Expression?>) {
         for ((dep, expr) in deps) {
             println("Machine ${dep.machine.label()} is now in state ${dep.label()}")
-            val previousStates = context.filter { state -> state.machine == dep.machine }
-            if (previousStates.isNotEmpty() && previousStates.first() != dep) {
-                println("Replace previous")
-                context.remove(previousStates.first())
-            }
-            context.add(dep)
+            context[dep.machine] = dep
 
             if (expr != null) {
                 println("Machine ${dep.machine.label()} can be accessed by expr \"$expr\"")

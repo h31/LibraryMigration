@@ -42,14 +42,16 @@ fun makeJava(): Library {
 
     val body = StateMachine(name = "Body")
 
-    makeLinkedEdge(
+    val readerToString = TemplateEdge(
+            machine = connection,
+            template = "new BufferedReader(new InputStreamReader({{ conn }}.getInputStream())).lines().collect(Collectors.joining(\"\\n\"))",
+            params = mapOf("conn" to connection.getDefaultState())
+    )
+
+    LinkedEdge(
             machine = connection,
             dst = body.getDefaultState(),
-            methodName = "readerToString",
-            param = listOf(Param(
-                    machine = connection
-            )
-            )
+            edge = readerToString
     )
 
     LinkedEdge(
@@ -139,7 +141,6 @@ fun makeApache(): Library {
     )
 
     val body = StateMachine(name = "Body")
-    val main = StateMachine(name = "Main")
 
     makeLinkedEdge(
             machine = connection,
@@ -150,7 +151,7 @@ fun makeApache(): Library {
     makeLinkedEdge(
             machine = entityUtils,
             dst = body.getDefaultState(),
-            methodName = "EntityUtils.toString",
+            methodName = "toString",
             param = listOf(Param(machine = entity)),
             isStatic = true
     )
@@ -202,7 +203,7 @@ fun makeApache(): Library {
 
     return Library(
             name = "apache",
-            stateMachines = listOf(url, request, client, connection, body, httpClients, main, inputStream, contentLength, entity, entityUtils),
+            stateMachines = listOf(url, request, client, connection, body, httpClients, inputStream, contentLength, entity, entityUtils),
             machineTypes = mapOf(
                     url to "String",
                     request to "HttpGet",
@@ -210,7 +211,6 @@ fun makeApache(): Library {
                     connection to "CloseableHttpResponse",
                     body to "String",
                     httpClients to "HttpClients",
-                    main to "String",
                     inputStream to "InputStream",
                     contentLength to "long",
                     entity to "Entity",
