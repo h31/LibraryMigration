@@ -3,9 +3,11 @@ import java.util.*
 /**
  * Created by artyom on 08.09.16.
  */
-class PathFinder(val edges: Set<Edge>) {
-    fun findPath(start: State, goal: State): List<Edge> {
-        pending += Model(state = start, path = listOf())
+class PathFinder(val edges: Set<Edge>, val src: Set<State>) {
+    fun findPath(goal: State): List<Edge> {
+        for (state in src) {
+            pending += Model(state = state, path = listOf())
+        }
         while (true) {
             if (pending.isEmpty()) {
                 error("Empty pendings!")
@@ -14,7 +16,7 @@ class PathFinder(val edges: Set<Edge>) {
             if (aStar(model, goal, edges)) {
                 println("Solution found, route:")
                 for (link in model.path.withIndex()) {
-                    println(link.index.toString() + ". " + link.value)
+                    println(link.index.toString() + ". " + link.value.label())
                 }
                 return model.path
             }
@@ -31,7 +33,7 @@ class PathFinder(val edges: Set<Edge>) {
 
     class Model(val state: State,
                 val path: List<Edge> = listOf()) {
-        override fun equals(other: Any?): Boolean = other is Model && state.equals(other.state)
+        override fun equals(other: Any?): Boolean = other is Model && state == other.state
         override fun hashCode() = state.hashCode()
         override fun toString() = "Model(state=$state, path=$path)"
     }

@@ -25,11 +25,12 @@ data class PendingStatement(val statement: Statement,
 class Migration(val library1: Library,
                 val library2: Library,
                 val codeElements: CodeElements,
-                val graph1: DirectedPseudograph<State, Edge> = toJGrapht(library1),
-                val graph2: DirectedPseudograph<State, Edge> = toJGrapht(library2),
+//                val graph1: DirectedPseudograph<State, Edge> = toJGrapht(library1),
+//                val graph2: DirectedPseudograph<State, Edge> = toJGrapht(library2),
                 val functionName: String,
                 val traceFile: File) {
     val dependencies: MutableMap<StateMachine, Expression> = mutableMapOf()
+    val context: MutableSet<State> = mutableSetOf()
     // val pendingStmts = mutableListOf<Statement>()
     var nameGeneratorCounter = 0
 
@@ -50,14 +51,16 @@ class Migration(val library1: Library,
                 is AutoEdge -> println("  Has an auto action, skipping") // TODO: Should be error
                 is CallEdge -> {
                     println("  Has a call action")
-                    val route = findRoute(graph2, edge.src, edge.dst)
+                    extractDependenciesFromMethod(edge, nodeMap[edge] as MethodCallExpr)
+                    val route = findRoute(context, edge.dst)
                     migrateMethodCall(edge, route, nodeMap[edge] as MethodCallExpr)
                 }
                 is LinkedEdge -> {
                     println("  Has a linked action")
                     val dependency = edge.edge
                     if (dependency is CallEdge) {
-                        val route = findRoute(graph2, edge.src, edge.dst)
+                        extractDependenciesFromMethod(dependency, nodeMap[dependency] as MethodCallExpr)
+                        val route = findRoute(context, edge.dst)
                         migrateMethodCall(dependency, route, nodeMap[dependency] as MethodCallExpr)
                     }
                 }
@@ -192,7 +195,6 @@ class Migration(val library1: Library,
 
     private fun migrateMethodCall(edge: CallEdge, route: List<Edge>, usage: MethodCallExpr) {
             val oldVarName = getVariableNameFromExpression(usage)
-            dependencies.putAll(extractDependenciesFromMethod(edge, usage))
             // makeDependenciesFromEdge(edge)
             val pendingStmts = applySteps(route, oldVarName)
             replaceMethodCall(usage, pendingStmts, oldVarName)
@@ -370,14 +372,12 @@ class Migration(val library1: Library,
         return Pair(node as Statement, node.parentNode as BlockStmt)
     }
 
-    private fun findRoute(graph: DirectedPseudograph<State, Edge>, src: State, dst: State): List<Edge> {
-        println("  Searching route from %s to %s".format(src.stateAndMachineName(), dst.stateAndMachineName()))
-        val edges = library2.stateMachines.flatMap { machine -> machine.edges }.toSet()
-        val pathFinder = PathFinder(edges)
-        val path1 = DijkstraShortestPath.findPathBetween(graph, src, dst)
-        val path2 = pathFinder.findPath(src, dst)
-        if (path1 != path2) {
-            graphvizRender(toDOT(library1, path1), "path1")
+    private fun findRoute(src: Set<State>, dst: State): List<Edge> {
+        println("  Searching route from %s to %s".format(src.joinToString(transform = State::stateAndMachineName), dst.stateAndMachineName()))
+        val edges = library2.stateMachines.flatMap(StateMachine::edges).toSet()
+        val pathFinder = PathFinder(edges, src)
+        val path2 = pathFinder.findPath(dst)
+        if (false) {
             graphvizRender(toDOT(library1, path2), "path2")
             error("Paths are not equal")
         }
@@ -387,11 +387,24 @@ class Migration(val library1: Library,
     private fun getUsages(methodName: String) =
             codeElements.methodCalls.filter { methodCall -> methodCall.name == methodName }
 
-    private fun extractDependenciesFromMethod(edge: CallEdge, methodCall: MethodCallExpr): Map<StateMachine, Expression> {
-        val args = edge.param.mapIndexed { i, param -> param.machine to methodCall.args[i] }.toMap()
-        val scope = (edge.machine to methodCall.scope)
-        val dependencies = args + scope
-        return dependencies.filterValues { expr -> expr != null }
+    private fun extractDependenciesFromMethod(edge: CallEdge, methodCall: MethodCallExpr) {
+        val args = edge.param.mapIndexed { i, param -> param.state to methodCall.args[i] }.toMap()
+        val scope = (edge.src to methodCall.scope)
+        val deps = args + scope
+        for ((dep, expr) in deps) {
+            println("Machine ${dep.machine.label()} is now in state ${dep.label()}")
+            val previousStates = context.filter { state -> state.machine == dep.machine }
+            if (previousStates.isNotEmpty() && previousStates.first() != dep) {
+                println("Replace previous")
+                context.remove(previousStates.first())
+            }
+            context.add(dep)
+
+            if (expr != null) {
+                println("Machine ${dep.machine.label()} can be accessed by expr \"$expr\"")
+                dependencies[dep.machine] = expr
+            }
+        }
     }
 
     private fun makeDependenciesFromEdge(edge: Edge) {

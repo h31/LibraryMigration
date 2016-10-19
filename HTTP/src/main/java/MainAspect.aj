@@ -11,7 +11,7 @@ import java.util.List;
  * Created by artyom on 30.09.16.
  */
 public aspect MainAspect {
-    pointcut profiledOperation() : (call(public * *()) || call(*.new(..))) && within(Main);
+    pointcut profiledOperation() : (call(public * *(..)) || call(*.new(..))) && within(Main);
     pointcut theEnd() : execution(public static void Main.main(*)) || (call(public static void System.exit()) && within(Main));
 
     before() : profiledOperation() {
