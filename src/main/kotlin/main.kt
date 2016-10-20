@@ -33,9 +33,11 @@ fun migrateHTTP(projectPath: Path) {
 
     val java = makeJava()
     val apache = makeApache()
+    val okhttp = makeOkHttp()
 
     graphvizRender(toDOT(java), java.name)
     graphvizRender(toDOT(apache), apache.name)
+    graphvizRender(toDOT(okhttp), okhttp.name)
 
     javaToApache(java, apache, codeElements)
 
@@ -44,20 +46,20 @@ fun migrateHTTP(projectPath: Path) {
     checkMigrationCorrectness(source.toPath(), projectPath, migratedCode)
 }
 
-fun javaToApache(java: Library, apache: Library, codeElements: CodeElements) {
+fun javaToApache(library1: Library, library2: Library, codeElements: CodeElements) {
     for (methodDecl in codeElements.methodDecls) {
         val methodLocalCodeElements = methodDecl.getCodeElements()
 
         val migration = Migration(
-                library1 = apache,
-                library2 = java,
+                library1 = library1,
+                library2 = library2,
                 codeElements = methodLocalCodeElements,
                 functionName = methodDecl.name(),
                 traceFile = File("HTTP/log.json"))
 
         migration.doMigration()
     }
-    fixEntityTypes(codeElements, apache, java)
+    fixEntityTypes(codeElements, library1, library2)
 }
 
 private fun findJavaCode(path: Path) = path.toFile().walk().single { file -> file.extension == "java" }

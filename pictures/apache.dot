@@ -37,7 +37,7 @@ digraph G {
         Constructed_ContentLength [ label="Constructed" ];
     }
     subgraph cluster8 {
-    label = <<B>Entity: Entity</B>>;
+    label = <<B>Entity: HttpEntity</B>>;
         Constructed_Entity [ label="Constructed" ];
         virtual3 [ shape = point ];
         virtual4 [ shape = point ];
@@ -57,18 +57,18 @@ digraph G {
         virtual0 -> Constructed_Connection [ label="return CloseableHttpResponse()"  ];
         Constructed_Connection -> virtual1 [ style = "bold" label="getEntity()"  ];
         virtual1 -> Constructed_Connection [ style = "bold"  ];
-        virtual1 -> Constructed_Entity [ label="return Entity()"  ];
+        virtual1 -> Constructed_Entity [ label="return HttpEntity()"  ];
         Constructed_httpClients -> virtual2 [ style = "bold" label="createDefault()"  ];
         virtual2 -> Constructed_httpClients [ style = "bold"  ];
         virtual2 -> Constructed_Client [ label="return CloseableHttpClient()"  ];
-        Constructed_Entity -> Constructed_EntityUtils [ label="Usage in toString(Entity: Entity)", style = "dashed"  ];
+        Constructed_Entity -> Constructed_EntityUtils [ label="Usage in toString(Entity: HttpEntity)", style = "dashed"  ];
         Constructed_Entity -> virtual3 [ style = "bold" label="getContent()"  ];
         virtual3 -> Constructed_Entity [ style = "bold"  ];
         virtual3 -> Constructed_InputStream [ label="return InputStream()"  ];
         Constructed_Entity -> virtual4 [ style = "bold" label="getContentLength()"  ];
         virtual4 -> Constructed_Entity [ style = "bold"  ];
         virtual4 -> Constructed_ContentLength [ label="return long()"  ];
-        Constructed_EntityUtils -> virtual5 [ style = "bold" label="toString(Entity: Entity)"  ];
+        Constructed_EntityUtils -> virtual5 [ style = "bold" label="toString(Entity: HttpEntity)"  ];
         virtual5 -> Constructed_EntityUtils [ style = "bold"  ];
         virtual5 -> Constructed_Body [ label="return String()"  ];
 }

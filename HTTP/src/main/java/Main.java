@@ -1,3 +1,6 @@
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.Response;
 import org.apache.commons.io.IOUtils;
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpResponse;
@@ -34,6 +37,8 @@ public class Main {
         javaIf();
         System.out.println("----------------------------------------");
         apache();
+        System.out.println("----------------------------------------");
+        okhttp();
     }
 
     private static void java() throws IOException {
@@ -73,5 +78,16 @@ public class Main {
         String response = EntityUtils.toString(httpResponse.getEntity());
         System.out.println(response);
         httpclient.close();
+    }
+
+    private static void okhttp() throws IOException {
+        OkHttpClient client = new OkHttpClient();
+
+        Request request = new Request.Builder()
+                .url("http://api.ipify.org/")
+                .build();
+
+        Response response = client.newCall(request).execute();
+        System.out.println(response.body().string());
     }
 }

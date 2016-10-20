@@ -42,7 +42,7 @@ data class StateMachine(val name: String,
 //        )
     }
 
-    //    fun getInitState() = states.first { state -> state.name == "Init" }
+    fun getInitState() = states.first { state -> state.name == "Init" }
     fun getConstructedState() = states.first { state -> state.name == "Constructed" }
 
     fun getDefaultState() = getConstructedState()
@@ -82,7 +82,7 @@ data class State(val name: String,
     fun isInit() = name == "Init"
 }
 
-//fun makeInitState(machine: StateMachine) = State("Init", machine)
+fun makeInitState(machine: StateMachine) = State("Init", machine)
 fun makeConstructedState(machine: StateMachine) = State("Constructed", machine)
 
 interface Edge : Labelable {
@@ -92,6 +92,14 @@ interface Edge : Labelable {
     val dst: State
     val action: Action?
 
+    fun getSubsequentAutoEdges() = dst.machine.edges.filter { edge -> edge is AutoEdge && edge.src == dst }
+    fun getStyle(): String
+}
+
+interface ExpressionEdge : Edge {
+    var linkedEdge: LinkedEdge?
+    val isStatic: Boolean
+
     fun createUsageEdges(params: List<Param>, dst: State) = params.map { param ->
         UsageEdge(
                 machine = param.machine,
@@ -100,14 +108,6 @@ interface Edge : Labelable {
                 edge = this
         )
     }
-
-    fun getSubsequentAutoEdges() = dst.machine.edges.filter { edge -> edge is AutoEdge && edge.src == dst }
-    fun getStyle(): String
-}
-
-interface ExpressionEdge : Edge {
-    var linkedEdge: LinkedEdge?
-    val isStatic: Boolean
 }
 
 data class CallEdge(override val machine: StateMachine,
@@ -235,7 +235,7 @@ data class UsageEdge(override val machine: StateMachine,
                      override val dst: State = src,
                      override val action: Action? = null,
 
-                     val edge: Edge) : Edge {
+                     val edge: ExpressionEdge) : Edge {
     override fun getStyle() = "dashed"
 
     init {
