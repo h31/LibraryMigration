@@ -8,6 +8,7 @@ digraph G {
     label = <<B>Request: URL</B>>;
         Constructed_Request [ label="Constructed" ];
         hasURL_Request [ label="hasURL" ];
+        Init_Request [ label="Init" ];
         virtual0 [ shape = point ];
     }
     subgraph cluster2 {
@@ -30,7 +31,7 @@ digraph G {
         Constructed_ContentLength [ label="Constructed" ];
     }
         Constructed_URL -> hasURL_Request [ label="Usage in new Request: URL(URL: String)", style = "dashed"  ];
-        Constructed_Request -> hasURL_Request [ label="new Request: URL(URL: String)", style = "bold"  ];
+        Init_Request -> hasURL_Request [ label="new Request: URL(URL: String)", style = "bold"  ];
         hasURL_Request -> virtual0 [ style = "bold" label="openConnection()"  ];
         virtual0 -> hasURL_Request [ style = "bold"  ];
         virtual0 -> Constructed_Connection [ label="return URLConnection()"  ];

@@ -12,9 +12,11 @@ fun makeJava(): Library {
     val inputStream = StateMachine(name = "InputStream")
     val contentLength = StateMachine(name = "ContentLength")
 
+    request.states += makeInitState(request)
+
     ConstructorEdge(
             machine = request,
-            src = request.getDefaultState(),
+            src = request.getInitState(),
             dst = hasURL,
             param = listOf(Param(
                     machine = url
@@ -100,10 +102,14 @@ fun makeApache(): Library {
 
     val hasURL = State(name = "hasURL", machine = request)
 
-    client.edges.clear()
+//    client.edges.clear()
+    client.states += makeFinalState(client)
+    request.states += makeInitState(request)
+    httpClients.states += makeInitState(httpClients)
 
     makeLinkedEdge(
             machine = httpClients,
+            src = httpClients.getInitState(),
             dst = client.getConstructedState(),
             methodName = "createDefault",
             isStatic = true
@@ -111,7 +117,7 @@ fun makeApache(): Library {
 
     ConstructorEdge(
             machine = request,
-            src = request.getDefaultState(),
+            src = request.getInitState(),
             dst = hasURL,
             param = listOf(Param(
                     machine = url
@@ -119,16 +125,16 @@ fun makeApache(): Library {
             )
     )
 
-    val setURI = CallEdge(
-            machine = request,
-            src = request.getConstructedState(),
-            dst = hasURL,
-            methodName = "setURI",
-            param = listOf(Param(
-                    machine = url
-            )
-            )
-    )
+//    val setURI = CallEdge(
+//            machine = request,
+//            src = request.getConstructedState(),
+//            dst = hasURL,
+//            methodName = "setURI",
+//            param = listOf(Param(
+//                    machine = url
+//            )
+//            )
+//    )
 
     val execute = makeLinkedEdge(
             machine = client,
@@ -139,6 +145,13 @@ fun makeApache(): Library {
                     state = hasURL
             )
             )
+    )
+
+    CallEdge(
+            machine = client,
+            src = client.getDefaultState(),
+            dst = client.getFinalState(),
+            methodName = "close"
     )
 
     makeLinkedEdge(
@@ -233,6 +246,8 @@ fun makeOkHttp(): Library {
 
     request.states.clear()
     client.states += makeInitState(client)
+    builder.states += makeInitState(builder)
+    client.states += makeFinalState(client)
 
     val hasURL = State(name = "hasURL", machine = request)
     val builderHasURL = State(name = "hasURL", machine = builder)
@@ -241,6 +256,12 @@ fun makeOkHttp(): Library {
             machine = client,
             src = client.getInitState(),
             dst = client.getConstructedState()
+    )
+
+    ConstructorEdge(
+            machine = builder,
+            src = builder.getInitState(),
+            dst = builder.getConstructedState()
     )
 
     CallEdge(
@@ -262,6 +283,11 @@ fun makeOkHttp(): Library {
             dst = call.getDefaultState(),
             methodName = "newCall",
             param = listOf(Param(machine = request, state = hasURL))
+    )
+
+    AutoEdge(
+            machine = client,
+            dst = client.getFinalState()
     )
 
     val execute = makeLinkedEdge(
@@ -305,7 +331,7 @@ fun makeOkHttp(): Library {
                     body to "String",
                     inputStream to "InputStream",
                     contentLength to "long",
-                    entity to "Body",
+                    entity to "ResponseBody",
                     builder to "Request.Builder",
                     call to "Call"
             )

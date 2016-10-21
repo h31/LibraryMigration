@@ -8,10 +8,12 @@ digraph G {
     label = <<B>Request: HttpGet</B>>;
         Constructed_Request [ label="Constructed" ];
         hasURL_Request [ label="hasURL" ];
+        Init_Request [ label="Init" ];
     }
     subgraph cluster2 {
     label = <<B>Client: CloseableHttpClient</B>>;
         Constructed_Client [ label="Constructed" ];
+        Final_Client [ label="Final" ];
         virtual0 [ shape = point ];
     }
     subgraph cluster3 {
@@ -26,6 +28,7 @@ digraph G {
     subgraph cluster5 {
     label = <<B>httpClients: HttpClients</B>>;
         Constructed_httpClients [ label="Constructed" ];
+        Init_httpClients [ label="Init" ];
         virtual2 [ shape = point ];
     }
     subgraph cluster6 {
@@ -48,18 +51,17 @@ digraph G {
         virtual5 [ shape = point ];
     }
         Constructed_URL -> hasURL_Request [ label="Usage in new Request: HttpGet(URL: String)", style = "dashed"  ];
-        Constructed_URL -> hasURL_Request [ label="Usage in setURI(URL: String)", style = "dashed"  ];
-        Constructed_Request -> hasURL_Request [ label="new Request: HttpGet(URL: String)", style = "bold"  ];
-        Constructed_Request -> hasURL_Request [ label="setURI(URL: String)", style = "bold"  ];
+        Init_Request -> hasURL_Request [ label="new Request: HttpGet(URL: String)", style = "bold"  ];
         hasURL_Request -> Constructed_Client [ label="Usage in execute(Request: HttpGet)", style = "dashed"  ];
         Constructed_Client -> virtual0 [ style = "bold" label="execute(Request: HttpGet)"  ];
         virtual0 -> Constructed_Client [ style = "bold"  ];
         virtual0 -> Constructed_Connection [ label="return CloseableHttpResponse()"  ];
+        Constructed_Client -> Final_Client [ label="close()", style = "bold"  ];
         Constructed_Connection -> virtual1 [ style = "bold" label="getEntity()"  ];
         virtual1 -> Constructed_Connection [ style = "bold"  ];
         virtual1 -> Constructed_Entity [ label="return HttpEntity()"  ];
-        Constructed_httpClients -> virtual2 [ style = "bold" label="createDefault()"  ];
-        virtual2 -> Constructed_httpClients [ style = "bold"  ];
+        Init_httpClients -> virtual2 [ style = "bold" label="createDefault()"  ];
+        virtual2 -> Init_httpClients [ style = "bold"  ];
         virtual2 -> Constructed_Client [ label="return CloseableHttpClient()"  ];
         Constructed_Entity -> Constructed_EntityUtils [ label="Usage in toString(Entity: HttpEntity)", style = "dashed"  ];
         Constructed_Entity -> virtual3 [ style = "bold" label="getContent()"  ];

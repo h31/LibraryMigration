@@ -44,7 +44,7 @@ data class StateMachine(val name: String,
 
     fun getInitState() = states.first { state -> state.name == "Init" }
     fun getConstructedState() = states.first { state -> state.name == "Constructed" }
-
+    fun getFinalState() = states.first { state -> state.name == "Final" }
     fun getDefaultState() = getConstructedState()
 
     fun getDisplayedEdges() = edges.filterNot { edge -> edge is LinkedEdge }
@@ -84,6 +84,7 @@ data class State(val name: String,
 
 fun makeInitState(machine: StateMachine) = State("Init", machine)
 fun makeConstructedState(machine: StateMachine) = State("Constructed", machine)
+fun makeFinalState(machine: StateMachine) = State("Final", machine)
 
 interface Edge : Labelable {
     override fun label(): String
