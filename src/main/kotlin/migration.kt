@@ -101,7 +101,7 @@ class Migration(val library1: Library,
         })
     }
 
-    private fun extractRoutes() {
+    private fun extractRoutesFromCode() {
         val usedEdges: MutableList<Edge> = mutableListOf()
         val edges = library1.stateMachines.flatMap { machine -> machine.edges }
         for (methodCall in codeElements.methodCalls) {
@@ -233,49 +233,41 @@ class Migration(val library1: Library,
         val pendingExpr = mutableListOf<PendingExpression>()
         for (step in steps) {
             println("    Step: " + step.label())
-
-            val newExpressions: List<PendingExpression> = when (step) {
-                is CallEdge -> makeCallStatement(step)
-                is ConstructorEdge -> makeConstructorEdge(step)
-                is AutoEdge -> listOf()
-                is LinkedEdge -> makeLinkedEdge(step, if (step == steps.last()) oldVarName else null)
-                is MakeArrayEdge -> TODO() // makeArray(step.action)
-                is TemplateEdge -> TODO()
-                is UsageEdge -> makeUsageEdge(step)
-                else -> error("Unknown action!")
-            }
+            val name = if ((step == steps.last()) && (oldVarName != null)) oldVarName else generateVariableName(step)
+            val newExpressions: List<PendingExpression> = makeStep(step, name)
             println("Received expressions: " + newExpressions.toString())
             for (expr in newExpressions) {
-                addPendingExpression(expr)
+                addToContext(expr)
             }
             pendingExpr.addAll(newExpressions)
         }
         return pendingExpr
     }
 
-    private fun makeLinkedEdge(step: LinkedEdge, oldVarName: String?): List<PendingExpression> {
-        val name = oldVarName ?: generateVariableName(step)
-        val expr = when {
-            step.edge is CallEdge -> makeCallExpression(step.edge)
-            step.edge is TemplateEdge -> makeTemplateExpression(step.edge)
-            else -> error("Unknown type")
-        }
-
-//        dependencies[step.dst.machine] = NameExpr(name)
-//        context[step.dst.machine] = step.dst
-        return listOf(PendingExpression(edge = step, expression = expr, provides = name))
+    private fun makeStep(step: Edge, name: String) = when (step) {
+        is CallEdge, is ConstructorEdge, is LinkedEdge -> makeSimpleEdge(step, name)
+        is UsageEdge -> makeUsageEdge(step)
+        is AutoEdge -> listOf()
+        is MakeArrayEdge, is TemplateEdge -> TODO() // makeArray(step.action)
+        else -> TODO("Unknown action!")
     }
 
-    private fun makeConstructorEdge(step: ConstructorEdge): List<PendingExpression> {
-        val name = generateVariableName(step)
-        val expr = makeConstructorExpression(step)
-
-        return listOf(PendingExpression(edge = step, expression = expr, provides = name))
+    private fun makeSimpleEdge(step: Edge, name: String): List<PendingExpression> {
+        return listOf(PendingExpression(edge = step, expression = makeExpression(step), provides = name))
     }
+
+//    private fun makeConstructorEdge(step: ConstructorEdge, oldVarName: String?): List<PendingExpression> {
+//        val name = makeVariableName(step, oldVarName)
+//        val expr = makeConstructorExpression(step)
+//
+//        return listOf(PendingExpression(edge = step, expression = expr, provides = name))
+//    }
+
+//    private fun makeVariableName(step: Edge, oldVarName: String?) = oldVarName ?: generateVariableName(step)
 
     private fun generateVariableName(step: Edge) = "migration_${step.dst.machine.name}_${nameGeneratorCounter++}"
 
-    private fun addPendingExpression(pendingExpression: PendingExpression) {
+    private fun addToContext(pendingExpression: PendingExpression) {
         if (pendingExpression.provides != null) {
             dependencies[pendingExpression.edge.dst.machine] = NameExpr(pendingExpression.provides)
         }
@@ -287,22 +279,26 @@ class Migration(val library1: Library,
             return emptyList()
         }
 
-        val dependencyStep = library2.stateMachines.flatMap { machine -> machine.edges }
-                .first { edge: Edge -> (edge.src != edge.dst) && (edge is UsageEdge == false) && (edge.dst == step.dst) }
+        val dependencyStep = getDependencyStep(step)
         val route = findRoute(context.values.toSet(), dependencyStep.src)
         println("Usage route: $route")
         val steps = applySteps(route, null)
 
-        val initExpr: Expression = when (dependencyStep) {
-            is LinkedEdge -> makeExpression(dependencyStep.edge)
-            is TemplateEdge -> makeTemplateExpression(dependencyStep)
-            is ConstructorEdge -> makeConstructorExpression(dependencyStep)
-            is UsageEdge -> makeExpression(dependencyStep.edge)
-            is CallEdge -> makeCallExpression(dependencyStep)
-            else -> TODO()
-        }
+        val initExpr: Expression = makeExpression(dependencyStep)
 //        val callStatement = makeCallStatement(step.edge as CallEdge)
         return steps + listOf(PendingExpression(edge = step, expression = initExpr, provides = generateVariableName(step)))
+    }
+
+    private fun getDependencyStep(step: Edge) = library2.stateMachines.flatMap { machine -> machine.edges }
+            .first { edge: Edge -> (edge.src != edge.dst) && (edge is UsageEdge == false) && (edge.dst == step.dst) }
+
+    private fun makeExpression(step: Edge): Expression = when (step) {
+        is LinkedEdge -> makeExpression(step.edge)
+        is TemplateEdge -> makeTemplateExpression(step)
+        is ConstructorEdge -> makeConstructorExpression(step)
+        is UsageEdge -> makeExpression(step.edge)
+        is CallEdge -> makeCallExpression(step)
+        else -> TODO()
     }
 
     private fun replaceMethodCall(methodCall: Node, pendingStmts: List<PendingExpression>, oldVarName: String?) {
@@ -362,18 +358,6 @@ class Migration(val library1: Library,
         }
     }
 
-    private fun unpackCallEdge(edge: Edge): CallEdge? {
-        if (edge is LinkedEdge) {
-            return edge.edge as CallEdge // TODO
-        } else if (edge is UsageEdge) {
-            return edge.edge as CallEdge
-        } else if (edge is CallEdge) {
-            return edge
-        } else {
-            return null
-        }
-    }
-
     private fun makeCallExpressionParams(edge: CallEdge): CallExpressionParams {
         val scope = if (edge.isStatic) {
             NameExpr(edge.machine.type())
@@ -411,8 +395,6 @@ class Migration(val library1: Library,
 //        return Pair(name, newVariableStatement)
 //    }
 
-    private fun makeCallStatement(step: CallEdge) = listOf(PendingExpression(edge = step, expression = makeCallExpression(step)))
-
     private fun makeCallExpression(step: CallEdge): Expression {
         val callParams = makeCallExpressionParams(step)
         val expr = MethodCallExpr(callParams.scope, step.methodName, callParams.args)
@@ -424,11 +406,11 @@ class Migration(val library1: Library,
         return templateIntoAST(fillPlaceholders(step.template, stringParams))
     }
 
-    private fun makeExpression(step: ExpressionEdge) = when (step) {
-        is CallEdge -> makeCallExpression(step)
-        is TemplateEdge -> makeTemplateExpression(step)
-        else -> TODO()
-    }
+//    private fun makeExpressionOld(step: ExpressionEdge) = when (step) {
+//        is CallEdge -> makeCallExpression(step)
+//        is TemplateEdge -> makeTemplateExpression(step)
+//        else -> TODO()
+//    }
 
     private fun makeConstructorExpression(step: ConstructorEdge): Expression {
         val params = step.param.map { param -> checkNotNull(dependencies[param.machine]) }
@@ -463,17 +445,17 @@ class Migration(val library1: Library,
         val args = edge.param.mapIndexed { i, param -> param.state to methodCall.args[i] }.toMap()
         val scope = (edge.src to methodCall.scope)
         val deps = args + scope
-        fillContext(deps)
+        addDependenciesToContext(deps)
     }
 
     private fun extractDependenciesFromConstructor(edge: ConstructorEdge, constructorCall: ObjectCreationExpr) {
         val args = edge.param.mapIndexed { i, param -> param.state to constructorCall.args[i] }.toMap()
 //        val scope = (edge.src to methodCall.scope)
         val deps = args // TODO: scope
-        fillContext(deps)
+        addDependenciesToContext(deps)
     }
 
-    private fun fillContext(deps: Map<State, Expression?>) {
+    private fun addDependenciesToContext(deps: Map<State, Expression?>) {
         for ((dep, expr) in deps) {
             println("Machine ${dep.machine.label()} is now in state ${dep.label()}")
             context[dep.machine] = dep
