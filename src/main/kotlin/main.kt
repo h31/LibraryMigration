@@ -39,7 +39,7 @@ fun migrateHTTP(projectPath: Path) {
     graphvizRender(toDOT(apache), apache.name)
     graphvizRender(toDOT(okhttp), okhttp.name)
 
-    javaToApache(apache, okhttp, codeElements)
+    javaToApache(okhttp, apache, codeElements)
 
     val migratedCode = cu.toString()
     println(migratedCode);

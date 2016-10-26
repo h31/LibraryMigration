@@ -301,16 +301,17 @@ class Migration(val library1: Library,
         else -> TODO()
     }
 
-    private fun replaceMethodCall(methodCall: Node, pendingStmts: List<PendingExpression>, oldVarName: String?) {
-        val (statement, blockStmt) = getBlockStmt(methodCall)
+    private fun replaceMethodCall(oldExpr: Node, pendingExpressions: List<PendingExpression>, oldVarName: String?) {
+        val (statement, blockStmt) = getBlockStmt(oldExpr)
         if (oldVarName != null) {
-            replaceCodeUsage(blockStmt, oldVarName, pendingStmts)
+            replaceCodeUsage(blockStmt, oldVarName, pendingExpressions)
         }
         val statements = blockStmt.stmts
         val pos = statements.indexOf(statement)
-        statements.addAll(pos, pendingStmts.map { pending -> makeNewStatement(pending) })
-        val parent = methodCall.parentNode
-        val newExpr = NameExpr(getNewVarName(pendingStmts))
+        val pendingStatements = pendingExpressions.map { pending -> makeNewStatement(pending) }
+        statements.addAll(pos, pendingStatements)
+        val parent = oldExpr.parentNode
+        val newExpr = NameExpr(getNewVarName(pendingExpressions))
         when (parent) {
             is VariableDeclarator -> {
                 statements.remove(statement)
@@ -319,18 +320,22 @@ class Migration(val library1: Library,
             is AssignExpr -> parent.value = newExpr
             is BinaryExpr -> parent.left = newExpr
             is ObjectCreationExpr -> {
-                val argsPos = parent.args.indexOf(methodCall)
+                val argsPos = parent.args.indexOf(oldExpr)
                 parent.args.set(argsPos, newExpr)
                 newExpr.parentNode = parent
             }
             is MethodCallExpr -> {
-                val argsPos = parent.args.indexOf(methodCall)
-                parent.args.set(argsPos, newExpr)
+                val argsPos = parent.args.indexOf(oldExpr)
+                if (argsPos >= 0) {
+                    parent.args.set(argsPos, newExpr)
+                } else {
+                    parent.scope = newExpr
+                }
                 newExpr.parentNode = parent
             }
             else -> error("Don't know how to insert into " + parent.toString())
         }
-        for (stmt in pendingStmts) {
+        for (stmt in pendingExpressions) {
             stmt.expression.parentNode = blockStmt
         }
     }
