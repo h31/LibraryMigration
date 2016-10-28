@@ -20,7 +20,7 @@ import java.nio.file.Paths
  */
 
 fun main(args: Array<String>) {
-    migrateHTTP(projectPath = Paths.get("HTTP/"))
+    migrateHTTP(projectPath = Paths.get("/home/artyom/Compile/instagram-java-scraper"))
 }
 
 fun migrateHTTP(projectPath: Path) {
@@ -55,14 +55,14 @@ fun javaToApache(library1: Library, library2: Library, codeElements: CodeElement
                 library2 = library2,
                 codeElements = methodLocalCodeElements,
                 functionName = methodDecl.name(),
-                traceFile = File("HTTP/log.json"))
+                traceFile = File("/home/artyom/Compile/instagram-java-scraper/log.json"))
 
         migration.doMigration()
     }
     fixEntityTypes(codeElements, library1, library2)
 }
 
-private fun findJavaCode(path: Path) = path.toFile().walk().single { file -> file.extension == "java" }
+private fun findJavaCode(path: Path) = path.toFile().walk().single { file -> file.name == "Instagram.java" }
 
 fun prettyPrinter(string: String): String {
     var intend = 0
