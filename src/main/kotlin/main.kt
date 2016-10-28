@@ -59,7 +59,7 @@ fun javaToApache(library1: Library, library2: Library, codeElements: CodeElement
 
         migration.doMigration()
     }
-    fixEntityTypes(codeElements, library1, library2)
+//    fixEntityTypes(codeElements, library1, library2)
 }
 
 private fun findJavaCode(path: Path) = path.toFile().walk().single { file -> file.name == "Instagram.java" }
@@ -196,7 +196,7 @@ data class ClassDiff(val name: String,
 
 fun checkMigrationCorrectness(migratedFile: Path, projectDir: Path, migratedCode: String) {
     val rt = Runtime.getRuntime();
-    val command = "./gradlew -q run"
+    val command = "./gradlew -q test"
     val testDir = projectDir.resolveSibling(projectDir.fileName.toString() + "_test")
     val relativePath = projectDir.relativize(migratedFile)
     testDir.toFile().deleteRecursively()

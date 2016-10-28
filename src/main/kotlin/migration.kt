@@ -42,7 +42,8 @@ class Migration(val library1: Library,
 //        val edges = library1.stateMachines.flatMap { it -> it.edges }
         println("Function: $functionName")
         context += library2.stateMachines.flatMap { machine -> machine.states }.filter(State::isInit).map { state -> state.machine to state }
-        for (edge in path) {
+        for (edgeIndexed in path.withIndex()) {
+            val edge = edgeIndexed.value
             println("Processing " + edge.label() + "... ")
             if (edge.src == edge.dst) {
                 println("  Makes a loop, skipping")
@@ -51,8 +52,8 @@ class Migration(val library1: Library,
             if (edge.dst.machine in library2.stateMachines == false) {
                 println("No such machine, skipped")
                 when (edge) {
-                    is CallEdge -> extractDependenciesFromMethod(edge, nodeMap[edge] as MethodCallExpr)
-                    is ConstructorEdge -> extractDependenciesFromConstructor(edge, nodeMap[edge] as ObjectCreationExpr)
+                    is CallEdge -> extractDependenciesFromMethod(edge, nodeMap[edgeIndexed.index] as MethodCallExpr)
+                    is ConstructorEdge -> extractDependenciesFromConstructor(edge, nodeMap[edgeIndexed.index] as ObjectCreationExpr)
                 }
                 continue
             }
@@ -60,23 +61,23 @@ class Migration(val library1: Library,
                 is AutoEdge -> println("  Has an auto action, skipping") // TODO: Should be error
                 is CallEdge -> {
                     println("  Has a call action")
-                    extractDependenciesFromMethod(edge, nodeMap[edge] as MethodCallExpr)
+                    extractDependenciesFromMethod(edge, nodeMap[edgeIndexed.index] as MethodCallExpr)
                     val route = findRoute(context.values.toSet(), edge.dst)
-                    migrateMethodCall(edge, route, nodeMap[edge] as MethodCallExpr)
+                    migrateMethodCall(edge, route, nodeMap[edgeIndexed.index] as MethodCallExpr)
                 }
                 is ConstructorEdge -> {
                     println("  Has a constructor action")
-                    extractDependenciesFromConstructor(edge, nodeMap[edge] as ObjectCreationExpr)
+                    extractDependenciesFromConstructor(edge, nodeMap[edgeIndexed.index] as ObjectCreationExpr)
                     val route = findRoute(context.values.toSet(), edge.dst)
-                    migrateConstructorCall(edge, route, nodeMap[edge] as ObjectCreationExpr)
+                    migrateConstructorCall(edge, route, nodeMap[edgeIndexed.index] as ObjectCreationExpr)
                 }
                 is LinkedEdge -> {
                     println("  Has a linked action")
                     val dependency = edge.edge
                     if (dependency is CallEdge) {
-                        extractDependenciesFromMethod(dependency, nodeMap[dependency] as MethodCallExpr)
+                        extractDependenciesFromMethod(dependency, nodeMap[edgeIndexed.index-1] as MethodCallExpr)
                         val route = findRoute(context.values.toSet(), edge.dst)
-                        migrateMethodCall(dependency, route, nodeMap[dependency] as MethodCallExpr)
+                        migrateMethodCall(dependency, route, nodeMap[edgeIndexed.index-1] as MethodCallExpr)
                     }
                 }
             }
@@ -151,13 +152,13 @@ class Migration(val library1: Library,
         fun simpleType() = type.substringAfterLast('.').replace('$', '.')
     }
 
-    private fun extractRouteFromJSON(file: File): Pair<List<Edge>, Map<Edge, Node>> {
+    private fun extractRouteFromJSON(file: File): Pair<List<Edge>, Map<Int, Node>> {
         val invocations = ObjectMapper().registerKotlinModule().readValue<List<Invocation>>(file)
         val localInvocations = invocations.filter { inv -> inv.callerName == functionName }
 
         val usedEdges: MutableList<Edge> = mutableListOf()
         val edges = library1.stateMachines.flatMap { machine -> machine.edges }
-        val nodeMap = mutableMapOf<Edge, Node>()
+        val nodeMap = mutableMapOf<Int, Node>()
         for (invocation in localInvocations) {
             if (invocation.kind == "method-call") {
                 val callEdge = edges.firstOrNull { edge ->
@@ -171,7 +172,7 @@ class Migration(val library1: Library,
                 }
                 usedEdges += callEdge
                 val methodCall = codeElements.methodCalls.first { call -> call.name == invocation.name && call.endLine == invocation.line }
-                nodeMap[callEdge] = methodCall
+                nodeMap[usedEdges.size-1] = methodCall
                 if (methodCall.parentNode is ExpressionStmt == false) {
                     val linkedEdge = callEdge.linkedEdge
                     if (linkedEdge != null) {
@@ -192,8 +193,8 @@ class Migration(val library1: Library,
                 if (constructorCall == null) {
                     error("Cannot find node for $invocation")
                 }
-                nodeMap[constructorEdge] = constructorCall
                 usedEdges += constructorEdge
+                nodeMap[usedEdges.size-1] = constructorCall
                 usedEdges += constructorEdge.usageEdges
             }
         }
@@ -215,9 +216,14 @@ class Migration(val library1: Library,
         if (pendingStmts.isNotEmpty()) {
             replaceMethodCall(usage, pendingStmts, oldVarName)
         } else {
-            val (statement, blockStmt) = getBlockStmt(usage)
-            if (statement != usage.parentNode) TODO()
-            blockStmt.stmts.remove(statement)
+            if (edge.methodName == "code" && dependencies.containsKey(edge.linkedEdge?.dst?.machine)) {
+                replaceMethodCall(usage, listOf(PendingExpression(expression = dependencies[edge.linkedEdge!!.dst.machine]!!,
+                        provides = generateVariableName(edge.linkedEdge!!),
+                        edge = edge.linkedEdge!!)), null)
+            }
+//            val (statement, blockStmt) = getBlockStmt(usage)
+//            if (statement != usage.parentNode) TODO()
+//            blockStmt.stmts.remove(statement)
         }
     }
 
