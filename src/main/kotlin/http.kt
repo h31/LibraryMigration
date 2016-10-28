@@ -99,6 +99,7 @@ fun makeApache(): Library {
     val entity = StateMachine(name = "Entity")
     val entityUtils = StateMachine(name = "EntityUtils")
     val body = StateMachine(name = "Body")
+    val statusCode = StateMachine(name = "StatusCode")
 
     val hasURL = State(name = "hasURL", machine = request)
 
@@ -203,6 +204,16 @@ fun makeApache(): Library {
             methodName = "getContentLength"
     )
 
+    LinkedEdge(
+            machine = connection,
+            dst = statusCode.getConstructedState(),
+            edge = TemplateEdge(
+                    machine = connection,
+                    template = "{{ conn }}.getStatusLine().getStatusCode()",
+                    params = mapOf("conn" to connection.getDefaultState())
+            )
+    )
+
 //    LinkedEdge(
 //            machine = connection,
 //            dst = contentLength.getDefaultState(),
@@ -215,7 +226,8 @@ fun makeApache(): Library {
 
     return Library(
             name = "apache",
-            stateMachines = listOf(url, request, client, connection, body, httpClients, inputStream, contentLength, entity, entityUtils),
+            stateMachines = listOf(url, request, client, connection, body, httpClients,
+                    inputStream, contentLength, entity, entityUtils, statusCode),
             machineTypes = mapOf(
                     url to "String",
                     request to "HttpGet",
@@ -226,7 +238,8 @@ fun makeApache(): Library {
                     inputStream to "InputStream",
                     contentLength to "long",
                     entity to "HttpEntity",
-                    entityUtils to "EntityUtils"
+                    entityUtils to "EntityUtils",
+                    statusCode to "int"
             )
     )
 }
@@ -242,6 +255,7 @@ fun makeOkHttp(): Library {
     val contentLength = StateMachine(name = "ContentLength")
     val entity = StateMachine(name = "Entity")
     val body = StateMachine(name = "Body")
+    val statusCode = StateMachine(name = "StatusCode")
     val static = StateMachine(name = "Static")
 
     request.states.clear()
@@ -320,9 +334,16 @@ fun makeOkHttp(): Library {
             methodName = "contentLength"
     )
 
+    makeLinkedEdge(
+            machine = connection,
+            dst = statusCode.getConstructedState(),
+            methodName = "code"
+    )
+
     return Library(
             name = "okhttp",
-            stateMachines = listOf(url, request, client, connection, body, inputStream, contentLength, entity, builder, call),
+            stateMachines = listOf(url, request, client, connection, body,
+                    inputStream, contentLength, entity, builder, call, statusCode),
             machineTypes = mapOf(
                     url to "String",
                     request to "Request",
@@ -333,7 +354,8 @@ fun makeOkHttp(): Library {
                     contentLength to "long",
                     entity to "ResponseBody",
                     builder to "Request.Builder",
-                    call to "Call"
+                    call to "Call",
+                    statusCode to "int"
             )
     )
 }
