@@ -1,0 +1,81 @@
+digraph G {
+    bgcolor="transparent";
+    subgraph cluster0 {
+    label = <<B>URL: String</B>>;
+        Constructed_URL [ label="Constructed" ];
+    }
+    subgraph cluster1 {
+    label = <<B>Request: Request</B>>;
+        hasURL_Request [ label="hasURL" ];
+    }
+    subgraph cluster2 {
+    label = <<B>Client: OkHttpClient</B>>;
+        Constructed_Client [ label="Constructed" ];
+        Init_Client [ label="Init" ];
+        Final_Client [ label="Final" ];
+        virtual0 [ shape = point ];
+    }
+    subgraph cluster3 {
+    label = <<B>Connection: Response</B>>;
+        Constructed_Connection [ label="Constructed" ];
+        virtual1 [ shape = point ];
+    }
+    subgraph cluster4 {
+    label = <<B>Body: String</B>>;
+        Constructed_Body [ label="Constructed" ];
+    }
+    subgraph cluster5 {
+    label = <<B>InputStream: InputStream</B>>;
+        Constructed_InputStream [ label="Constructed" ];
+    }
+    subgraph cluster6 {
+    label = <<B>ContentLength: long</B>>;
+        Constructed_ContentLength [ label="Constructed" ];
+    }
+    subgraph cluster7 {
+    label = <<B>Entity: ResponseBody</B>>;
+        Constructed_Entity [ label="Constructed" ];
+        virtual2 [ shape = point ];
+        virtual3 [ shape = point ];
+        virtual4 [ shape = point ];
+    }
+    subgraph cluster8 {
+    label = <<B>Builder: Request.Builder</B>>;
+        Constructed_Builder [ label="Constructed" ];
+        Init_Builder [ label="Init" ];
+        hasURL_Builder [ label="hasURL" ];
+        virtual5 [ shape = point ];
+    }
+    subgraph cluster9 {
+    label = <<B>Call: Call</B>>;
+        Constructed_Call [ label="Constructed" ];
+        virtual6 [ shape = point ];
+    }
+        Constructed_URL -> hasURL_Builder [ label="Usage in url(URL: String)", style = "dashed"  ];
+        hasURL_Request -> Constructed_Client [ label="Usage in newCall(Request: Request)", style = "dashed"  ];
+        Init_Client -> Constructed_Client [ label="new Client: OkHttpClient()", style = "bold"  ];
+        Constructed_Client -> virtual0 [ style = "bold" label="newCall(Request: Request)"  ];
+        virtual0 -> Constructed_Client [ style = "bold"  ];
+        virtual0 -> Constructed_Call [ label="return Call()"  ];
+        Constructed_Client -> Final_Client [ label="", style = "solid"  ];
+        Constructed_Connection -> virtual1 [ style = "bold" label="body()"  ];
+        virtual1 -> Constructed_Connection [ style = "bold"  ];
+        virtual1 -> Constructed_Entity [ label="return ResponseBody()"  ];
+        Constructed_Entity -> virtual2 [ style = "bold" label="string()"  ];
+        virtual2 -> Constructed_Entity [ style = "bold"  ];
+        virtual2 -> Constructed_Body [ label="return String()"  ];
+        Constructed_Entity -> virtual3 [ style = "bold" label="byteStream()"  ];
+        virtual3 -> Constructed_Entity [ style = "bold"  ];
+        virtual3 -> Constructed_InputStream [ label="return InputStream()"  ];
+        Constructed_Entity -> virtual4 [ style = "bold" label="contentLength()"  ];
+        virtual4 -> Constructed_Entity [ style = "bold"  ];
+        virtual4 -> Constructed_ContentLength [ label="return long()"  ];
+        Init_Builder -> Constructed_Builder [ label="new Builder: Request.Builder()", style = "bold"  ];
+        Constructed_Builder -> hasURL_Builder [ label="url(URL: String)", style = "bold"  ];
+        hasURL_Builder -> virtual5 [ style = "bold" label="build()"  ];
+        virtual5 -> hasURL_Builder [ style = "bold"  ];
+        virtual5 -> hasURL_Request [ label="return Request()"  ];
+        Constructed_Call -> virtual6 [ style = "bold" label="execute()"  ];
+        virtual6 -> Constructed_Call [ style = "bold"  ];
+        virtual6 -> Constructed_Connection [ label="return Response()"  ];
+}
