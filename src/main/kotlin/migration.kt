@@ -36,14 +36,14 @@ class Migration(val library1: Library,
     var nameGeneratorCounter = 0
 
     fun doMigration() {
-        val (path, nodeMap) = extractRouteFromJSON(traceFile)
+        val path = extractRouteFromJSON(traceFile)
 //        checkRoute(path)
 
 //        val edges = library1.stateMachines.flatMap { it -> it.edges }
         println("Function: $functionName")
         context += library2.stateMachines.flatMap { machine -> machine.states }.filter(State::isInit).map { state -> state.machine to state }
-        for (edgeIndexed in path.withIndex()) {
-            val edge = edgeIndexed.value
+        for (usage in path) {
+            val edge = usage.first
             println("Processing " + edge.label() + "... ")
             if (edge.src == edge.dst) {
                 println("  Makes a loop, skipping")
@@ -52,8 +52,8 @@ class Migration(val library1: Library,
             if (edge.dst.machine in library2.stateMachines == false) {
                 println("No such machine, skipped")
                 when (edge) {
-                    is CallEdge -> extractDependenciesFromMethod(edge, nodeMap[edgeIndexed.index] as MethodCallExpr)
-                    is ConstructorEdge -> extractDependenciesFromConstructor(edge, nodeMap[edgeIndexed.index] as ObjectCreationExpr)
+                    is CallEdge -> extractDependenciesFromMethod(edge, usage.second as MethodCallExpr)
+                    is ConstructorEdge -> extractDependenciesFromConstructor(edge, usage.second as ObjectCreationExpr)
                 }
                 continue
             }
@@ -61,23 +61,23 @@ class Migration(val library1: Library,
                 is AutoEdge -> println("  Has an auto action, skipping") // TODO: Should be error
                 is CallEdge -> {
                     println("  Has a call action")
-                    extractDependenciesFromMethod(edge, nodeMap[edgeIndexed.index] as MethodCallExpr)
+                    extractDependenciesFromMethod(edge, usage.second as MethodCallExpr)
                     val route = findRoute(context.values.toSet(), edge.dst)
-                    migrateMethodCall(edge, route, nodeMap[edgeIndexed.index] as MethodCallExpr)
+                    migrateMethodCall(edge, route, usage.second as MethodCallExpr)
                 }
                 is ConstructorEdge -> {
                     println("  Has a constructor action")
-                    extractDependenciesFromConstructor(edge, nodeMap[edgeIndexed.index] as ObjectCreationExpr)
+                    extractDependenciesFromConstructor(edge, usage.second as ObjectCreationExpr)
                     val route = findRoute(context.values.toSet(), edge.dst)
-                    migrateConstructorCall(edge, route, nodeMap[edgeIndexed.index] as ObjectCreationExpr)
+                    migrateConstructorCall(edge, route, usage.second as ObjectCreationExpr)
                 }
                 is LinkedEdge -> {
                     println("  Has a linked action")
                     val dependency = edge.edge
                     if (dependency is CallEdge) {
-                        extractDependenciesFromMethod(dependency, nodeMap[edgeIndexed.index-1] as MethodCallExpr)
+                        extractDependenciesFromMethod(dependency, usage.second as MethodCallExpr)
                         val route = findRoute(context.values.toSet(), edge.dst)
-                        migrateMethodCall(dependency, route, nodeMap[edgeIndexed.index-1] as MethodCallExpr)
+                        migrateMethodCall(dependency, route, usage.second as MethodCallExpr)
                     }
                 }
             }
@@ -152,13 +152,12 @@ class Migration(val library1: Library,
         fun simpleType() = type.substringAfterLast('.').replace('$', '.')
     }
 
-    private fun extractRouteFromJSON(file: File): Pair<List<Edge>, Map<Int, Node>> {
+    private fun extractRouteFromJSON(file: File): List<Pair<Edge, Node>> {
         val invocations = ObjectMapper().registerKotlinModule().readValue<List<Invocation>>(file)
         val localInvocations = invocations.filter { inv -> inv.callerName == functionName }
 
-        val usedEdges: MutableList<Edge> = mutableListOf()
+        val usedEdges: MutableList<Pair<Edge, Node>> = mutableListOf()
         val edges = library1.stateMachines.flatMap { machine -> machine.edges }
-        val nodeMap = mutableMapOf<Int, Node>()
         for (invocation in localInvocations) {
             if (invocation.kind == "method-call") {
                 val callEdge = edges.firstOrNull { edge ->
@@ -170,19 +169,18 @@ class Migration(val library1: Library,
                     println("Cannot find edge for $invocation")
                     continue
                 }
-                usedEdges += callEdge
                 val methodCall = codeElements.methodCalls.first { call -> call.name == invocation.name && call.endLine == invocation.line }
-                nodeMap[usedEdges.size-1] = methodCall
+                usedEdges += (callEdge to methodCall)
                 if (methodCall.parentNode is ExpressionStmt == false) {
                     val linkedEdge = callEdge.linkedEdge
                     if (linkedEdge != null) {
-                        usedEdges += linkedEdge
-                        usedEdges += linkedEdge.getSubsequentAutoEdges()
+                        usedEdges += (linkedEdge to methodCall)
+                        usedEdges += associateEdges(linkedEdge.getSubsequentAutoEdges(), methodCall)
                     } else {
                         println("Missing linked node")
                     }
                 }
-                usedEdges += callEdge.usageEdges
+                usedEdges += associateEdges(callEdge.usageEdges, methodCall)
             } else if (invocation.kind == "constructor-call") {
                 val constructorEdge = edges.firstOrNull { edge -> edge is ConstructorEdge && invocation.simpleType() == edge.machine.type() } as ConstructorEdge?
                 if (constructorEdge == null) {
@@ -193,21 +191,22 @@ class Migration(val library1: Library,
                 if (constructorCall == null) {
                     error("Cannot find node for $invocation")
                 }
-                usedEdges += constructorEdge
-                nodeMap[usedEdges.size-1] = constructorCall
-                usedEdges += constructorEdge.usageEdges
+                usedEdges += constructorEdge to constructorCall
+                usedEdges += associateEdges(constructorEdge.usageEdges, constructorCall)
             }
         }
         if (usedEdges.isNotEmpty()) {
             println("--- Used edges:")
             for (edge in usedEdges) {
-                println(edge.label())
+                println(edge.first.label())
             }
             println("---")
-            graphvizRender(toDOT(library1, usedEdges), "extracted_" + functionName)
+            graphvizRender(toDOT(library1, usedEdges.map { usage -> usage.first }), "extracted_" + functionName)
         }
-        return Pair(usedEdges, nodeMap)
+        return usedEdges
     }
+
+    private fun associateEdges(edges: Collection<Edge>, node: Node) = edges.map { edge -> edge to node }
 
     private fun migrateMethodCall(edge: CallEdge, route: List<Edge>, usage: MethodCallExpr) {
             val oldVarName = getVariableNameFromExpression(usage)
