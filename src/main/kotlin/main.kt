@@ -20,16 +20,20 @@ import java.nio.file.Paths
  */
 
 fun main(args: Array<String>) {
-    migrateHTTP(projectPath = Paths.get("/home/artyom/Compile/instagram-java-scraper"))
+    migrate(projectPath = Paths.get("/home/artyom/Compile/instagram-java-scraper"),
+            sourceName = "Instagram.java",
+            traceFile = File("/home/artyom/Compile/instagram-java-scraper/log.json")
+    )
+//    migrate(projectPath = Paths.get("HTTP"),
+//            sourceName = "Main.java",
+//            traceFile = File("HTTP/log.json")
+//    )
 }
 
-fun migrateHTTP(projectPath: Path) {
-    val source = findJavaCode(projectPath)
-
-    val cu = readLib(source)
-
-    val codeElements = CodeElements();
-    CodeElementsVisitor().visit(cu, codeElements);
+fun migrate(projectPath: Path,
+            sourceName: String,
+            traceFile: File) {
+    val source = findJavaFile(projectPath, sourceName)
 
     val java = makeJava()
     val apache = makeApache()
@@ -39,14 +43,22 @@ fun migrateHTTP(projectPath: Path) {
     graphvizRender(toDOT(apache), apache.name)
     graphvizRender(toDOT(okhttp), okhttp.name)
 
-    javaToApache(okhttp, apache, codeElements)
+    val cu = parseFile(source)
+
+    val codeElements = CodeElements();
+    CodeElementsVisitor().visit(cu, codeElements);
+
+    migrateFile(okhttp, apache, codeElements, traceFile)
 
     val migratedCode = cu.toString()
     println(migratedCode);
     checkMigrationCorrectness(source.toPath(), projectPath, migratedCode)
 }
 
-fun javaToApache(library1: Library, library2: Library, codeElements: CodeElements) {
+fun migrateFile(library1: Library,
+                library2: Library,
+                codeElements: CodeElements,
+                traceFile: File) {
     for (methodDecl in codeElements.methodDecls) {
         val methodLocalCodeElements = methodDecl.getCodeElements()
 
@@ -55,14 +67,14 @@ fun javaToApache(library1: Library, library2: Library, codeElements: CodeElement
                 library2 = library2,
                 codeElements = methodLocalCodeElements,
                 functionName = methodDecl.name(),
-                traceFile = File("/home/artyom/Compile/instagram-java-scraper/log.json"))
+                traceFile = traceFile)
 
         migration.doMigration()
     }
 //    fixEntityTypes(codeElements, library1, library2)
 }
 
-private fun findJavaCode(path: Path) = path.toFile().walk().single { file -> file.name == "Instagram.java" }
+private fun findJavaFile(path: Path, name: String) = path.toFile().walk().single { file -> file.name == name }
 
 fun prettyPrinter(string: String): String {
     var intend = 0
@@ -117,7 +129,7 @@ private fun fixEntityTypes(codeElements: CodeElements, graph1: Library, graph2: 
 
 private fun checkNodePosition(node: Node, beginLine: Int, endLine: Int) = node.beginLine >= beginLine && node.endLine <= endLine
 
-fun readLib(file: File): CompilationUnit {
+fun parseFile(file: File): CompilationUnit {
     val fis = FileInputStream(file)
     return JavaParser.parse(fis);
 }
@@ -194,9 +206,9 @@ class MethodOrConstructorDeclaration(val node: BodyDeclaration) {
 data class ClassDiff(val name: String,
                      val methodsChanged: Map<MethodDeclaration, MethodDiff>)
 
-fun checkMigrationCorrectness(migratedFile: Path, projectDir: Path, migratedCode: String) {
+fun checkMigrationCorrectness(migratedFile: Path, projectDir: Path, migratedCode: String, runTests: Boolean = true) {
     val rt = Runtime.getRuntime();
-    val command = "./gradlew -q test"
+    val command = if (runTests) "./gradlew -q test" else "./gradlew -q run"
     val testDir = projectDir.resolveSibling(projectDir.fileName.toString() + "_test")
     val relativePath = projectDir.relativize(migratedFile)
     testDir.toFile().deleteRecursively()

@@ -30,19 +30,19 @@ digraph G {
     label = <<B>ContentLength: long</B>>;
         Constructed_ContentLength [ label="Constructed" ];
     }
-        Constructed_URL -> hasURL_Request [ label="Usage in new Request: URL(URL: String)", style = "dashed" , color = red ];
+        Constructed_URL -> hasURL_Request [ label="Usage in new Request: URL(URL: String)", style = "dashed"  ];
         Init_Request -> hasURL_Request [ label="new Request: URL(URL: String)", style = "bold" , color = red ];
         hasURL_Request -> virtual0 [ style = "bold" label="openConnection()" , color = red ];
         virtual0 -> hasURL_Request [ style = "bold" , color = red ];
-        virtual0 -> Constructed_Connection [ label="return URLConnection()" , color = red ];
+        virtual0 -> Constructed_Connection [ label="return URLConnection()"  ];
         Constructed_Connection -> virtual1 [ style = "bold" label="Template"  ];
         virtual1 -> Constructed_Connection [ style = "bold"  ];
         virtual1 -> Constructed_Body [ label="return String()"  ];
         Constructed_Connection -> Constructed_Connection [ label="Usage in Template", style = "dashed"  ];
         Constructed_Connection -> virtual2 [ style = "bold" label="getInputStream()" , color = red ];
         virtual2 -> Constructed_Connection [ style = "bold" , color = red ];
-        virtual2 -> Constructed_InputStream [ label="return InputStream()" , color = red ];
+        virtual2 -> Constructed_InputStream [ label="return InputStream()"  ];
         Constructed_Connection -> virtual3 [ style = "bold" label="getContentLengthLong()" , color = red ];
         virtual3 -> Constructed_Connection [ style = "bold" , color = red ];
-        virtual3 -> Constructed_ContentLength [ label="return long()" , color = red ];
+        virtual3 -> Constructed_ContentLength [ label="return long()"  ];
 }
