@@ -20,9 +20,14 @@ import java.nio.file.Paths
  */
 
 fun main(args: Array<String>) {
+    val models = libraryModels()
+    makePictures(models)
+
     migrate(projectPath = Paths.get("/home/artyom/Compile/instagram-java-scraper"),
             sourceName = "Instagram.java",
-            traceFile = File("/home/artyom/Compile/instagram-java-scraper/log.json")
+            traceFile = File("/home/artyom/Compile/instagram-java-scraper/log.json"),
+            from = models["okhttp"]!!,
+            to = models["apache"]!!
     )
 //    migrate(projectPath = Paths.get("HTTP"),
 //            sourceName = "Main.java",
@@ -32,27 +37,27 @@ fun main(args: Array<String>) {
 
 fun migrate(projectPath: Path,
             sourceName: String,
-            traceFile: File) {
+            traceFile: File,
+            from: Library,
+            to: Library): Boolean {
     val source = findJavaFile(projectPath, sourceName)
-
-    val java = makeJava()
-    val apache = makeApache()
-    val okhttp = makeOkHttp()
-
-    graphvizRender(toDOT(java), java.name)
-    graphvizRender(toDOT(apache), apache.name)
-    graphvizRender(toDOT(okhttp), okhttp.name)
 
     val cu = parseFile(source)
 
     val codeElements = CodeElements();
     CodeElementsVisitor().visit(cu, codeElements);
 
-    migrateFile(okhttp, apache, codeElements, traceFile)
+    migrateFile(from, to, codeElements, traceFile)
 
     val migratedCode = cu.toString()
     println(migratedCode);
-    checkMigrationCorrectness(source.toPath(), projectPath, migratedCode)
+    return checkMigrationCorrectness(source.toPath(), projectPath, migratedCode)
+}
+
+fun libraryModels() = listOf(makeJava(), makeApache(), makeOkHttp()).map { it.name to it }.toMap()
+
+fun makePictures(libraries: Map<String, Library>) = libraries.forEach {
+    library -> graphvizRender(toDOT(library.value), library.key)
 }
 
 fun migrateFile(library1: Library,
@@ -206,7 +211,8 @@ class MethodOrConstructorDeclaration(val node: BodyDeclaration) {
 data class ClassDiff(val name: String,
                      val methodsChanged: Map<MethodDeclaration, MethodDiff>)
 
-fun checkMigrationCorrectness(migratedFile: Path, projectDir: Path, migratedCode: String, runTests: Boolean = true) {
+fun checkMigrationCorrectness(migratedFile: Path, projectDir: Path,
+                              migratedCode: String, runTests: Boolean = true): Boolean {
     val rt = Runtime.getRuntime();
     val command = if (runTests) "./gradlew -q test" else "./gradlew -q run"
     val testDir = projectDir.resolveSibling(projectDir.fileName.toString() + "_test")
@@ -231,7 +237,7 @@ fun checkMigrationCorrectness(migratedFile: Path, projectDir: Path, migratedCode
     if (build.exitValue() != 0) {
         println("Compilation failed!")
         println(build.inputStream.readBytes().toString(Charset.defaultCharset()))
-        return
+        return false
     }
 
     val process2 = rt.exec(command, null, testDir.toFile())
@@ -239,11 +245,13 @@ fun checkMigrationCorrectness(migratedFile: Path, projectDir: Path, migratedCode
 
     if (originalOutput == migratedOutput) {
         println("Migration OK")
+        return true
     } else {
         println("Migrated code doesn't work properly")
         println("Migrated:")
         println(migratedOutput)
         println("Original:")
         println(originalOutput)
+        return false
     }
 }
