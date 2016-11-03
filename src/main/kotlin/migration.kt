@@ -214,10 +214,11 @@ class Migration(val library1: Library,
         if (pendingExpressions.isNotEmpty()) {
             replaceMethodCall(usage, pendingExpressions, oldVarName)
         } else {
-            if (edge.methodName == "code" && dependencies.containsKey(edge.linkedEdge?.dst?.machine)) {
-                replaceMethodCall(usage, listOf(PendingExpression(expression = dependencies[edge.linkedEdge!!.dst.machine]!!,
-                        provides = generateVariableName(edge.linkedEdge!!),
-                        edge = edge.linkedEdge!!)), null)
+            if (dependencies.containsKey(edge.linkedEdge?.dst?.machine)) {
+                replaceNode(newExpr = dependencies[edge.linkedEdge!!.dst.machine]!!, oldExpr = usage)
+            } else {
+                val (statement, blockStmt) = getBlockStmt(usage) ?: return
+                blockStmt.stmts.remove(statement)
             }
 //            val (statement, blockStmt) = getBlockStmt(usage)
 //            if (statement != usage.parentNode) TODO()
@@ -306,7 +307,7 @@ class Migration(val library1: Library,
     }
 
     private fun replaceMethodCall(oldExpr: Node, pendingExpressions: List<PendingExpression>, oldVarName: String?) {
-        val (statement, blockStmt) = getBlockStmt(oldExpr)
+        val (statement, blockStmt) = getBlockStmt(oldExpr) ?: return
 //        if (oldVarName != null) {
 //            replaceCodeUsage(blockStmt, oldVarName, pendingExpressions)
 //        }
@@ -314,8 +315,17 @@ class Migration(val library1: Library,
         val pos = statements.indexOf(statement)
         val pendingStatements = pendingExpressions.map { pending -> makeNewStatement(pending) }
         statements.addAll(pos, pendingStatements)
-        val parent = oldExpr.parentNode
         val newExpr = NameExpr(getNewVarName(pendingExpressions))
+        replaceNode(newExpr, oldExpr)
+        for (stmt in pendingExpressions) {
+            stmt.expression.parentNode = blockStmt
+        }
+    }
+
+    private fun replaceNode(newExpr: Expression, oldExpr: Node) {
+        val (statement, blockStmt) = getBlockStmt(oldExpr) ?: return
+        val statements = blockStmt.stmts
+        val parent = oldExpr.parentNode
         when (parent) {
             is VariableDeclarator -> {
                 statements.remove(statement)
@@ -338,9 +348,6 @@ class Migration(val library1: Library,
                 newExpr.parentNode = parent
             }
             else -> error("Don't know how to insert into " + parent.toString())
-        }
-        for (stmt in pendingExpressions) {
-            stmt.expression.parentNode = blockStmt
         }
     }
 
@@ -427,9 +434,12 @@ class Migration(val library1: Library,
         return expr
     }
 
-    private fun getBlockStmt(initialNode: Node): Pair<Statement, BlockStmt> {
+    private fun getBlockStmt(initialNode: Node): Pair<Statement, BlockStmt>? {
         var node: Node = initialNode
         while (node.parentNode is BlockStmt == false) {
+            if (node.parentNode == null) {
+                return null
+            }
             node = node.parentNode
         }
         return Pair(node as Statement, node.parentNode as BlockStmt)
