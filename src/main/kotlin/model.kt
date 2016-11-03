@@ -15,12 +15,16 @@ interface Identifiable {
 data class Library(val name: String,
                    val stateMachines: List<StateMachine>,
                    val machineTypes: Map<StateMachine, String>) {
+    val machineSimpleTypes: MutableMap<StateMachine, String> = mutableMapOf()
     init {
         for (machine in stateMachines) {
             machine.library = this
         }
         if (machineTypes.size != stateMachines.size) error("Types: ${machineTypes.size}, machines: ${stateMachines.size}")
+        machineTypes.mapValuesTo(machineSimpleTypes, { entry -> simpleType(entry.value)})
     }
+
+    private fun simpleType(type: String) = type.substringAfterLast('.').replace('$', '.')
 }
 
 //data class Type(val entity: Entity,
@@ -56,7 +60,7 @@ data class StateMachine(val name: String,
         return copy
     }
 
-    fun type() = library?.machineTypes?.get(this) ?: error("No such type")
+    fun type() = library?.machineSimpleTypes?.get(this) ?: error("No such type")
 }
 
 data class State(val name: String,

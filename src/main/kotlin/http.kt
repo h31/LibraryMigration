@@ -230,15 +230,15 @@ fun makeApache(): Library {
                     inputStream, contentLength, entity, entityUtils, statusCode),
             machineTypes = mapOf(
                     url to "String",
-                    request to "HttpGet",
-                    client to "CloseableHttpClient",
-                    connection to "CloseableHttpResponse",
+                    request to "org.apache.http.client.methods.HttpGet",
+                    client to "org.apache.http.impl.client.CloseableHttpClient",
+                    connection to "org.apache.http.client.methods.CloseableHttpResponse",
                     body to "String",
-                    httpClients to "HttpClients",
+                    httpClients to "org.apache.http.impl.client.HttpClients",
                     inputStream to "InputStream",
                     contentLength to "long",
-                    entity to "HttpEntity",
-                    entityUtils to "EntityUtils",
+                    entity to "org.apache.http.HttpEntity",
+                    entityUtils to "org.apache.http.util.EntityUtils",
                     statusCode to "int"
             )
     )
@@ -346,15 +346,15 @@ fun makeOkHttp(): Library {
                     inputStream, contentLength, entity, builder, call, statusCode),
             machineTypes = mapOf(
                     url to "String",
-                    request to "Request",
-                    client to "OkHttpClient",
-                    connection to "Response",
+                    request to "okhttp3.Request",
+                    client to "okhttp3.OkHttpClient",
+                    connection to "okhttp3.Response",
                     body to "String",
-                    inputStream to "InputStream",
+                    inputStream to "java.io.InputStream",
                     contentLength to "long",
-                    entity to "ResponseBody",
-                    builder to "Request.Builder",
-                    call to "Call",
+                    entity to "okhttp3.ResponseBody",
+                    builder to "Request\$Builder",
+                    call to "okhttp3.Call",
                     statusCode to "int"
             )
     )

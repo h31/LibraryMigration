@@ -389,7 +389,7 @@ class Migration(val library1: Library,
     private fun makeNewStatement(pendingExpression: PendingExpression): Statement {
         if (pendingExpression.provides != null) {
             return makeNewVariable(
-                    type = checkNotNull(library2.machineTypes[pendingExpression.edge.dst.machine]),
+                    type = checkNotNull(library2.machineSimpleTypes[pendingExpression.edge.dst.machine]),
                     name = pendingExpression.provides,
                     initExpr = pendingExpression.expression
             )

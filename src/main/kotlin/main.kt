@@ -23,25 +23,27 @@ fun main(args: Array<String>) {
     val models = libraryModels()
     makePictures(models)
 
-//    migrate(projectPath = Paths.get("/home/artyom/Compile/instagram-java-scraper"),
-//            sourceName = "Instagram.java",
-//            traceFile = File("/home/artyom/Compile/instagram-java-scraper/log.json"),
-//            from = models["okhttp"]!!,
-//            to = models["apache"]!!
-//    )
-    migrate(projectPath = Paths.get("HTTP"),
-            sourceName = "Main.java",
-            traceFile = File("HTTP/log.json"),
-            from = models["java"]!!,
-            to = models["apache"]!!
+    migrate(projectPath = Paths.get("/home/artyom/Compile/instagram-java-scraper"),
+            sourceName = "Instagram.java",
+            traceFile = File("/home/artyom/Compile/instagram-java-scraper/log.json"),
+            from = models["okhttp"]!!,
+            to = models["apache"]!!,
+            usesTests = true
     )
+//    migrate(projectPath = Paths.get("HTTP"),
+//            sourceName = "Main.java",
+//            traceFile = File("HTTP/log.json"),
+//            from = models["apache"]!!,
+//            to = models["okhttp"]!!
+//    )
 }
 
 fun migrate(projectPath: Path,
             sourceName: String,
             traceFile: File,
             from: Library,
-            to: Library): Boolean {
+            to: Library,
+            usesTests: Boolean = false): Boolean {
     val source = findJavaFile(projectPath, sourceName)
 
     val cu = parseFile(source)
@@ -50,10 +52,11 @@ fun migrate(projectPath: Path,
     CodeElementsVisitor().visit(cu, codeElements);
 
     migrateFile(from, to, codeElements, traceFile)
+    cu.imports.addAll(to.machineTypes.values.filter { type -> type.contains('.') }.map { type -> ImportDeclaration(NameExpr(type), false, false) })
 
     val migratedCode = cu.toString()
     println(migratedCode);
-    return checkMigrationCorrectness(source.toPath(), projectPath, migratedCode)
+    return checkMigrationCorrectness(source.toPath(), projectPath, migratedCode, usesTests)
 }
 
 fun libraryModels() = listOf(makeJava(), makeApache(), makeOkHttp()).map { it.name to it }.toMap()
@@ -119,8 +122,8 @@ private fun setAsChild(parent: Node, expr: Expression) {
 var listNameCounter = 0;
 
 private fun fixEntityTypes(codeElements: CodeElements, graph1: Library, graph2: Library) {
-    for (type in graph1.machineTypes) {
-        val newType = graph2.machineTypes[type.key]
+    for (type in graph1.machineSimpleTypes) {
+        val newType = graph2.machineSimpleTypes[type.key]
         if (newType != null) {
             val declarations = codeElements.variableDeclarations.filter { it -> it.type.toString() == type.value }
             for (decl in declarations) {
