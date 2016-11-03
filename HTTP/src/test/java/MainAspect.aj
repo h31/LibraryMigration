@@ -1,6 +1,5 @@
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
-import org.aspectj.lang.Signature;
 
 import java.io.File;
 import java.io.IOException;
@@ -11,10 +10,17 @@ import java.util.List;
  * Created by artyom on 30.09.16.
  */
 public aspect MainAspect {
-    pointcut profiledOperation() : (call(public * *(..)) || call(*.new(..))) && within(Main);
-    pointcut theEnd() : execution(public static void Main.main(*)) || (call(public static void System.exit()) && within(Main));
+    pointcut profiledOperation() : (call(public * *(..)) || call(*.new(..))) && within(migration..*);
 
     before() : profiledOperation() {
+        if (!executed) {
+            Runtime.getRuntime().addShutdownHook(new Thread() {
+                public void run() {
+                    theEnd();
+                }
+            });
+            executed = true;
+        }
 //        System.out.println(String.format("%s at position: %s:%d",
 //                thisJoinPoint.getSignature().getName(),
 //                thisJoinPoint.getSourceLocation().getFileName(),
@@ -35,7 +41,7 @@ public aspect MainAspect {
                 "before"));
     }
 
-    after() : theEnd() {
+    private void theEnd() {
         System.out.println("The end. Instrumentation finished!");
         try {
             new ObjectMapper()
@@ -80,4 +86,5 @@ public aspect MainAspect {
     }
 
     public static List<Invocation> invocations = new ArrayList<>();
+    private static boolean executed = false;
 }

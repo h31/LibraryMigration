@@ -16,6 +16,8 @@ data class Library(val name: String,
                    val stateMachines: List<StateMachine>,
                    val machineTypes: Map<StateMachine, String>) {
     val machineSimpleTypes: MutableMap<StateMachine, String> = mutableMapOf()
+    val edges: List<Edge> = stateMachines.flatMap(StateMachine::edges)
+    val additionalTypes: List<String> = edges.filterIsInstance<TemplateEdge>().flatMap(TemplateEdge::additionalTypes)
     init {
         for (machine in stateMachines) {
             machine.library = this
@@ -214,7 +216,8 @@ data class TemplateEdge(override val machine: StateMachine,
 
                         val template: String,
                         val params: Map<String, State>,
-                        override val isStatic: Boolean = false) : ExpressionEdge {
+                        override val isStatic: Boolean = false,
+                        val additionalTypes: List<String> = listOf()) : ExpressionEdge {
     override fun getStyle() = "bold"
 
     override var linkedEdge: LinkedEdge? = null

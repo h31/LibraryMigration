@@ -23,19 +23,19 @@ fun main(args: Array<String>) {
     val models = libraryModels()
     makePictures(models)
 
-    migrate(projectPath = Paths.get("/home/artyom/Compile/instagram-java-scraper"),
-            sourceName = "Instagram.java",
-            traceFile = File("/home/artyom/Compile/instagram-java-scraper/log.json"),
-            from = models["okhttp"]!!,
-            to = models["apache"]!!,
-            usesTests = true
-    )
-//    migrate(projectPath = Paths.get("HTTP"),
-//            sourceName = "Main.java",
-//            traceFile = File("HTTP/log.json"),
-//            from = models["apache"]!!,
-//            to = models["okhttp"]!!
+//    migrate(projectPath = Paths.get("/home/artyom/Compile/instagram-java-scraper"),
+//            sourceName = "Instagram.java",
+//            traceFile = File("/home/artyom/Compile/instagram-java-scraper/log.json"),
+//            from = models["okhttp"]!!,
+//            to = models["apache"]!!,
+//            usesTests = true
 //    )
+    migrate(projectPath = Paths.get("HTTP"),
+            sourceName = "Apache.java",
+            traceFile = File("HTTP/log.json"),
+            from = models["apache"]!!,
+            to = models["okhttp"]!!
+    )
 }
 
 fun migrate(projectPath: Path,
@@ -43,7 +43,8 @@ fun migrate(projectPath: Path,
             traceFile: File,
             from: Library,
             to: Library,
-            usesTests: Boolean = false): Boolean {
+            runClass: String? = null,
+            testPatcher: (Path) -> Unit = {}): Boolean {
     val source = findJavaFile(projectPath, sourceName)
 
     val cu = parseFile(source)
@@ -52,17 +53,24 @@ fun migrate(projectPath: Path,
     CodeElementsVisitor().visit(cu, codeElements);
 
     migrateFile(from, to, codeElements, traceFile)
-    cu.imports.addAll(to.machineTypes.values.filter { type -> type.contains('.') }.map { type -> ImportDeclaration(NameExpr(type), false, false) })
+    addImports(cu, to)
 
     val migratedCode = cu.toString()
     println(migratedCode);
-    return checkMigrationCorrectness(source.toPath(), projectPath, migratedCode, usesTests)
+    return checkMigrationCorrectness(source.toPath(), projectPath, migratedCode, runClass, testPatcher)
+}
+
+private fun addImports(cu: CompilationUnit, library: Library) {
+    cu.imports.addAll((library.machineTypes.values + library.additionalTypes)
+            .filter { type -> type.contains('.') }
+            .map { type -> ImportDeclaration(NameExpr(type), false, false) })
 }
 
 fun libraryModels() = listOf(makeJava(), makeApache(), makeOkHttp()).map { it.name to it }.toMap()
 
 fun makePictures(libraries: Map<String, Library>) = libraries.forEach {
-    library -> graphvizRender(toDOT(library.value), library.key)
+    library ->
+    graphvizRender(toDOT(library.value), library.key)
 }
 
 fun migrateFile(library1: Library,
@@ -217,23 +225,20 @@ data class ClassDiff(val name: String,
                      val methodsChanged: Map<MethodDeclaration, MethodDiff>)
 
 fun checkMigrationCorrectness(migratedFile: Path, projectDir: Path,
-                              migratedCode: String, runTests: Boolean = true): Boolean {
+                              migratedCode: String, runClass: String? = null,
+                              testPatcher: (Path) -> Unit = {}): Boolean {
     val rt = Runtime.getRuntime();
-    val command = if (runTests) "./gradlew -q test" else "./gradlew -q run"
+    val command = "./gradlew test ${if (runClass != null) "--tests $runClass" else ""}"
     val testDir = projectDir.resolveSibling(projectDir.fileName.toString() + "_test")
     val relativePath = projectDir.relativize(migratedFile)
     testDir.toFile().deleteRecursively()
 
-    println("Running original code")
-
-    val process1 = rt.exec(command, null, projectDir.toFile())
-    val originalOutput = process1.inputStream.readBytes().toString(Charset.defaultCharset())
-
     Files.walk(projectDir).forEach { path ->
-            Files.copy(path, testDir.resolve(projectDir.relativize(path)))
+        Files.copy(path, testDir.resolve(projectDir.relativize(path)))
     }
 
     Files.write(testDir.resolve(relativePath), migratedCode.toByteArray())
+    testPatcher(testDir)
 
     println("Running migrated code")
 
@@ -246,17 +251,16 @@ fun checkMigrationCorrectness(migratedFile: Path, projectDir: Path,
     }
 
     val process2 = rt.exec(command, null, testDir.toFile())
+    process2.waitFor()
     val migratedOutput = process2.inputStream.readBytes().toString(Charset.defaultCharset())
 
-    if (originalOutput == migratedOutput) {
+    if (process2.exitValue() == 0) {
         println("Migration OK")
         return true
     } else {
         println("Migrated code doesn't work properly")
         println("Migrated:")
         println(migratedOutput)
-        println("Original:")
-        println(originalOutput)
         return false
     }
 }

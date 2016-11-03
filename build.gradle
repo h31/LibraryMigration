@@ -32,6 +32,7 @@ dependencies {
 //    compile files('sootjavadoc-trunk.jar')
     compile 'com.fasterxml.jackson.core:jackson-databind:2.8.3'
     compile 'com.fasterxml.jackson.module:jackson-module-kotlin:2.8.3'
+    testCompile 'junit:junit:4.12'
 }
 
 idea {

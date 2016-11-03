@@ -27,19 +27,26 @@ class MigrationTest {
 
     @Test
     fun migrateInstagram() {
+        val testPatcher = {path: Path ->
+            val testFile = path.resolve("src/test/java/InstagramTest.java").toFile()
+            val lines = testFile.readLines()
+            Assert.assertTrue(lines[20].endsWith("@Test"))
+            val newContent = lines.filterIndexed { i, s -> i != 20 }.joinToString("\n")
+            testFile.writeText(newContent)
+        }
         Assert.assertTrue(migrate(projectPath = Paths.get("/home/artyom/Compile/instagram-java-scraper"),
                 sourceName = "Instagram.java",
                 traceFile = File("/home/artyom/Compile/instagram-java-scraper/log.json"),
                 from = okhttp!!,
                 to = apache!!,
-                usesTests = true
+                testPatcher = testPatcher
         ))
     }
 
     @Test
     fun migrateJavaApache() {
         Assert.assertTrue(migrate(projectPath = Paths.get("HTTP"),
-                sourceName = "Main.java",
+                sourceName = "Java.java",
                 traceFile = File("HTTP/log.json"),
                 from = java!!,
                 to = apache!!
@@ -49,7 +56,7 @@ class MigrationTest {
     @Test
     fun migrateJavaOkhttp() {
         Assert.assertTrue(migrate(projectPath = Paths.get("HTTP"),
-                sourceName = "Main.java",
+                sourceName = "Java.java",
                 traceFile = File("HTTP/log.json"),
                 from = java!!,
                 to = okhttp!!
@@ -59,7 +66,7 @@ class MigrationTest {
     @Test
     fun migrateApacheJava() {
         Assert.assertTrue(migrate(projectPath = Paths.get("HTTP"),
-                sourceName = "Main.java",
+                sourceName = "Apache.java",
                 traceFile = File("HTTP/log.json"),
                 from = apache!!,
                 to = java!!
@@ -69,7 +76,7 @@ class MigrationTest {
     @Test
     fun migrateApacheOkhttp() {
         Assert.assertTrue(migrate(projectPath = Paths.get("HTTP"),
-                sourceName = "Main.java",
+                sourceName = "Apache.java",
                 traceFile = File("HTTP/log.json"),
                 from = apache!!,
                 to = okhttp!!
@@ -79,17 +86,18 @@ class MigrationTest {
     @Test
     fun migrateOkhttpJava() {
         Assert.assertTrue(migrate(projectPath = Paths.get("HTTP"),
-                sourceName = "Main.java",
+                sourceName = "OkHttp.java",
                 traceFile = File("HTTP/log.json"),
                 from = okhttp!!,
-                to = java!!
+                to = java!!,
+                runClass = "migration.OkHttp"
         ))
     }
 
     @Test
     fun migrateOkhttpApache() {
         Assert.assertTrue(migrate(projectPath = Paths.get("HTTP"),
-                sourceName = "Main.java",
+                sourceName = "OkHttp.java",
                 traceFile = File("HTTP/log.json"),
                 from = okhttp!!,
                 to = apache!!

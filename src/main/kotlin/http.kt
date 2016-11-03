@@ -46,8 +46,10 @@ fun makeJava(): Library {
 
     val readerToString = TemplateEdge(
             machine = connection,
-            template = "new BufferedReader(new InputStreamReader({{ conn }}.getInputStream())).lines().collect(Collectors.joining(\"\\n\"))",
-            params = mapOf("conn" to connection.getDefaultState())
+            template = "new BufferedReader(new InputStreamReader({{ conn }}.getInputStream()))" +
+                    ".lines().collect(Collectors.joining(\"\\n\", \"\", \"\\n\"))",
+            params = mapOf("conn" to connection.getDefaultState()),
+            additionalTypes = listOf("java.io.BufferedReader", "java.io.InputStreamReader", "java.util.stream.Collectors")
     )
 
     LinkedEdge(
@@ -78,10 +80,10 @@ fun makeJava(): Library {
             name = "java",
             stateMachines = listOf(url, request, connection, body, inputStream, contentLength),
             machineTypes = mapOf(
-                    request to "URL",
+                    request to "java.net.URL",
                     url to "String",
-                    connection to "URLConnection",
-                    inputStream to "InputStream",
+                    connection to "java.net.URLConnection",
+                    inputStream to "java.io.InputStream",
                     contentLength to "long",
                     body to "String"
             )
@@ -235,7 +237,7 @@ fun makeApache(): Library {
                     connection to "org.apache.http.client.methods.CloseableHttpResponse",
                     body to "String",
                     httpClients to "org.apache.http.impl.client.HttpClients",
-                    inputStream to "InputStream",
+                    inputStream to "java.io.InputStream",
                     contentLength to "long",
                     entity to "org.apache.http.HttpEntity",
                     entityUtils to "org.apache.http.util.EntityUtils",
