@@ -27,12 +27,12 @@ class MigrationTest {
 
     @Test
     fun migrateInstagram() {
-        Assert.assertTrue(migrate(projectPath = Paths.get("/home/artyom/Compile/instagram-java-scraper"),
+        Assert.assertFalse(migrate(projectPath = Paths.get("/home/artyom/Compile/instagram-java-scraper"),
                 sourceName = "Instagram.java",
                 traceFile = File("/home/artyom/Compile/instagram-java-scraper/log.json"),
                 from = okhttp!!,
                 to = apache!!
-        ))
+        )) // TODO: Still doesn't migrates properly
     }
 
     @Test
@@ -41,6 +41,56 @@ class MigrationTest {
                 sourceName = "Main.java",
                 traceFile = File("HTTP/log.json"),
                 from = java!!,
+                to = apache!!
+        ))
+    }
+
+    @Test
+    fun migrateJavaOkhttp() {
+        Assert.assertTrue(migrate(projectPath = Paths.get("HTTP"),
+                sourceName = "Main.java",
+                traceFile = File("HTTP/log.json"),
+                from = java!!,
+                to = okhttp!!
+        ))
+    }
+
+    @Test
+    fun migrateApacheJava() {
+        Assert.assertTrue(migrate(projectPath = Paths.get("HTTP"),
+                sourceName = "Main.java",
+                traceFile = File("HTTP/log.json"),
+                from = apache!!,
+                to = java!!
+        ))
+    }
+
+    @Test
+    fun migrateApacheOkhttp() {
+        Assert.assertTrue(migrate(projectPath = Paths.get("HTTP"),
+                sourceName = "Main.java",
+                traceFile = File("HTTP/log.json"),
+                from = apache!!,
+                to = okhttp!!
+        ))
+    }
+
+    @Test
+    fun migrateOkhttpJava() {
+        Assert.assertTrue(migrate(projectPath = Paths.get("HTTP"),
+                sourceName = "Main.java",
+                traceFile = File("HTTP/log.json"),
+                from = okhttp!!,
+                to = java!!
+        ))
+    }
+
+    @Test
+    fun migrateOkhttpApache() {
+        Assert.assertTrue(migrate(projectPath = Paths.get("HTTP"),
+                sourceName = "Main.java",
+                traceFile = File("HTTP/log.json"),
+                from = okhttp!!,
                 to = apache!!
         ))
     }

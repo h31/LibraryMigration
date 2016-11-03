@@ -160,11 +160,10 @@ class Migration(val library1: Library,
         val edges = library1.stateMachines.flatMap { machine -> machine.edges }
         for (invocation in localInvocations) {
             if (invocation.kind == "method-call") {
-                val callEdge = edges.firstOrNull { edge ->
-                    edge is CallEdge &&
+                val callEdge = edges.filterIsInstance<CallEdge>().firstOrNull { edge ->
                             edge.methodName == invocation.name &&
                             invocation.simpleType() == edge.machine.type()
-                } as CallEdge?
+                }
                 if (callEdge == null) {
                     println("Cannot find edge for $invocation")
                     continue
@@ -182,7 +181,7 @@ class Migration(val library1: Library,
                 }
                 usedEdges += associateEdges(callEdge.usageEdges, methodCall)
             } else if (invocation.kind == "constructor-call") {
-                val constructorEdge = edges.firstOrNull { edge -> edge is ConstructorEdge && invocation.simpleType() == edge.machine.type() } as ConstructorEdge?
+                val constructorEdge = edges.filterIsInstance<ConstructorEdge>().firstOrNull { edge -> invocation.simpleType() == edge.machine.type() }
                 if (constructorEdge == null) {
                     println("Cannot find edge for $invocation")
                     continue
@@ -211,9 +210,9 @@ class Migration(val library1: Library,
     private fun migrateMethodCall(edge: CallEdge, route: List<Edge>, usage: MethodCallExpr) {
             val oldVarName = getVariableNameFromExpression(usage)
             // makeDependenciesFromEdge(edge)
-            val pendingStmts = applySteps(route, oldVarName)
-        if (pendingStmts.isNotEmpty()) {
-            replaceMethodCall(usage, pendingStmts, oldVarName)
+            val pendingExpressions = applySteps(route, oldVarName)
+        if (pendingExpressions.isNotEmpty()) {
+            replaceMethodCall(usage, pendingExpressions, oldVarName)
         } else {
             if (edge.methodName == "code" && dependencies.containsKey(edge.linkedEdge?.dst?.machine)) {
                 replaceMethodCall(usage, listOf(PendingExpression(expression = dependencies[edge.linkedEdge!!.dst.machine]!!,
@@ -251,7 +250,7 @@ class Migration(val library1: Library,
 
     private fun makeStep(step: Edge, name: String) = when (step) {
         is CallEdge, is ConstructorEdge, is LinkedEdge -> makeSimpleEdge(step, name)
-        is UsageEdge -> makeUsageEdge(step)
+        is UsageEdge -> makeUsageEdge(step, name)
         is AutoEdge -> listOf()
         is MakeArrayEdge, is TemplateEdge -> TODO() // makeArray(step.action)
         else -> TODO("Unknown action!")
@@ -279,7 +278,7 @@ class Migration(val library1: Library,
         context[pendingExpression.edge.dst.machine] = pendingExpression.edge.dst
     }
 
-    private fun makeUsageEdge(step: UsageEdge): List<PendingExpression> {
+    private fun makeUsageEdge(step: UsageEdge, oldVarName: String?): List<PendingExpression> {
         if (step.edge is CallEdge && step.edge.isStatic) {
             return emptyList()
         }
@@ -291,7 +290,7 @@ class Migration(val library1: Library,
 
         val initExpr: Expression = makeExpression(dependencyStep)
 //        val callStatement = makeCallStatement(step.edge as CallEdge)
-        return steps + listOf(PendingExpression(edge = step, expression = initExpr, provides = generateVariableName(step)))
+        return steps + listOf(PendingExpression(edge = step, expression = initExpr, provides = oldVarName ?: generateVariableName(step)))
     }
 
     private fun getDependencyStep(step: Edge) = library2.stateMachines.flatMap { machine -> machine.edges }
@@ -308,9 +307,9 @@ class Migration(val library1: Library,
 
     private fun replaceMethodCall(oldExpr: Node, pendingExpressions: List<PendingExpression>, oldVarName: String?) {
         val (statement, blockStmt) = getBlockStmt(oldExpr)
-        if (oldVarName != null) {
-            replaceCodeUsage(blockStmt, oldVarName, pendingExpressions)
-        }
+//        if (oldVarName != null) {
+//            replaceCodeUsage(blockStmt, oldVarName, pendingExpressions)
+//        }
         val statements = blockStmt.stmts
         val pos = statements.indexOf(statement)
         val pendingStatements = pendingExpressions.map { pending -> makeNewStatement(pending) }
