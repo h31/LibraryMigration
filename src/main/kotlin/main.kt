@@ -66,7 +66,7 @@ private fun addImports(cu: CompilationUnit, library: Library) {
             .map { type -> ImportDeclaration(NameExpr(type), false, false) })
 }
 
-fun libraryModels() = listOf(makeJava(), makeApache(), makeOkHttp()).map { it.name to it }.toMap()
+fun libraryModels() = listOf(makeJava(), makeApache(), makeOkHttp()).associateBy(Library::name)
 
 fun makePictures(libraries: Map<String, Library>) = libraries.forEach {
     library ->
