@@ -23,16 +23,13 @@ fun main(args: Array<String>) {
     val models = libraryModels()
     makePictures(models)
 
-//    migrate(projectPath = Paths.get("/home/artyom/Compile/instagram-java-scraper"),
-//            sourceName = "Instagram.java",
-//            traceFile = File("/home/artyom/Compile/instagram-java-scraper/log.json"),
-//            from = models["okhttp"]!!,
-//            to = models["apache"]!!,
-//            usesTests = true
-//    )
+    migrate(projectPath = Paths.get("examples/instagram-java-scraper"),
+            sourceName = "Instagram.java",
+            from = models["okhttp"]!!,
+            to = models["apache"]!!
+    )
     migrate(projectPath = Paths.get("HTTP"),
             sourceName = "Apache.java",
-            traceFile = File("HTTP/log.json"),
             from = models["apache"]!!,
             to = models["okhttp"]!!
     )
@@ -40,7 +37,7 @@ fun main(args: Array<String>) {
 
 fun migrate(projectPath: Path,
             sourceName: String,
-            traceFile: File,
+            traceFile: Path = projectPath.resolve("log.json"),
             from: Library,
             to: Library,
             runClass: String? = null,
@@ -52,7 +49,7 @@ fun migrate(projectPath: Path,
     val codeElements = CodeElements();
     CodeElementsVisitor().visit(cu, codeElements);
 
-    migrateFile(from, to, codeElements, traceFile)
+    migrateFile(from, to, codeElements, traceFile.toFile())
     addImports(cu, to)
 
     val migratedCode = cu.toString()
