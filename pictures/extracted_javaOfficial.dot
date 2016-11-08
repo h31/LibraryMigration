@@ -30,7 +30,7 @@ digraph G {
     label = <<B>ContentLength: long</B>>;
         Constructed_ContentLength [ label="Constructed" ];
     }
-        Constructed_URL -> hasURL_Request [ label="Usage in new Request: URL(URL: String)", style = "dashed" , color = red ];
+        Constructed_URL -> hasURL_Request [ label="Usage in new Request: URL(URL: String)", style = "dashed"  ];
         Init_Request -> hasURL_Request [ label="new Request: URL(URL: String)", style = "bold" , color = red ];
         hasURL_Request -> virtual0 [ style = "bold" label="openConnection()" , color = red ];
         virtual0 -> hasURL_Request [ style = "bold" , color = red ];

@@ -174,12 +174,12 @@ class Migration(val library1: Library,
                     val linkedEdge = callEdge.linkedEdge
                     if (linkedEdge != null) {
                         usedEdges += (linkedEdge to methodCall)
-                        usedEdges += associateEdges(linkedEdge.getSubsequentAutoEdges(), methodCall)
+//                        usedEdges += associateEdges(linkedEdge.getSubsequentAutoEdges(), methodCall)
                     } else {
                         println("Missing linked node")
                     }
                 }
-                usedEdges += associateEdges(callEdge.usageEdges, methodCall)
+//                usedEdges += associateEdges(callEdge.usageEdges, methodCall)
             } else if (invocation.kind == "constructor-call") {
                 val constructorEdge = edges.filterIsInstance<ConstructorEdge>().firstOrNull { edge -> invocation.simpleType() == edge.machine.type() }
                 if (constructorEdge == null) {
@@ -191,7 +191,7 @@ class Migration(val library1: Library,
                     error("Cannot find node for $invocation")
                 }
                 usedEdges += constructorEdge to constructorCall
-                usedEdges += associateEdges(constructorEdge.usageEdges, constructorCall)
+//                usedEdges += associateEdges(constructorEdge.usageEdges, constructorCall)
             }
         }
         if (usedEdges.isNotEmpty()) {

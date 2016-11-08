@@ -23,11 +23,11 @@ fun main(args: Array<String>) {
     val models = libraryModels()
     makePictures(models)
 
-    migrate(projectPath = Paths.get("examples/instagram-java-scraper"),
-            sourceName = "Instagram.java",
-            from = models["okhttp"]!!,
-            to = models["apache"]!!
-    )
+//    migrate(projectPath = Paths.get("examples/instagram-java-scraper"),
+//            sourceName = "Instagram.java",
+//            from = models["okhttp"]!!,
+//            to = models["apache"]!!
+//    )
     migrate(projectPath = Paths.get("HTTP"),
             sourceName = "Apache.java",
             from = models["apache"]!!,
@@ -216,6 +216,11 @@ class MethodOrConstructorDeclaration(val node: BodyDeclaration) {
     }
 
     fun name() = if (node is MethodDeclaration) node.name else "constructor"
+    fun arguments() = when (node) {
+        is MethodDeclaration -> node.parameters
+        is ConstructorDeclaration -> node.parameters
+        else -> throw IllegalArgumentException()
+    }
 }
 
 data class ClassDiff(val name: String,
