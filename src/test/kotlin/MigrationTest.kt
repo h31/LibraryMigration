@@ -28,7 +28,6 @@ class MigrationTest {
     @Test
     fun migrateInstagram() {
         Assert.assertTrue(migrate(projectPath = Paths.get("examples/instagram-java-scraper"),
-                sourceName = "Instagram.java",
                 from = okhttp,
                 to = apache
         ))
@@ -37,7 +36,6 @@ class MigrationTest {
     @Test
     fun migrateJavaApache() {
         Assert.assertTrue(migrate(projectPath = Paths.get("HTTP"),
-                sourceName = "Java.java",
                 from = java,
                 to = apache
         ))
@@ -46,7 +44,6 @@ class MigrationTest {
     @Test
     fun migrateJavaOkhttp() {
         Assert.assertTrue(migrate(projectPath = Paths.get("HTTP"),
-                sourceName = "Java.java",
                 from = java,
                 to = okhttp
         ))
@@ -55,7 +52,6 @@ class MigrationTest {
     @Test
     fun migrateApacheJava() {
         Assert.assertTrue(migrate(projectPath = Paths.get("HTTP"),
-                sourceName = "Apache.java",
                 from = apache,
                 to = java
         ))
@@ -64,7 +60,6 @@ class MigrationTest {
     @Test
     fun migrateApacheOkhttp() {
         Assert.assertTrue(migrate(projectPath = Paths.get("HTTP"),
-                sourceName = "Apache.java",
                 from = apache,
                 to = okhttp
         ))
@@ -73,7 +68,6 @@ class MigrationTest {
     @Test
     fun migrateOkhttpJava() {
         Assert.assertTrue(migrate(projectPath = Paths.get("HTTP"),
-                sourceName = "OkHttp.java",
                 from = okhttp,
                 to = java,
                 runClass = "migration.OkHttp"
@@ -83,7 +77,6 @@ class MigrationTest {
     @Test
     fun migrateOkhttpApache() {
         Assert.assertTrue(migrate(projectPath = Paths.get("HTTP"),
-                sourceName = "OkHttp.java",
                 from = okhttp,
                 to = apache
         ))

@@ -24,43 +24,62 @@ fun main(args: Array<String>) {
     makePictures(models)
 
     migrate(projectPath = Paths.get("examples/instagram-java-scraper"),
-            sourceName = "Instagram.java",
             from = models["okhttp"]!!,
             to = models["apache"]!!
     )
 //    migrate(projectPath = Paths.get("HTTP"),
-//            sourceName = "Apache.java",
 //            from = models["apache"]!!,
 //            to = models["okhttp"]!!
 //    )
 }
 
 fun migrate(projectPath: Path,
-            sourceName: String,
             traceFile: Path = projectPath.resolve("log.json"),
             from: Library,
             to: Library,
             runClass: String? = null,
             testPatcher: (Path) -> Unit = {}): Boolean {
-    val source = findJavaFile(projectPath, sourceName)
+    val importsForMigration = diffLibraryClasses(from, to)
+    val pending = findJavaFilesForMigration(projectPath, importsForMigration)
+    if (pending.none()) {
+        error("Nothing to migrate")
+    }
+    for ((source, cu) in pending) {
+        val codeElements = CodeElements();
+        CodeElementsVisitor().visit(cu, codeElements);
 
-    val cu = parseFile(source)
+        migrateFile(from, to, codeElements, traceFile.toFile())
+        addImports(cu, to)
 
-    val codeElements = CodeElements();
-    CodeElementsVisitor().visit(cu, codeElements);
-
-    migrateFile(from, to, codeElements, traceFile.toFile())
-    addImports(cu, to)
-
-    val migratedCode = cu.toString()
-    println(migratedCode);
-    return checkMigrationCorrectness(source.toPath(), projectPath, migratedCode, runClass, testPatcher)
+        val migratedCode = cu.toString()
+        println(migratedCode);
+        val result = checkMigrationCorrectness(source.toPath(), projectPath, migratedCode, runClass, testPatcher)
+        if (result == false) {
+            return false
+        }
+    }
+    return true
 }
 
 private fun addImports(cu: CompilationUnit, library: Library) {
     cu.imports.addAll((library.machineTypes.values + library.additionalTypes)
             .filter { type -> type.contains('.') }
+            .filterNot { type -> type.contains('$') }
             .map { type -> ImportDeclaration(NameExpr(type), false, false) })
+}
+
+private fun parseImports(imports: List<ImportDeclaration>) = imports.map { x -> x.name.toString() }
+
+private fun diffLibraryClasses(library1: Library, library2: Library) = library1.allTypes() - library2.allTypes()
+
+private fun findJavaFilesForMigration(root: Path, importsForMigration: List<String>) = root.toFile().walk().filter { file -> file.extension == "java" }.mapNotNull { javaSource ->
+    val cu = parseFile(javaSource)
+    val fileImports = parseImports(cu.imports)
+    if (fileImports.intersect(importsForMigration).isNotEmpty()) {
+        Pair(javaSource, cu)
+    } else {
+        null
+    }
 }
 
 fun libraryModels() = listOf(makeJava(), makeApache(), makeOkHttp()).associateBy(Library::name)

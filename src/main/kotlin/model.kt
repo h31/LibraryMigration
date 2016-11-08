@@ -27,6 +27,8 @@ data class Library(val name: String,
     }
 
     private fun simpleType(type: String) = type.substringAfterLast('.').replace('$', '.')
+
+    fun allTypes() = machineTypes.values + additionalTypes
 }
 
 //data class Type(val entity: Entity,

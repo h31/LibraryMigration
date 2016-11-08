@@ -373,7 +373,7 @@ fun makeOkHttp(): Library {
                     inputStream to "java.io.InputStream",
                     contentLength to "long",
                     entity to "okhttp3.ResponseBody",
-                    builder to "Request\$Builder",
+                    builder to "okhttp3.Request\$Builder",
                     call to "okhttp3.Call",
                     statusCode to "int"
             )
