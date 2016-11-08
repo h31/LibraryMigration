@@ -26,10 +26,18 @@ class MigrationTest {
     }
 
     @Test
-    fun migrateInstagram() {
+    fun migrateInstagramOkHttp() {
         Assert.assertTrue(migrate(projectPath = Paths.get("examples/instagram-java-scraper"),
                 from = okhttp,
                 to = apache
+        ))
+    }
+
+    @Test
+    fun migrateInstagramJava() {
+        Assert.assertTrue(migrate(projectPath = Paths.get("examples/instagram-java-scraper"),
+                from = okhttp,
+                to = java
         ))
     }
 

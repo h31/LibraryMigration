@@ -25,7 +25,7 @@ fun main(args: Array<String>) {
 
     migrate(projectPath = Paths.get("examples/instagram-java-scraper"),
             from = models["okhttp"]!!,
-            to = models["apache"]!!
+            to = models["java"]!!
     )
 //    migrate(projectPath = Paths.get("HTTP"),
 //            from = models["apache"]!!,

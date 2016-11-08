@@ -12,6 +12,7 @@ fun makeJava(): Library {
     val encodedURL = State(name = "encodedURL", machine = url)
     val inputStream = StateMachine(name = "InputStream")
     val contentLength = StateMachine(name = "ContentLength")
+    val statusCode = StateMachine(name = "StatusCode")
 
     request.states += makeInitState(request)
 
@@ -84,16 +85,28 @@ fun makeJava(): Library {
             )
     )
 
+    LinkedEdge(
+            machine = connection,
+            dst = statusCode.getConstructedState(),
+            edge = TemplateEdge(
+                    machine = connection,
+                    template = "((HttpURLConnection) {{ response }}).getResponseCode()",
+                    params = mapOf("response" to connection.getConstructedState()),
+                    additionalTypes = listOf("java.net.HttpURLConnection")
+            )
+    )
+
     return Library(
             name = "java",
-            stateMachines = listOf(url, request, connection, body, inputStream, contentLength),
+            stateMachines = listOf(url, request, connection, body, inputStream, contentLength, statusCode),
             machineTypes = mapOf(
                     request to "java.net.URL",
                     url to "String",
                     connection to "java.net.URLConnection",
                     inputStream to "java.io.InputStream",
                     contentLength to "long",
-                    body to "String"
+                    body to "String",
+                    statusCode to "int"
             )
     )
 }

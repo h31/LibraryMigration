@@ -18,6 +18,7 @@ digraph G {
         virtual1 [ shape = point ];
         virtual2 [ shape = point ];
         virtual3 [ shape = point ];
+        virtual4 [ shape = point ];
     }
     subgraph cluster3 {
     label = <<B>Body: String</B>>;
@@ -30,6 +31,10 @@ digraph G {
     subgraph cluster5 {
     label = <<B>ContentLength: long</B>>;
         Constructed_ContentLength [ label="Constructed" ];
+    }
+    subgraph cluster6 {
+    label = <<B>StatusCode: int</B>>;
+        Constructed_StatusCode [ label="Constructed" ];
     }
         Constructed_URL -> encodedURL_URL [ label="", style = "solid"  ];
         encodedURL_URL -> hasURL_Request [ label="Usage in new Request: URL(URL: String)", style = "dashed"  ];
@@ -46,4 +51,7 @@ digraph G {
         Constructed_Connection -> virtual3 [ style = "bold" label="getContentLengthLong()" , color = red ];
         virtual3 -> Constructed_Connection [ style = "bold" , color = red ];
         virtual3 -> Constructed_ContentLength [ label="return long()" , color = red ];
+        Constructed_Connection -> virtual4 [ style = "bold" label="Template"  ];
+        virtual4 -> Constructed_Connection [ style = "bold"  ];
+        virtual4 -> Constructed_StatusCode [ label="return int()"  ];
 }
