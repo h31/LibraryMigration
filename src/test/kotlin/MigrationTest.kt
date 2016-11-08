@@ -27,7 +27,7 @@ class MigrationTest {
 
     @Test
     fun migrateInstagramOkHttp() {
-        Assert.assertTrue(migrate(projectPath = Paths.get("examples/instagram-java-scraper"),
+        Assert.assertTrue(migrate(projectDir = Paths.get("examples/instagram-java-scraper"),
                 from = okhttp,
                 to = apache
         ))
@@ -35,7 +35,7 @@ class MigrationTest {
 
     @Test
     fun migrateInstagramJava() {
-        Assert.assertTrue(migrate(projectPath = Paths.get("examples/instagram-java-scraper"),
+        Assert.assertTrue(migrate(projectDir = Paths.get("examples/instagram-java-scraper"),
                 from = okhttp,
                 to = java
         ))
@@ -43,7 +43,7 @@ class MigrationTest {
 
     @Test
     fun migrateJavaApache() {
-        Assert.assertTrue(migrate(projectPath = Paths.get("HTTP"),
+        Assert.assertTrue(migrate(projectDir = Paths.get("HTTP"),
                 from = java,
                 to = apache
         ))
@@ -51,7 +51,7 @@ class MigrationTest {
 
     @Test
     fun migrateJavaOkhttp() {
-        Assert.assertTrue(migrate(projectPath = Paths.get("HTTP"),
+        Assert.assertTrue(migrate(projectDir = Paths.get("HTTP"),
                 from = java,
                 to = okhttp
         ))
@@ -59,7 +59,7 @@ class MigrationTest {
 
     @Test
     fun migrateApacheJava() {
-        Assert.assertTrue(migrate(projectPath = Paths.get("HTTP"),
+        Assert.assertTrue(migrate(projectDir = Paths.get("HTTP"),
                 from = apache,
                 to = java
         ))
@@ -67,7 +67,7 @@ class MigrationTest {
 
     @Test
     fun migrateApacheOkhttp() {
-        Assert.assertTrue(migrate(projectPath = Paths.get("HTTP"),
+        Assert.assertTrue(migrate(projectDir = Paths.get("HTTP"),
                 from = apache,
                 to = okhttp
         ))
@@ -75,16 +75,15 @@ class MigrationTest {
 
     @Test
     fun migrateOkhttpJava() {
-        Assert.assertTrue(migrate(projectPath = Paths.get("HTTP"),
+        Assert.assertTrue(migrate(projectDir = Paths.get("HTTP"),
                 from = okhttp,
-                to = java,
-                runClass = "migration.OkHttp"
+                to = java
         ))
     }
 
     @Test
     fun migrateOkhttpApache() {
-        Assert.assertTrue(migrate(projectPath = Paths.get("HTTP"),
+        Assert.assertTrue(migrate(projectDir = Paths.get("HTTP"),
                 from = okhttp,
                 to = apache
         ))

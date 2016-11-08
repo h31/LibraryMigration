@@ -47,3 +47,5 @@ idea {
 compileJava {
     sourceCompatibility = '1.8'
 }
+
+//test.maxParallelForks = Runtime.runtime.availableProcessors().intdiv(2) ?: 1

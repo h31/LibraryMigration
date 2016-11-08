@@ -29,27 +29,30 @@ fun main(args: Array<String>) {
     val models = libraryModels()
     makePictures(models)
 
-    migrate(projectPath = Paths.get("examples/instagram-java-scraper"),
-            from = models["okhttp"]!!,
-            to = models["java"]!!
-    )
-//    migrate(projectPath = Paths.get("HTTP"),
-//            from = models["apache"]!!,
-//            to = models["okhttp"]!!
+//    migrate(projectDir = Paths.get("examples/instagram-java-scraper"),
+//            from = models["okhttp"]!!,
+//            to = models["java"]!!
 //    )
+    migrate(projectDir = Paths.get("HTTP"),
+            from = models["apache"]!!,
+            to = models["okhttp"]!!
+    )
 }
 
-fun migrate(projectPath: Path,
-            traceFile: Path = projectPath.resolve("log.json"),
+fun migrate(projectDir: Path,
+            traceFile: Path = projectDir.resolve("log.json"),
             from: Library,
             to: Library,
-            runClass: String? = null,
             testPatcher: (Path) -> Unit = {}): Boolean {
     val importsForMigration = diffLibraryClasses(from, to)
-    val pending = findJavaFilesForMigration(projectPath, importsForMigration)
+    val pending = findJavaFilesForMigration(projectDir, importsForMigration)
     if (pending.none()) {
         error("Nothing to migrate")
     }
+
+    val testDir = projectDir.resolveSibling("${projectDir.fileName}_test_${from.name}_${to.name}")
+    prepareTestDir(projectDir, testDir)
+
     for ((source, cu) in pending) {
         val codeElements = CodeElements();
         CodeElementsVisitor().visit(cu, codeElements);
@@ -59,12 +62,20 @@ fun migrate(projectPath: Path,
 
         val migratedCode = cu.toString()
         println(migratedCode);
-        val result = checkMigrationCorrectness(source.toPath(), projectPath, migratedCode, runClass, testPatcher)
-        if (result == false) {
-            return false
-        }
+
+        val relativePath = projectDir.relativize(source.toPath())
+        Files.write(testDir.resolve(relativePath), migratedCode.toByteArray())
     }
-    return true
+    testPatcher(testDir)
+    return checkMigrationCorrectness(testDir)
+}
+
+private fun prepareTestDir(projectDir: Path, testDir: Path) {
+    testDir.toFile().deleteRecursively()
+
+    Files.walk(projectDir).forEach { path ->
+        Files.copy(path, testDir.resolve(projectDir.relativize(path)))
+    }
 }
 
 private fun addImports(cu: CompilationUnit, library: Library) {
@@ -251,50 +262,40 @@ class MethodOrConstructorDeclaration(val node: BodyDeclaration) {
 data class ClassDiff(val name: String,
                      val methodsChanged: Map<MethodDeclaration, MethodDiff>)
 
-fun checkMigrationCorrectness(migratedFile: Path, projectDir: Path,
-                              migratedCode: String, runClass: String? = null,
-                              testPatcher: (Path) -> Unit = {}): Boolean {
-    val testDir = projectDir.resolveSibling(projectDir.fileName.toString() + "_test")
-    val relativePath = projectDir.relativize(migratedFile)
-    testDir.toFile().deleteRecursively()
-
-    Files.walk(projectDir).forEach { path ->
-        Files.copy(path, testDir.resolve(projectDir.relativize(path)))
-    }
-
-    Files.write(testDir.resolve(relativePath), migratedCode.toByteArray())
-    testPatcher(testDir)
-
+fun checkMigrationCorrectness(testDir: Path): Boolean {
     println("Running migrated code")
 
     val connector = GradleConnector.newConnector()
     val connection = connector.forProjectDirectory(testDir.toFile()).connect()
     val buildOutputStream = ByteArrayOutputStream()
 
-    if (runGradleTask(connection, "build", buildOutputStream) == false) {
+    val (buildResult, buildOutput) = runGradleTask(connection, "build")
+    if (buildResult == false) {
         println("Compilation failed!")
-        println(buildOutputStream.toString(Charset.defaultCharset().toString()))
+        println(buildOutput)
         return false
     }
 
-    val testOutputStream = ByteArrayOutputStream()
-    if (runGradleTask(connection, "test", testOutputStream)) {
+    val (testResult, testOutput) = runGradleTask(connection, "test")
+    connection.close()
+    if (testResult) {
         println("Migration OK")
         return true
     } else {
         println("Migrated code doesn't work properly")
         println("Migrated:")
-        println(buildOutputStream.toString(Charset.defaultCharset().toString()))
+        println(testOutput)
         return false
     }
 }
 
-private fun runGradleTask(connection: ProjectConnection, taskName: String, output: OutputStream): Boolean {
-    val buildLauncher = connection.newBuild().forTasks(taskName).setStandardOutput(output)
+private fun runGradleTask(connection: ProjectConnection, taskName: String): Pair<Boolean, String> {
+    val buildOutputStream = ByteArrayOutputStream()
+    val buildLauncher = connection.newBuild().forTasks(taskName).setStandardOutput(buildOutputStream)
     try {
         buildLauncher.run()
-        return true
+        return Pair(true, "")
     } catch (ex: Exception) {
-        return false
+        return Pair(false, buildOutputStream.toString(Charset.defaultCharset().toString()))
     }
 }
