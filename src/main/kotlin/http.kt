@@ -13,6 +13,7 @@ fun makeJava(): Library {
     val inputStream = StateMachine(name = "InputStream")
     val contentLength = StateMachine(name = "ContentLength")
     val statusCode = StateMachine(name = "StatusCode")
+    val httpConnection = StateMachine(name = "HttpConnection")
 
     request.states += makeInitState(request)
 
@@ -87,18 +88,31 @@ fun makeJava(): Library {
 
     LinkedEdge(
             machine = connection,
-            dst = statusCode.getConstructedState(),
+            dst = httpConnection.getConstructedState(),
             edge = TemplateEdge(
                     machine = connection,
-                    template = "((HttpURLConnection) {{ response }}).getResponseCode()",
-                    params = mapOf("response" to connection.getConstructedState()),
-                    additionalTypes = listOf("java.net.HttpURLConnection")
+                    template = "((HttpURLConnection) {{ response }})",
+                    params = mapOf("response" to connection.getConstructedState())
+            )
+    )
+
+    AutoEdge(
+            machine = httpConnection,
+            dst = connection.getConstructedState()
+    )
+
+    LinkedEdge(
+            machine = httpConnection,
+            dst = statusCode.getConstructedState(),
+            edge = CallEdge(
+                    machine = httpConnection,
+                    methodName = "getResponseCode"
             )
     )
 
     return Library(
             name = "java",
-            stateMachines = listOf(url, request, connection, body, inputStream, contentLength, statusCode),
+            stateMachines = listOf(url, request, connection, body, inputStream, contentLength, statusCode, httpConnection),
             machineTypes = mapOf(
                     request to "java.net.URL",
                     url to "String",
@@ -106,7 +120,8 @@ fun makeJava(): Library {
                     inputStream to "java.io.InputStream",
                     contentLength to "long",
                     body to "String",
-                    statusCode to "int"
+                    statusCode to "int",
+                    httpConnection to "java.net.HttpURLConnection"
             )
     )
 }
