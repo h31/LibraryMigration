@@ -11,6 +11,7 @@ import com.github.javaparser.ast.stmt.Statement
 import com.github.javaparser.ast.type.ClassOrInterfaceType
 import org.jgrapht.alg.DijkstraShortestPath
 import com.fasterxml.jackson.module.kotlin.*
+import com.github.javaparser.ast.stmt.ReturnStmt
 import org.jgrapht.graph.DirectedPseudograph
 import java.io.File
 
@@ -29,6 +30,7 @@ class Migration(val library1: Library,
 //                val graph1: DirectedPseudograph<State, Edge> = toJGrapht(library1),
 //                val graph2: DirectedPseudograph<State, Edge> = toJGrapht(library2),
                 val functionName: String,
+                val file: File,
                 val traceFile: File) {
     val dependencies: MutableMap<StateMachine, Expression> = mutableMapOf()
     val context: MutableMap<StateMachine, State> = mutableMapOf()
@@ -36,14 +38,14 @@ class Migration(val library1: Library,
     var nameGeneratorCounter = 0
 
     fun doMigration() {
+        println("Function: $functionName")
         val path = extractRouteFromJSON(traceFile)
 //        checkRoute(path)
 
 //        val edges = library1.stateMachines.flatMap { it -> it.edges }
-        println("Function: $functionName")
         context += library2.stateMachines.flatMap { machine -> machine.states }.filter(State::isInit).map { state -> state.machine to state }
         for (usage in path) {
-            val edge = usage.first
+            val edge = usage.edge
             println("Processing " + edge.label() + "... ")
             if (edge.src == edge.dst) {
                 println("  Makes a loop, skipping")
@@ -52,8 +54,8 @@ class Migration(val library1: Library,
             if (edge.dst.machine in library2.stateMachines == false) {
                 println("No such machine, skipped")
                 when (edge) {
-                    is CallEdge -> extractDependenciesFromMethod(edge, usage.second as MethodCallExpr)
-                    is ConstructorEdge -> extractDependenciesFromConstructor(edge, usage.second as ObjectCreationExpr)
+                    is CallEdge -> extractDependenciesFromMethod(edge, usage.node as MethodCallExpr)
+                    is ConstructorEdge -> extractDependenciesFromConstructor(edge, usage.node as ObjectCreationExpr)
                 }
                 continue
             }
@@ -61,23 +63,23 @@ class Migration(val library1: Library,
                 is AutoEdge -> println("  Has an auto action, skipping") // TODO: Should be error
                 is CallEdge -> {
                     println("  Has a call action")
-                    extractDependenciesFromMethod(edge, usage.second as MethodCallExpr)
+                    extractDependenciesFromMethod(edge, usage.node as MethodCallExpr)
                     val route = findRoute(context.values.toSet(), edge.dst)
-                    migrateMethodCall(edge, route, usage.second as MethodCallExpr)
+                    migrateMethodCall(edge, route, usage.node)
                 }
                 is ConstructorEdge -> {
                     println("  Has a constructor action")
-                    extractDependenciesFromConstructor(edge, usage.second as ObjectCreationExpr)
+                    extractDependenciesFromConstructor(edge, usage.node as ObjectCreationExpr)
                     val route = findRoute(context.values.toSet(), edge.dst)
-                    migrateConstructorCall(edge, route, usage.second as ObjectCreationExpr)
+                    migrateConstructorCall(edge, route, usage.node)
                 }
                 is LinkedEdge -> {
                     println("  Has a linked action")
                     val dependency = edge.edge
                     if (dependency is CallEdge) {
-                        extractDependenciesFromMethod(dependency, usage.second as MethodCallExpr)
+                        extractDependenciesFromMethod(dependency, usage.node as MethodCallExpr)
                         val route = findRoute(context.values.toSet(), edge.dst)
-                        migrateMethodCall(dependency, route, usage.second as MethodCallExpr)
+                        migrateMethodCall(dependency, route, usage.node)
                     }
                 }
             }
@@ -152,11 +154,17 @@ class Migration(val library1: Library,
         fun simpleType() = type.substringAfterLast('.').replace('$', '.')
     }
 
-    private fun extractRouteFromJSON(file: File): List<Pair<Edge, Node>> {
-        val invocations = ObjectMapper().registerKotlinModule().readValue<List<Invocation>>(file)
-        val localInvocations = invocations.filter { inv -> inv.callerName == functionName }
+    data class LocatedEdge(
+            val edge: Edge,
+            val node: Node,
+            val nodeLine: Int = node.endLine
+    )
 
-        val usedEdges: MutableList<Pair<Edge, Node>> = mutableListOf()
+    private fun extractRouteFromJSON(file: File): List<LocatedEdge> {
+        val invocations = ObjectMapper().registerKotlinModule().readValue<List<Invocation>>(file)
+        val localInvocations = invocations.filter { inv -> inv.callerName == functionName && inv.filename == this.file.name }
+
+        val usedEdges: MutableList<LocatedEdge> = mutableListOf()
         val edges = library1.stateMachines.flatMap { machine -> machine.edges }
         for (invocation in localInvocations) {
             if (invocation.kind == "method-call") {
@@ -169,11 +177,11 @@ class Migration(val library1: Library,
                     continue
                 }
                 val methodCall = codeElements.methodCalls.first { call -> call.name == invocation.name && call.endLine == invocation.line }
-                usedEdges += (callEdge to methodCall)
+                usedEdges += LocatedEdge(callEdge, methodCall)
                 if (methodCall.parentNode is ExpressionStmt == false) {
                     val linkedEdge = callEdge.linkedEdge
                     if (linkedEdge != null) {
-                        usedEdges += (linkedEdge to methodCall)
+                        usedEdges += LocatedEdge(linkedEdge, methodCall)
 //                        usedEdges += associateEdges(linkedEdge.getSubsequentAutoEdges(), methodCall)
                     } else {
                         println("Missing linked node")
@@ -190,19 +198,19 @@ class Migration(val library1: Library,
                 if (constructorCall == null) {
                     error("Cannot find node for $invocation")
                 }
-                usedEdges += constructorEdge to constructorCall
+                usedEdges += LocatedEdge(constructorEdge, constructorCall)
 //                usedEdges += associateEdges(constructorEdge.usageEdges, constructorCall)
             }
         }
         if (usedEdges.isNotEmpty()) {
             println("--- Used edges:")
             for (edge in usedEdges) {
-                println(edge.first.label())
+                println(edge.edge.label())
             }
             println("---")
-            graphvizRender(toDOT(library1, usedEdges.map { usage -> usage.first }), "extracted_" + functionName)
+            graphvizRender(toDOT(library1, usedEdges.map { usage -> usage.edge }), "extracted_" + functionName)
         }
-        return usedEdges
+        return usedEdges.distinct()
     }
 
     private fun associateEdges(edges: Collection<Edge>, node: Node) = edges.map { edge -> edge to node }
@@ -361,6 +369,8 @@ class Migration(val library1: Library,
                 }
                 newExpr.parentNode = parent
             }
+            is ReturnStmt -> parent.expr = newExpr
+            is CastExpr -> parent.expr = newExpr
             else -> error("Don't know how to insert into " + parent.toString())
         }
     }
@@ -496,6 +506,14 @@ class Migration(val library1: Library,
             if (expr != null) {
                 println("Machine ${dep.machine.label()} can be accessed by expr \"$expr\"")
                 dependencies[dep.machine] = expr
+
+                val autoDeps = library1.edges.filterIsInstance<AutoEdge>().filter { edge -> edge.src == dep }
+                for (autoDep in autoDeps) {
+                    val dstMachine = autoDep.dst.machine
+                    println("Additionally machine ${dstMachine.label()} can be accessed by expr \"$expr\"")
+                    context[dstMachine] = autoDep.dst
+                    dependencies[dstMachine] = expr
+                }
             }
         }
     }

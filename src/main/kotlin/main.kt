@@ -33,9 +33,9 @@ fun main(args: Array<String>) {
 //            from = models["okhttp"]!!,
 //            to = models["java"]!!
 //    )
-    migrate(projectDir = Paths.get("HTTP"),
-            from = models["apache"]!!,
-            to = models["okhttp"]!!
+    migrate(projectDir = Paths.get("/home/artyom/Compile/signpost/signpost-core"),
+            from = models["java"]!!,
+            to = models["apache"]!!
     )
 }
 
@@ -54,10 +54,11 @@ fun migrate(projectDir: Path,
     prepareTestDir(projectDir, testDir)
 
     for ((source, cu) in pending) {
+        println("Migrating $source")
         val codeElements = CodeElements();
         CodeElementsVisitor().visit(cu, codeElements);
 
-        migrateFile(from, to, codeElements, traceFile.toFile())
+        migrateFile(from, to, codeElements, source, traceFile.toFile())
         addImports(cu, to)
 
         val migratedCode = cu.toString()
@@ -85,6 +86,43 @@ private fun addImports(cu: CompilationUnit, library: Library) {
             .map { type -> ImportDeclaration(NameExpr(type), false, false) })
 }
 
+private fun migrateClassMembers(library1: Library, library2: Library,
+                                codeElements: CodeElements, context: Map<StateMachine, Expression>) {
+    if (codeElements.classes.size > 1) TODO()
+    val classDecl = codeElements.classes.first()
+    val fields = classDecl.members.filterIsInstance<FieldDeclaration>()
+    for (field in fields) {
+        if (field.variables.size > 1) {
+            continue
+        }
+        val fieldName = field.variables.first().id.name
+        val machine = context.filterValues { expr -> expr.toString() == fieldName }.entries.firstOrNull()?.key
+        if (machine != null) {
+            val realMachine = if (machine.name == "HttpConnection") library1.stateMachines.first { it.name == "Connection" } else machine
+            if (library2.machineTypes.contains(realMachine) == false) TODO()
+            field.type = ClassOrInterfaceType(library2.machineTypes[realMachine])
+        }
+    }
+}
+
+private fun migrateFunctionArguments(library1: Library, library2: Library,
+                                     methodDecl: MethodOrConstructorDeclaration, context: Map<StateMachine, Expression>) {
+    val node = methodDecl.get()
+    if (node is ConstructorDeclaration) {
+        val args = node.parameters
+        for (arg in args) {
+            val argName = arg.id.name
+
+            val machine = context.filterValues { expr -> expr.toString() == argName }.entries.firstOrNull()?.key
+            if (machine != null) {
+                val realMachine = if (machine.name == "HttpConnection") library1.stateMachines.first { it.name == "Connection" } else machine
+                if (library2.machineTypes.contains(realMachine) == false) TODO()
+                arg.type = ClassOrInterfaceType(library2.machineTypes[realMachine])
+            }
+        }
+    }
+}
+
 private fun parseImports(imports: List<ImportDeclaration>) = imports.map { x -> x.name.toString() }
 
 private fun diffLibraryClasses(library1: Library, library2: Library) = library1.allTypes() - library2.allTypes()
@@ -109,6 +147,7 @@ fun makePictures(libraries: Map<String, Library>) = libraries.forEach {
 fun migrateFile(library1: Library,
                 library2: Library,
                 codeElements: CodeElements,
+                file: File,
                 traceFile: File) {
     for (methodDecl in codeElements.methodDecls) {
         val methodLocalCodeElements = methodDecl.getCodeElements()
@@ -118,9 +157,12 @@ fun migrateFile(library1: Library,
                 library2 = library2,
                 codeElements = methodLocalCodeElements,
                 functionName = methodDecl.name(),
+                file = file,
                 traceFile = traceFile)
 
         migration.doMigration()
+        migrateClassMembers(library1, library2, codeElements, migration.dependencies)
+//        migrateFunctionArguments(library1, library2, methodDecl, migration.dependencies)
     }
 //    fixEntityTypes(codeElements, library1, library2)
 }
