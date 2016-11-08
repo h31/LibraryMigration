@@ -226,6 +226,9 @@ data class TemplateEdge(override val machine: StateMachine,
     init {
         machine.edges += this
         for (param in params) {
+            if (param.value == src) {
+                continue
+            }
             usageEdges += UsageEdge(
                     machine = param.value.machine,
                     src = param.value,

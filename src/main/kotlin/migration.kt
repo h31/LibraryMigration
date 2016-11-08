@@ -250,10 +250,11 @@ class Migration(val library1: Library,
     }
 
     private fun makeStep(step: Edge, name: String) = when (step) {
-        is CallEdge, is ConstructorEdge, is LinkedEdge -> makeSimpleEdge(step, name)
+        is CallEdge, is LinkedEdge, is TemplateEdge -> makeSimpleEdge(step, name)
         is UsageEdge -> makeUsageEdge(step, name)
+        is ConstructorEdge -> makeConstructorEdge(step, name)
         is AutoEdge -> listOf()
-        is MakeArrayEdge, is TemplateEdge -> TODO() // makeArray(step.action)
+        is MakeArrayEdge -> TODO() // makeArray(step.action)
         else -> TODO("Unknown action!")
     }
 
@@ -292,6 +293,19 @@ class Migration(val library1: Library,
         val initExpr: Expression = makeExpression(dependencyStep)
 //        val callStatement = makeCallStatement(step.edge as CallEdge)
         return steps + listOf(PendingExpression(edge = step, expression = initExpr, provides = oldVarName ?: generateVariableName(step)))
+    }
+
+    private fun makeConstructorEdge(step: ConstructorEdge, name: String): List<PendingExpression> {
+        val missingDeps = step.param.filterNot { param -> context.values.contains(param.state) }
+        val steps = mutableListOf<PendingExpression>()
+        for (dependency in missingDeps) {
+            val route = findRoute(context.values.toSet(), dependency.state)
+            println("Usage route: $route")
+            val newSteps = applySteps(route, null)
+            steps += newSteps
+        }
+        val expr = makeConstructorExpression(step)
+        return steps + listOf(PendingExpression(edge = step, expression = expr, provides = name))
     }
 
     private fun getDependencyStep(step: Edge) = library2.stateMachines.flatMap { machine -> machine.edges }

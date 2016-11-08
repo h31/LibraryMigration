@@ -23,16 +23,16 @@ fun main(args: Array<String>) {
     val models = libraryModels()
     makePictures(models)
 
-//    migrate(projectPath = Paths.get("examples/instagram-java-scraper"),
-//            sourceName = "Instagram.java",
-//            from = models["okhttp"]!!,
-//            to = models["apache"]!!
-//    )
-    migrate(projectPath = Paths.get("HTTP"),
-            sourceName = "Apache.java",
-            from = models["apache"]!!,
-            to = models["okhttp"]!!
+    migrate(projectPath = Paths.get("examples/instagram-java-scraper"),
+            sourceName = "Instagram.java",
+            from = models["okhttp"]!!,
+            to = models["apache"]!!
     )
+//    migrate(projectPath = Paths.get("HTTP"),
+//            sourceName = "Apache.java",
+//            from = models["apache"]!!,
+//            to = models["okhttp"]!!
+//    )
 }
 
 fun migrate(projectPath: Path,

@@ -27,18 +27,10 @@ class MigrationTest {
 
     @Test
     fun migrateInstagram() {
-        val testPatcher = {path: Path ->
-            val testFile = path.resolve("src/test/java/InstagramTest.java").toFile()
-            val lines = testFile.readLines()
-            Assert.assertTrue(lines[20].endsWith("@Test"))
-            val newContent = lines.filterIndexed { i, s -> i != 20 }.joinToString("\n")
-            testFile.writeText(newContent)
-        }
         Assert.assertTrue(migrate(projectPath = Paths.get("examples/instagram-java-scraper"),
                 sourceName = "Instagram.java",
                 from = okhttp,
-                to = apache,
-                testPatcher = testPatcher
+                to = apache
         ))
     }
 

@@ -9,17 +9,25 @@ fun makeJava(): Library {
     val connection = StateMachine(name = "Connection")
 
     val hasURL = State(name = "hasURL", machine = request)
+    val encodedURL = State(name = "encodedURL", machine = url)
     val inputStream = StateMachine(name = "InputStream")
     val contentLength = StateMachine(name = "ContentLength")
 
     request.states += makeInitState(request)
+
+    AutoEdge(
+            machine = url,
+            src = url.getConstructedState(),
+            dst = encodedURL
+    )
 
     ConstructorEdge(
             machine = request,
             src = request.getInitState(),
             dst = hasURL,
             param = listOf(Param(
-                    machine = url
+                    machine = url,
+                    state = encodedURL
             )
             )
     )
@@ -104,6 +112,7 @@ fun makeApache(): Library {
     val statusCode = StateMachine(name = "StatusCode")
 
     val hasURL = State(name = "hasURL", machine = request)
+    val encodedURL = State(name = "encodedURL", machine = url)
 
 //    client.edges.clear()
     client.states += makeFinalState(client)
@@ -118,12 +127,21 @@ fun makeApache(): Library {
             isStatic = true
     )
 
+    TemplateEdge(
+            machine = url,
+            src = url.getConstructedState(),
+            dst = encodedURL,
+            template = "{{ url }}.replace(\"{\", \"%7B\").replace(\"}\", \"%7D\")",
+            params = mapOf("url" to url.getConstructedState())
+    )
+
     ConstructorEdge(
             machine = request,
             src = request.getInitState(),
             dst = hasURL,
             param = listOf(Param(
-                    machine = url
+                    machine = url,
+                    state = encodedURL
             )
             )
     )
