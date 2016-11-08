@@ -173,7 +173,7 @@ class Migration(val library1: Library,
                             invocation.simpleType() == edge.machine.type()
                 }
                 if (callEdge == null) {
-                    println("Cannot find edge for $invocation")
+//                    println("Cannot find edge for $invocation")
                     continue
                 }
                 val methodCall = codeElements.methodCalls.first { call -> call.name == invocation.name && call.endLine == invocation.line }
@@ -191,7 +191,7 @@ class Migration(val library1: Library,
             } else if (invocation.kind == "constructor-call") {
                 val constructorEdge = edges.filterIsInstance<ConstructorEdge>().firstOrNull { edge -> invocation.simpleType() == edge.machine.type() }
                 if (constructorEdge == null) {
-                    println("Cannot find edge for $invocation")
+//                    println("Cannot find edge for $invocation")
                     continue
                 }
                 val constructorCall = codeElements.objectCreation.firstOrNull { objectCreation -> (objectCreation.type.toString() == invocation.simpleType()) && (objectCreation.beginLine == invocation.line) }

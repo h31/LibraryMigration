@@ -33,7 +33,7 @@ fun main(args: Array<String>) {
 //            from = models["okhttp"]!!,
 //            to = models["java"]!!
 //    )
-    migrate(projectDir = Paths.get("/home/artyom/Compile/signpost/signpost-core"),
+    migrate(projectDir = Paths.get("/home/artyom/Compile/acme4j/acme4j-client"),
             from = models["java"]!!,
             to = models["apache"]!!
     )
@@ -62,7 +62,7 @@ fun migrate(projectDir: Path,
         addImports(cu, to)
 
         val migratedCode = cu.toString()
-        println(migratedCode);
+//        println(migratedCode);
 
         val relativePath = projectDir.relativize(source.toPath())
         Files.write(testDir.resolve(relativePath), migratedCode.toByteArray())
@@ -87,39 +87,47 @@ private fun addImports(cu: CompilationUnit, library: Library) {
 }
 
 private fun migrateClassMembers(library1: Library, library2: Library,
-                                codeElements: CodeElements, context: Map<StateMachine, Expression>) {
-    if (codeElements.classes.size > 1) TODO()
-    val classDecl = codeElements.classes.first()
-    val fields = classDecl.members.filterIsInstance<FieldDeclaration>()
-    for (field in fields) {
-        if (field.variables.size > 1) {
-            continue
-        }
-        val fieldName = field.variables.first().id.name
-        val machine = context.filterValues { expr -> expr.toString() == fieldName }.entries.firstOrNull()?.key
-        if (machine != null) {
-            val realMachine = if (machine.name == "HttpConnection") library1.stateMachines.first { it.name == "Connection" } else machine
-            if (library2.machineTypes.contains(realMachine) == false) TODO()
-            field.type = ClassOrInterfaceType(library2.machineTypes[realMachine])
+                                codeElements: CodeElements) {
+    for (classDecl in codeElements.classes) {
+        val fields = classDecl.members.filterIsInstance<FieldDeclaration>()
+        for (field in fields) {
+            if (field.variables.size > 1) {
+                continue
+            }
+            val fieldType = field.type.toString()
+            field.type = getNewType(fieldType, library1, library2) ?: field.type
         }
     }
 }
 
 private fun migrateFunctionArguments(library1: Library, library2: Library,
-                                     methodDecl: MethodOrConstructorDeclaration, context: Map<StateMachine, Expression>) {
+                                     methodDecl: MethodOrConstructorDeclaration) {
     val node = methodDecl.get()
     if (node is ConstructorDeclaration) {
         val args = node.parameters
         for (arg in args) {
-            val argName = arg.id.name
-
-            val machine = context.filterValues { expr -> expr.toString() == argName }.entries.firstOrNull()?.key
-            if (machine != null) {
-                val realMachine = if (machine.name == "HttpConnection") library1.stateMachines.first { it.name == "Connection" } else machine
-                if (library2.machineTypes.contains(realMachine) == false) TODO()
-                arg.type = ClassOrInterfaceType(library2.machineTypes[realMachine])
-            }
+            val argType = arg.type.toString()
+            arg.type = getNewType(argType, library1, library2) ?: arg.type
         }
+    }
+}
+
+private fun migrateReturnValue(library1: Library, library2: Library, methodDecl: MethodOrConstructorDeclaration) {
+    val node = methodDecl.get()
+    if (node is MethodDeclaration) {
+        node.type = getNewType(node.type.toString(), library1, library2) ?: node.type
+    }
+}
+
+private fun getNewType(oldType: String, library1: Library, library2: Library): ClassOrInterfaceType? {
+    val machine = library1.machineTypes.filterValues { type -> library1.simpleType(type) == oldType }.keys.firstOrNull()
+    if (machine != null) {
+        val realMachine = if (machine.name == "HttpConnection") library1.stateMachines.first { it.name == "Connection" } else machine
+        if (library2.machineTypes.contains(realMachine) == false) TODO()
+        val newType = library2.machineTypes[realMachine]
+        return ClassOrInterfaceType(newType)
+    } else {
+        return null
     }
 }
 
@@ -161,8 +169,9 @@ fun migrateFile(library1: Library,
                 traceFile = traceFile)
 
         migration.doMigration()
-        migrateClassMembers(library1, library2, codeElements, migration.dependencies)
-//        migrateFunctionArguments(library1, library2, methodDecl, migration.dependencies)
+//        migrateClassMembers(library1, library2, codeElements)
+//        migrateFunctionArguments(library1, library2, methodDecl)
+//        migrateReturnValue(library1, library2, methodDecl)
     }
 //    fixEntityTypes(codeElements, library1, library2)
 }

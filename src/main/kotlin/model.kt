@@ -26,7 +26,7 @@ data class Library(val name: String,
         machineTypes.mapValuesTo(machineSimpleTypes, { entry -> simpleType(entry.value)})
     }
 
-    private fun simpleType(type: String) = type.substringAfterLast('.').replace('$', '.')
+    fun simpleType(type: String) = type.substringAfterLast('.').replace('$', '.')
 
     fun allTypes() = machineTypes.values + additionalTypes
 }
