@@ -8,8 +8,14 @@ import com.github.javaparser.ast.stmt.BlockStmt
 import com.github.javaparser.ast.stmt.ExpressionStmt
 import com.github.javaparser.ast.type.ClassOrInterfaceType
 import com.github.javaparser.ast.visitor.VoidVisitorAdapter
+import org.gradle.tooling.GradleConnectionException
+import org.gradle.tooling.GradleConnector
+import org.gradle.tooling.ProjectConnection
+import org.gradle.tooling.ResultHandler
+import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.FileInputStream
+import java.io.OutputStream
 import java.nio.charset.Charset
 import java.nio.file.Files
 import java.nio.file.Path
@@ -248,8 +254,6 @@ data class ClassDiff(val name: String,
 fun checkMigrationCorrectness(migratedFile: Path, projectDir: Path,
                               migratedCode: String, runClass: String? = null,
                               testPatcher: (Path) -> Unit = {}): Boolean {
-    val rt = Runtime.getRuntime();
-    val command = "./gradlew test ${if (runClass != null) "--tests $runClass" else ""}"
     val testDir = projectDir.resolveSibling(projectDir.fileName.toString() + "_test")
     val relativePath = projectDir.relativize(migratedFile)
     testDir.toFile().deleteRecursively()
@@ -263,25 +267,34 @@ fun checkMigrationCorrectness(migratedFile: Path, projectDir: Path,
 
     println("Running migrated code")
 
-    val build = rt.exec("./gradlew --console rich build", null, testDir.toFile())
-    build.waitFor()
-    if (build.exitValue() != 0) {
+    val connector = GradleConnector.newConnector()
+    val connection = connector.forProjectDirectory(testDir.toFile()).connect()
+    val buildOutputStream = ByteArrayOutputStream()
+
+    if (runGradleTask(connection, "build", buildOutputStream) == false) {
         println("Compilation failed!")
-        println(build.inputStream.readBytes().toString(Charset.defaultCharset()))
+        println(buildOutputStream.toString(Charset.defaultCharset().toString()))
         return false
     }
 
-    val process2 = rt.exec(command, null, testDir.toFile())
-    process2.waitFor()
-    val migratedOutput = process2.inputStream.readBytes().toString(Charset.defaultCharset())
-
-    if (process2.exitValue() == 0) {
+    val testOutputStream = ByteArrayOutputStream()
+    if (runGradleTask(connection, "test", testOutputStream)) {
         println("Migration OK")
         return true
     } else {
         println("Migrated code doesn't work properly")
         println("Migrated:")
-        println(migratedOutput)
+        println(buildOutputStream.toString(Charset.defaultCharset().toString()))
+        return false
+    }
+}
+
+private fun runGradleTask(connection: ProjectConnection, taskName: String, output: OutputStream): Boolean {
+    val buildLauncher = connection.newBuild().forTasks(taskName).setStandardOutput(output)
+    try {
+        buildLauncher.run()
+        return true
+    } catch (ex: Exception) {
         return false
     }
 }

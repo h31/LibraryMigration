@@ -18,6 +18,7 @@ buildscript {
 
 repositories {
     mavenCentral()
+    maven { url 'https://repo.gradle.org/gradle/libs-releases' }
 }
 
 dependencies {
@@ -32,7 +33,7 @@ dependencies {
 //    compile files('sootjavadoc-trunk.jar')
     compile 'com.fasterxml.jackson.core:jackson-databind:2.8.3'
     compile 'com.fasterxml.jackson.module:jackson-module-kotlin:2.8.3'
-    compile 'org.zeroturnaround:zt-zip:1.10'
+    compile "org.gradle:gradle-tooling-api:3.1"
     testCompile 'junit:junit:4.12'
 }
 

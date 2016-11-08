@@ -36,6 +36,11 @@ digraph G {
     label = <<B>StatusCode: int</B>>;
         Constructed_StatusCode [ label="Constructed" ];
     }
+    subgraph cluster7 {
+    label = <<B>HttpConnection: HttpURLConnection</B>>;
+        Constructed_HttpConnection [ label="Constructed" ];
+        virtual5 [ shape = point ];
+    }
         Constructed_URL -> encodedURL_URL [ label="", style = "solid"  ];
         encodedURL_URL -> hasURL_Request [ label="Usage in new Request: URL(URL: String)", style = "dashed"  ];
         Init_Request -> hasURL_Request [ label="new Request: URL(URL: String)", style = "bold" , color = red ];
@@ -53,5 +58,9 @@ digraph G {
         virtual3 -> Constructed_ContentLength [ label="return long()" , color = red ];
         Constructed_Connection -> virtual4 [ style = "bold" label="Template"  ];
         virtual4 -> Constructed_Connection [ style = "bold"  ];
-        virtual4 -> Constructed_StatusCode [ label="return int()"  ];
+        virtual4 -> Constructed_HttpConnection [ label="return HttpURLConnection()"  ];
+        Constructed_HttpConnection -> Constructed_Connection [ label="", style = "solid"  ];
+        Constructed_HttpConnection -> virtual5 [ style = "bold" label="getResponseCode()"  ];
+        virtual5 -> Constructed_HttpConnection [ style = "bold"  ];
+        virtual5 -> Constructed_StatusCode [ label="return int()"  ];
 }
