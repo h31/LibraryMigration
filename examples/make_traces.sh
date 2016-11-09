@@ -5,7 +5,7 @@ cd "$(dirname "$0")"
 
 cd instagram-java-scraper/
 ./gradlew test
-cd ../../
+cd ../
 
 cd HTTP/
 ./gradlew test
