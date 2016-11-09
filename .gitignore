@@ -1,5 +1,6 @@
 .idea
 pictures/extracted_*
+examples/*_test_*
 
 # Created by https://www.gitignore.io/api/intellij,gradle
 

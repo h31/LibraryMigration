@@ -2,10 +2,8 @@ apply plugin: 'java'
 apply plugin: 'idea'
 apply plugin: "kotlin"
 
-version = '1.0.4'
-
 buildscript {
-   ext.kotlin_version = "1.0.4"
+   ext.kotlin_version = "1.0.5"
 
    repositories {
      mavenCentral()
@@ -26,13 +24,11 @@ dependencies {
     compile group: 'org.jgrapht', name: 'jgrapht-core', version: '0.9.2'
     compile group: 'org.jgrapht', name: 'jgrapht-ext', version: '0.9.2'
     compile group: 'junit', name: 'junit', version: '4.12'
-    compile 'com.samskivert:jmustache:1.12'
-    compile 'com.github.javaparser:javaparser-core:2.4.0'
+    compile 'com.samskivert:jmustache:1.13'
+    compile 'com.github.javaparser:javaparser-core:2.5.1'
     compile 'ch.qos.logback:logback-classic:1.1.7'
-//    compile files('soot-trunk.jar')
-//    compile files('sootjavadoc-trunk.jar')
-    compile 'com.fasterxml.jackson.core:jackson-databind:2.8.3'
-    compile 'com.fasterxml.jackson.module:jackson-module-kotlin:2.8.3'
+    compile 'com.fasterxml.jackson.core:jackson-databind:2.8.4'
+    compile 'com.fasterxml.jackson.module:jackson-module-kotlin:2.8.4'
     compile "org.gradle:gradle-tooling-api:3.1"
     testCompile 'junit:junit:4.12'
 }
