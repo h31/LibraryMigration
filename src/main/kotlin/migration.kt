@@ -24,6 +24,9 @@ data class PendingExpression(val expression: Expression,
                              val provides: String? = null,
                              val depends: List<String> = listOf())
 
+data class Replacement(val oldNode: Node,
+                       val pendingExpressions: List<PendingExpression>)
+
 class Migration(val library1: Library,
                 val library2: Library,
                 val codeElements: CodeElements,
@@ -42,8 +45,8 @@ class Migration(val library1: Library,
         val path = extractRouteFromJSON(traceFile)
 //        checkRoute(path)
 
-//        val edges = library1.stateMachines.flatMap { it -> it.edges }
-        context += library2.stateMachines.flatMap { machine -> machine.states }.filter(State::isInit).map { state -> state.machine to state }
+        fillContextWithInit()
+        val replacements: MutableList<Replacement> = mutableListOf()
         for (usage in path) {
             val edge = usage.edge
             println("Processing " + edge.label() + "... ")
@@ -86,6 +89,10 @@ class Migration(val library1: Library,
         }
     }
 
+    private fun fillContextWithInit() {
+        context += library2.stateMachines.flatMap { machine -> machine.states }.filter(State::isInit).map { state -> state.machine to state }
+    }
+
     private fun printRoute(route: List<Edge>) {
 //        println("Route from %s to %s: ".format(src.stateAndMachineName(),
 //                dst.stateAndMachineName()))
@@ -108,7 +115,7 @@ class Migration(val library1: Library,
         val usedEdges: MutableList<Edge> = mutableListOf()
         val edges = library1.stateMachines.flatMap { machine -> machine.edges }
         for (methodCall in codeElements.methodCalls) {
-            val callEdge = edges.firstOrNull { edge -> edge is CallEdge && edge.methodName == methodCall.name } as CallEdge?
+            val callEdge = edges.filterIsInstance<CallEdge>().firstOrNull { edge -> edge.methodName == methodCall.name }
             if (callEdge != null) {
                 usedEdges += callEdge
                 if (methodCall.parentNode is ExpressionStmt == false) {
@@ -157,7 +164,8 @@ class Migration(val library1: Library,
     data class LocatedEdge(
             val edge: Edge,
             val node: Node,
-            val nodeLine: Int = node.endLine
+            val nodeLine: Int = node.endLine,
+            val nodeColumn: Int = node.endColumn
     )
 
     private fun extractRouteFromJSON(file: File): List<LocatedEdge> {
@@ -187,7 +195,6 @@ class Migration(val library1: Library,
                         println("Missing linked node")
                     }
                 }
-//                usedEdges += associateEdges(callEdge.usageEdges, methodCall)
             } else if (invocation.kind == "constructor-call") {
                 val constructorEdge = edges.filterIsInstance<ConstructorEdge>().firstOrNull { edge -> invocation.simpleType() == edge.machine.type() }
                 if (constructorEdge == null) {
@@ -199,18 +206,18 @@ class Migration(val library1: Library,
                     error("Cannot find node for $invocation")
                 }
                 usedEdges += LocatedEdge(constructorEdge, constructorCall)
-//                usedEdges += associateEdges(constructorEdge.usageEdges, constructorCall)
             }
         }
-        if (usedEdges.isNotEmpty()) {
+        val usedEdgesCleanedUp = usedEdges.distinct()
+        if (usedEdgesCleanedUp.isNotEmpty()) {
             println("--- Used edges:")
-            for (edge in usedEdges) {
+            for (edge in usedEdgesCleanedUp) {
                 println(edge.edge.label())
             }
             println("---")
-            graphvizRender(toDOT(library1, usedEdges.map { usage -> usage.edge }), "extracted_" + functionName)
+            graphvizRender(toDOT(library1, usedEdgesCleanedUp.map { usage -> usage.edge }), "extracted_" + functionName)
         }
-        return usedEdges.distinct()
+        return usedEdgesCleanedUp.distinct()
     }
 
     private fun associateEdges(edges: Collection<Edge>, node: Node) = edges.map { edge -> edge to node }
@@ -220,9 +227,10 @@ class Migration(val library1: Library,
             // makeDependenciesFromEdge(edge)
             val pendingExpressions = applySteps(route, oldVarName)
         if (pendingExpressions.isNotEmpty()) {
-            replaceMethodCall(usage, pendingExpressions, oldVarName)
+            applyReplacement(Replacement(oldNode = usage, pendingExpressions = pendingExpressions))
         } else {
-            if (dependencies.containsKey(edge.linkedEdge?.dst?.machine)) {
+            if (edge.linkedEdge != null) {
+                if (dependencies.containsKey(edge.linkedEdge?.dst?.machine) == false) error("No such dependency")
                 replaceNode(newExpr = dependencies[edge.linkedEdge!!.dst.machine]!!, oldExpr = usage)
             } else {
                 val (statement, blockStmt) = getBlockStmt(usage) ?: return
@@ -239,7 +247,7 @@ class Migration(val library1: Library,
         // makeDependenciesFromEdge(edge)
         val pendingStmts = applySteps(route, oldVarName)
         println("Pending !!! $pendingStmts")
-        replaceMethodCall(usage, pendingStmts, oldVarName)
+        applyReplacement(Replacement(oldNode = usage, pendingExpressions = pendingStmts))
     }
 
     private fun applySteps(steps: List<Edge>, oldVarName: String?): List<PendingExpression> {
@@ -328,7 +336,9 @@ class Migration(val library1: Library,
         else -> TODO()
     }
 
-    private fun replaceMethodCall(oldExpr: Node, pendingExpressions: List<PendingExpression>, oldVarName: String?) {
+    private fun applyReplacement(replacement: Replacement) {
+        val oldExpr = replacement.oldNode
+        val pendingExpressions = replacement.pendingExpressions
         val (statement, blockStmt) = getBlockStmt(oldExpr) ?: return
 //        if (oldVarName != null) {
 //            replaceCodeUsage(blockStmt, oldVarName, pendingExpressions)
