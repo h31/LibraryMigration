@@ -25,7 +25,9 @@ data class PendingExpression(val expression: Expression,
                              val depends: List<String> = listOf())
 
 data class Replacement(val oldNode: Node,
-                       val pendingExpressions: List<PendingExpression>)
+                       val pendingExpressions: List<PendingExpression>,
+                       val removeOldNode: Boolean = pendingExpressions.isEmpty(),
+                       var makeVariable: Boolean = true)
 
 class Migration(val library1: Library,
                 val library2: Library,
@@ -54,35 +56,32 @@ class Migration(val library1: Library,
                 println("  Makes a loop, skipping")
                 continue
             }
+            extractDependenciesFromNode(edge, usage.node)
             if (edge.dst.machine in library2.stateMachines == false) {
                 println("No such machine, skipped")
-                when (edge) {
-                    is CallEdge -> extractDependenciesFromMethod(edge, usage.node as MethodCallExpr)
-                    is ConstructorEdge -> extractDependenciesFromConstructor(edge, usage.node as ObjectCreationExpr)
-                }
                 continue
             }
             when (edge) {
                 is AutoEdge -> println("  Has an auto action, skipping") // TODO: Should be error
                 is CallEdge -> {
                     println("  Has a call action")
-                    extractDependenciesFromMethod(edge, usage.node as MethodCallExpr)
                     val route = findRoute(context.values.toSet(), edge.dst)
-                    migrateMethodCall(edge, route, usage.node)
+                    val replacement = migrateMethodCall(edge, route, usage.node as MethodCallExpr)
+                    applyReplacement(replacement)
                 }
                 is ConstructorEdge -> {
                     println("  Has a constructor action")
-                    extractDependenciesFromConstructor(edge, usage.node as ObjectCreationExpr)
                     val route = findRoute(context.values.toSet(), edge.dst)
-                    migrateConstructorCall(edge, route, usage.node)
+                    val replacement = migrateConstructorCall(edge, route, usage.node as ObjectCreationExpr)
+                    applyReplacement(replacement)
                 }
                 is LinkedEdge -> {
                     println("  Has a linked action")
                     val dependency = edge.edge
                     if (dependency is CallEdge) {
-                        extractDependenciesFromMethod(dependency, usage.node as MethodCallExpr)
                         val route = findRoute(context.values.toSet(), edge.dst)
-                        migrateMethodCall(dependency, route, usage.node)
+                        val replacement = migrateMethodCall(dependency, route, usage.node as MethodCallExpr)
+                        applyReplacement(replacement)
                     }
                 }
             }
@@ -222,19 +221,18 @@ class Migration(val library1: Library,
 
     private fun associateEdges(edges: Collection<Edge>, node: Node) = edges.map { edge -> edge to node }
 
-    private fun migrateMethodCall(edge: CallEdge, route: List<Edge>, usage: MethodCallExpr) {
+    private fun migrateMethodCall(edge: CallEdge, route: List<Edge>, usage: MethodCallExpr): Replacement {
             val oldVarName = getVariableNameFromExpression(usage)
             // makeDependenciesFromEdge(edge)
             val pendingExpressions = applySteps(route, oldVarName)
         if (pendingExpressions.isNotEmpty()) {
-            applyReplacement(Replacement(oldNode = usage, pendingExpressions = pendingExpressions))
+            return Replacement(oldNode = usage, pendingExpressions = pendingExpressions)
         } else {
             if (edge.linkedEdge != null) {
-                if (dependencies.containsKey(edge.linkedEdge?.dst?.machine) == false) error("No such dependency")
-                replaceNode(newExpr = dependencies[edge.linkedEdge!!.dst.machine]!!, oldExpr = usage)
+                val newNode = dependencies[edge.linkedEdge!!.dst.machine] ?: error("No such dependency")
+                return Replacement(oldNode = usage, pendingExpressions = listOf(PendingExpression(expression = newNode, edge = edge.linkedEdge!!)), makeVariable = false)
             } else {
-                val (statement, blockStmt) = getBlockStmt(usage) ?: return
-                blockStmt.stmts.remove(statement)
+                return Replacement(oldNode = usage, pendingExpressions = listOf())
             }
 //            val (statement, blockStmt) = getBlockStmt(usage)
 //            if (statement != usage.parentNode) TODO()
@@ -242,12 +240,12 @@ class Migration(val library1: Library,
         }
     }
 
-    private fun migrateConstructorCall(edge: ConstructorEdge, route: List<Edge>, usage: ObjectCreationExpr) {
+    private fun migrateConstructorCall(edge: ConstructorEdge, route: List<Edge>, usage: ObjectCreationExpr): Replacement {
         val oldVarName = getVariableNameFromExpression(usage)
         // makeDependenciesFromEdge(edge)
         val pendingStmts = applySteps(route, oldVarName)
         println("Pending !!! $pendingStmts")
-        applyReplacement(Replacement(oldNode = usage, pendingExpressions = pendingStmts))
+        return Replacement(oldNode = usage, pendingExpressions = pendingStmts)
     }
 
     private fun applySteps(steps: List<Edge>, oldVarName: String?): List<PendingExpression> {
@@ -338,19 +336,26 @@ class Migration(val library1: Library,
 
     private fun applyReplacement(replacement: Replacement) {
         val oldExpr = replacement.oldNode
-        val pendingExpressions = replacement.pendingExpressions
         val (statement, blockStmt) = getBlockStmt(oldExpr) ?: return
-//        if (oldVarName != null) {
-//            replaceCodeUsage(blockStmt, oldVarName, pendingExpressions)
-//        }
         val statements = blockStmt.stmts
-        val pos = statements.indexOf(statement)
-        val pendingStatements = pendingExpressions.map { pending -> makeNewStatement(pending) }
-        statements.addAll(pos, pendingStatements)
-        val newExpr = NameExpr(getNewVarName(pendingExpressions))
-        replaceNode(newExpr, oldExpr)
-        for (stmt in pendingExpressions) {
-            stmt.expression.parentNode = blockStmt
+
+        if (replacement.pendingExpressions.isNotEmpty()) {
+            val pos = statements.indexOf(statement)
+            val pushedPendingExpressions = if (replacement.makeVariable) replacement.pendingExpressions else replacement.pendingExpressions.dropLast(1)
+            val pendingStatements = pushedPendingExpressions.map { pending -> makeNewStatement(pending) }
+            statements.addAll(pos, pendingStatements)
+            for (stmt in pushedPendingExpressions) {
+                stmt.expression.parentNode = blockStmt
+            }
+
+            val newExpr = if (replacement.makeVariable) {
+                NameExpr(getNewVarName(replacement.pendingExpressions))
+            } else {
+                replacement.pendingExpressions.last().expression
+            }
+            replaceNode(newExpr, oldExpr)
+        } else {
+            statements.remove(statement)
         }
     }
 
@@ -493,6 +498,13 @@ class Migration(val library1: Library,
 
     private fun getUsages(methodName: String) =
             codeElements.methodCalls.filter { methodCall -> methodCall.name == methodName }
+
+    private fun extractDependenciesFromNode(edge: Edge, node: Node) = when {
+        node is MethodCallExpr && edge is CallEdge -> extractDependenciesFromMethod(edge, node);
+        node is MethodCallExpr && edge is LinkedEdge -> extractDependenciesFromMethod(edge.edge as CallEdge, node);
+        node is ObjectCreationExpr && edge is ConstructorEdge -> extractDependenciesFromConstructor(edge, node);
+        else -> TODO()
+    }
 
     private fun extractDependenciesFromMethod(edge: CallEdge, methodCall: MethodCallExpr) {
         val args = edge.param.mapIndexed { i, param -> param.state to methodCall.args[i] }.toMap()

@@ -62,7 +62,7 @@ fun migrate(projectDir: Path,
         addImports(cu, to)
 
         val migratedCode = cu.toString()
-//        println(migratedCode);
+        println(migratedCode);
 
         val relativePath = projectDir.relativize(source.toPath())
         Files.write(testDir.resolve(relativePath), migratedCode.toByteArray())
