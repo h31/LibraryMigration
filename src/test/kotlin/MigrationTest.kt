@@ -52,6 +52,24 @@ class MigrationTest {
     }
 
     @Test
+    fun migrateJavaApacheTwice() {
+        Assert.assertTrue(migrate(projectDir = examples.resolve("HTTP"),
+                from = java,
+                to = apache
+        ))
+        println("And again...")
+        Assert.assertTrue(migrate(projectDir = examples.resolve("HTTP_test_java_apache"),
+                from = apache,
+                to = java
+        ))
+        println("And again...")
+        Assert.assertTrue(migrate(projectDir = examples.resolve("HTTP_test_java_apache_test_apache_java"),
+                from = java,
+                to = apache
+        ))
+    }
+
+    @Test
     fun migrateJavaOkhttp() {
         Assert.assertTrue(migrate(projectDir = examples.resolve("HTTP"),
                 from = java,
