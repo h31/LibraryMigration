@@ -38,18 +38,19 @@ class Migration(val library1: Library,
                 val sourceFile: File,
                 val traceFile: File) {
     val dependencies: MutableMap<StateMachine, Expression> = mutableMapOf()
-    val context: MutableSet<State> = mutableSetOf()
     // val pendingStmts = mutableListOf<Statement>()
     var nameGeneratorCounter = 0
     val replacements: MutableList<Replacement> = mutableListOf()
     val globalRoute: MutableList<Route> = mutableListOf()
+    val needToMakeVariable: MutableMap<Pair<Route, Edge>, Boolean> = mutableMapOf()
 
     val extractor = RouteExtractor(library1, codeElements, functionName, sourceFile)
+    val routeMaker = RouteMaker(globalRoute, extractor, traceFile, replacements, library1, library2, dependencies)
     val replacementPerformer = ReplacementPerformer(replacements, library2)
 
     fun doMigration() {
         println("Function: $functionName")
-        makeRoutes()
+        routeMaker.makeRoutes()
 
         for (route in globalRoute) {
             replacements += when (route.edge) {
@@ -71,65 +72,17 @@ class Migration(val library1: Library,
         replacementPerformer.apply()
     }
 
-    fun makeRoutes() {
-        val path = extractor.extractFromJSON(traceFile)
-//        checkRoute(path)
-
-        fillContextWithInit()
-        for (usage in path) {
-            val edge = usage.edge
-            println("Processing " + edge.label() + "... ")
-            if (edge.src == edge.dst) {
-                println("  Makes a loop, skipping")
-                continue
+    private fun calcIfNeedToMakeVariable() {
+        val allSteps: MutableList<Pair<Route, Edge>> = mutableListOf()
+        for (route in globalRoute) {
+            for (step in route.route) {
+                allSteps += Pair(route, step)
             }
-            extractDependenciesFromNode(edge, usage.node)
-            if (edge.dst.machine in library2.stateMachines == false) {
-                replacements += Replacement(usage.node, listOf())
-                continue
-            }
-            val route = findRoute(context, edge.dst)
-            globalRoute += Route(oldNode = usage.node, route = extendRoute(route), edge = edge)
         }
-    }
-
-    private fun extendRoute(route: List<Edge>): List<Edge> {
-        val outputRoute = mutableListOf<Edge>()
-        for (step in route) {
-            when (step) {
-                is UsageEdge -> {
-                    if ((step.edge is CallEdge && step.edge.isStatic) == false) {
-                        val dependencyStep = getDependencyStep(step)
-                        val newRoute = findRoute(context, dependencyStep.src)
-                        outputRoute += newRoute
-                        outputRoute += dependencyStep
-                        for (edge in newRoute) {
-                            context.removeAll { it.machine == edge.dst.machine }
-                            context += edge.dst
-                        }
-                    }
-                }
-                is ConstructorEdge -> {
-                    val missingDeps = step.param.filterNot { param -> context.contains(param.state) }
-                    for (dependency in missingDeps) {
-                        val newRoute = findRoute(context, dependency.state)
-                        outputRoute += newRoute
-                        for (edge in newRoute) {
-                            context.removeAll { it.machine == edge.dst.machine }
-                            context += edge.dst
-                        }
-                    }
-                }
-            }
-            outputRoute += step
-            context.removeAll { it.machine == step.dst.machine }
-            context += step.dst
+        for (stepIndexed in allSteps.withIndex()) {
+            val step = stepIndexed.value
+//            if (allSteps.drop(stepIndexed.index+1).any { furtherStep -> furtherStep.second.src == step.second.dst })
         }
-        return outputRoute
-    }
-
-    private fun fillContextWithInit() {
-        context += library2.stateMachines.flatMap { machine -> machine.states }.filter(State::isInit).toMutableSet()
     }
 
     private fun associateEdges(edges: Collection<Edge>, node: Node) = edges.map { edge -> edge to node }
@@ -188,11 +141,7 @@ class Migration(val library1: Library,
         if (pendingExpression.provides != null) {
             dependencies[pendingExpression.edge.dst.machine] = NameExpr(pendingExpression.provides)
         }
-        addToContext(pendingExpression.edge.dst)
     }
-
-    private fun getDependencyStep(step: Edge) = library2.stateMachines.flatMap { machine -> machine.edges }
-            .first { edge: Edge -> (edge.src != edge.dst) && (edge is UsageEdge == false) && (edge.dst == step.dst) }
 
     private fun makeExpression(step: Edge): Expression = when (step) {
         is LinkedEdge -> makeExpression(step.edge)
@@ -235,71 +184,6 @@ class Migration(val library1: Library,
         val params = step.param.map { param -> checkNotNull(dependencies[param.machine]) }
         val expr = ObjectCreationExpr(null, ClassOrInterfaceType(step.dst.machine.type()), params)
         return expr
-    }
-
-    private fun findRoute(src: Set<State>, dst: State): List<Edge> {
-        println("  Searching route from %s to %s".format(src.joinToString(transform = State::stateAndMachineName), dst.stateAndMachineName()))
-        val edges = library2.stateMachines.flatMap(StateMachine::edges).toSet()
-        val pathFinder = PathFinder(edges, src)
-        val path2 = pathFinder.findPath(dst)
-        if (false) {
-            graphvizRender(toDOT(library1, path2), "path2")
-            error("Paths are not equal")
-        }
-        return path2
-    }
-
-    private fun getUsages(methodName: String) =
-            codeElements.methodCalls.filter { methodCall -> methodCall.name == methodName }
-
-    private fun extractDependenciesFromNode(edge: Edge, node: Node) = when {
-        node is MethodCallExpr && edge is CallEdge -> extractDependenciesFromMethod(edge, node)
-        node is MethodCallExpr && edge is LinkedEdge -> extractDependenciesFromMethod(edge.edge as CallEdge, node)
-        node is ObjectCreationExpr && edge is ConstructorEdge -> extractDependenciesFromConstructor(edge, node)
-        else -> TODO()
-    }
-
-    private fun extractDependenciesFromMethod(edge: CallEdge, methodCall: MethodCallExpr) {
-        val args = edge.param.mapIndexed { i, param -> param.state to methodCall.args[i] }.toMap()
-        val scope = (edge.src to methodCall.scope)
-        val deps = args + scope
-        addDependenciesToContext(deps)
-    }
-
-    private fun extractDependenciesFromConstructor(edge: ConstructorEdge, constructorCall: ObjectCreationExpr) {
-        val args = edge.param.mapIndexed { i, param -> param.state to constructorCall.args[i] }.toMap()
-//        val scope = (edge.src to methodCall.scope)
-        val deps = args // TODO: scope
-        addDependenciesToContext(deps)
-    }
-
-    private fun addDependenciesToContext(deps: Map<State, Expression?>) {
-        for ((dep, expr) in deps) {
-            println("Machine ${dep.machine.label()} is now in state ${dep.label()}")
-            if (context.contains(dep)) {
-                continue
-            }
-            addToContext(dep)
-
-            if (expr != null) {
-                println("Machine ${dep.machine.label()} can be accessed by expr \"$expr\"")
-                dependencies[dep.machine] = expr
-
-                val autoDeps = library1.edges.filterIsInstance<AutoEdge>().filter { edge -> edge.src == dep }
-                for (autoDep in autoDeps) {
-                    val dstMachine = autoDep.dst.machine
-                    println("Additionally machine ${dstMachine.label()} can be accessed by expr \"$expr\"")
-                    addToContext(autoDep.dst)
-                    dependencies[dstMachine] = expr
-                }
-            }
-        }
-    }
-
-    private fun addToContext(state: State) {
-        val removed = context.filter { it.machine == state.machine }
-        context.removeAll(removed)
-        context += state
     }
 }
 
@@ -495,4 +379,143 @@ class RouteExtractor(val library1: Library,
             val place: String) {
         fun simpleType() = type.substringAfterLast('.').replace('$', '.')
     }
+}
+
+class RouteMaker(val globalRoute: MutableList<Route>,
+                 val extractor: RouteExtractor,
+                 val traceFile: File,
+                 val replacements: MutableList<Replacement>,
+                 val library1: Library,
+                 val library2: Library,
+                 val dependencies: MutableMap<StateMachine, Expression>) {
+    val context: MutableSet<State> = mutableSetOf()
+
+    fun makeRoutes() {
+        val path = extractor.extractFromJSON(traceFile)
+//        checkRoute(path)
+
+        fillContextWithInit()
+        for (usage in path) {
+            val edge = usage.edge
+            println("Processing " + edge.label() + "... ")
+            if (edge.src == edge.dst) {
+                println("  Makes a loop, skipping")
+                continue
+            }
+            extractDependenciesFromNode(edge, usage.node)
+            if (edge.dst.machine in library2.stateMachines == false) {
+                replacements += Replacement(usage.node, listOf())
+                continue
+            }
+            val route = findRoute(context, edge.dst)
+            globalRoute += Route(oldNode = usage.node, route = extendRoute(route), edge = edge)
+        }
+    }
+
+    private fun extendRoute(route: List<Edge>): List<Edge> {
+        val outputRoute = mutableListOf<Edge>()
+        for (step in route) {
+            when (step) {
+                is UsageEdge -> {
+                    if ((step.edge is CallEdge && step.edge.isStatic) == false) {
+                        val dependencyStep = getDependencyStep(step)
+                        val newRoute = findRoute(context, dependencyStep.src)
+                        outputRoute += newRoute
+                        outputRoute += dependencyStep
+                        for (edge in newRoute) {
+                            context.removeAll { it.machine == edge.dst.machine }
+                            context += edge.dst
+                        }
+                    }
+                }
+                is ConstructorEdge -> {
+                    val missingDeps = step.param.filterNot { param -> context.contains(param.state) }
+                    for (dependency in missingDeps) {
+                        val newRoute = findRoute(context, dependency.state)
+                        outputRoute += newRoute
+                        for (edge in newRoute) {
+                            context.removeAll { it.machine == edge.dst.machine }
+                            context += edge.dst
+                        }
+                    }
+                }
+            }
+            outputRoute += step
+            context.removeAll { it.machine == step.dst.machine }
+            context += step.dst
+        }
+        return outputRoute
+    }
+
+    private fun fillContextWithInit() {
+        context += library2.stateMachines.flatMap { machine -> machine.states }.filter(State::isInit).toMutableSet()
+    }
+
+    private fun findRoute(src: Set<State>, dst: State): List<Edge> {
+        println("  Searching route from %s to %s".format(src.joinToString(transform = State::stateAndMachineName), dst.stateAndMachineName()))
+        val edges = library2.stateMachines.flatMap(StateMachine::edges).toSet()
+        val pathFinder = PathFinder(edges, src)
+        val path2 = pathFinder.findPath(dst)
+        if (false) {
+            graphvizRender(toDOT(library1, path2), "path2")
+            error("Paths are not equal")
+        }
+        return path2
+    }
+
+//    private fun getUsages(methodName: String) =
+//            codeElements.methodCalls.filter { methodCall -> methodCall.name == methodName }
+
+    private fun extractDependenciesFromNode(edge: Edge, node: Node) = when {
+        node is MethodCallExpr && edge is CallEdge -> extractDependenciesFromMethod(edge, node)
+        node is MethodCallExpr && edge is LinkedEdge -> extractDependenciesFromMethod(edge.edge as CallEdge, node)
+        node is ObjectCreationExpr && edge is ConstructorEdge -> extractDependenciesFromConstructor(edge, node)
+        else -> TODO()
+    }
+
+    private fun extractDependenciesFromMethod(edge: CallEdge, methodCall: MethodCallExpr) {
+        val args = edge.param.mapIndexed { i, param -> param.state to methodCall.args[i] }.toMap()
+        val scope = (edge.src to methodCall.scope)
+        val deps = args + scope
+        addDependenciesToContext(deps)
+    }
+
+    private fun extractDependenciesFromConstructor(edge: ConstructorEdge, constructorCall: ObjectCreationExpr) {
+        val args = edge.param.mapIndexed { i, param -> param.state to constructorCall.args[i] }.toMap()
+//        val scope = (edge.src to methodCall.scope)
+        val deps = args // TODO: scope
+        addDependenciesToContext(deps)
+    }
+
+    private fun addDependenciesToContext(deps: Map<State, Expression?>) {
+        for ((dep, expr) in deps) {
+            println("Machine ${dep.machine.label()} is now in state ${dep.label()}")
+            if (context.contains(dep)) {
+                continue
+            }
+            addToContext(dep)
+
+            if (expr != null) {
+                println("Machine ${dep.machine.label()} can be accessed by expr \"$expr\"")
+                dependencies[dep.machine] = expr
+
+                val autoDeps = library1.edges.filterIsInstance<AutoEdge>().filter { edge -> edge.src == dep }
+                for (autoDep in autoDeps) {
+                    val dstMachine = autoDep.dst.machine
+                    println("Additionally machine ${dstMachine.label()} can be accessed by expr \"$expr\"")
+                    addToContext(autoDep.dst)
+                    dependencies[dstMachine] = expr
+                }
+            }
+        }
+    }
+
+    private fun addToContext(state: State) {
+        val removed = context.filter { it.machine == state.machine }
+        context.removeAll(removed)
+        context += state
+    }
+
+    private fun getDependencyStep(step: Edge) = library2.stateMachines.flatMap { machine -> machine.edges }
+            .first { edge: Edge -> (edge.src != edge.dst) && (edge is UsageEdge == false) && (edge.dst == step.dst) }
 }
