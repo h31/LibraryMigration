@@ -197,7 +197,7 @@ class ReplacementPerformer(val replacements: List<Replacement>,
 
     fun applyReplacement(replacement: Replacement) {
         val oldExpr = replacement.oldNode
-        val (statement, blockStmt) = getBlockStmt(oldExpr) ?: return
+        val (statement, blockStmt) = getBlockStmt(oldExpr)
         val statements = blockStmt.stmts
 
         if (replacement.pendingExpressions.isNotEmpty()) {
@@ -221,7 +221,7 @@ class ReplacementPerformer(val replacements: List<Replacement>,
     }
 
     private fun replaceNode(newExpr: Expression, oldExpr: Node) {
-        val (statement, blockStmt) = getBlockStmt(oldExpr) ?: return
+        val (statement, blockStmt) = getBlockStmt(oldExpr)
         val statements = blockStmt.stmts
         val parent = oldExpr.parentNode
         when (parent) {
@@ -251,12 +251,9 @@ class ReplacementPerformer(val replacements: List<Replacement>,
         }
     }
 
-    private fun getBlockStmt(initialNode: Node): Pair<Statement, BlockStmt>? {
+    private fun getBlockStmt(initialNode: Node): Pair<Statement, BlockStmt> {
         var node: Node = initialNode
         while (node.parentNode is BlockStmt == false) {
-            if (node.parentNode == null) {
-                return null
-            }
             node = node.parentNode
         }
         return Pair(node as Statement, node.parentNode as BlockStmt)
