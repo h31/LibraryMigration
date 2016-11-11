@@ -67,13 +67,15 @@ class Migration(val library1: Library,
                     println("  Has a call action")
                     val route = findRoute(context.values.toSet(), edge.dst)
                     val replacement = migrateMethodCall(edge, route, usage.node as MethodCallExpr)
-                    applyReplacement(replacement)
+                    replacements += replacement;
+//                    applyReplacement(replacement)
                 }
                 is ConstructorEdge -> {
                     println("  Has a constructor action")
                     val route = findRoute(context.values.toSet(), edge.dst)
                     val replacement = migrateConstructorCall(edge, route, usage.node as ObjectCreationExpr)
-                    applyReplacement(replacement)
+                    replacements += replacement;
+//                    applyReplacement(replacement)
                 }
                 is LinkedEdge -> {
                     println("  Has a linked action")
@@ -81,10 +83,14 @@ class Migration(val library1: Library,
                     if (dependency is CallEdge) {
                         val route = findRoute(context.values.toSet(), edge.dst)
                         val replacement = migrateMethodCall(dependency, route, usage.node as MethodCallExpr)
-                        applyReplacement(replacement)
+                        replacements += replacement;
+//                        applyReplacement(replacement)
                     }
                 }
             }
+        }
+        for (replacement in replacements) {
+            applyReplacement(replacement)
         }
     }
 
@@ -523,6 +529,9 @@ class Migration(val library1: Library,
     private fun addDependenciesToContext(deps: Map<State, Expression?>) {
         for ((dep, expr) in deps) {
             println("Machine ${dep.machine.label()} is now in state ${dep.label()}")
+            if (context.contains(dep.machine)) {
+                continue
+            }
             context[dep.machine] = dep
 
             if (expr != null) {
