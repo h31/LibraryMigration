@@ -165,7 +165,7 @@ fun migrateFile(library1: Library,
                 library2 = library2,
                 codeElements = methodLocalCodeElements,
                 functionName = methodDecl.name(),
-                file = file,
+                sourceFile = file,
                 traceFile = traceFile)
 
         migration.doMigration()

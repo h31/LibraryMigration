@@ -1,18 +1,16 @@
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties
 import com.fasterxml.jackson.databind.ObjectMapper
-import com.fasterxml.jackson.module.kotlin.KotlinModule
+import com.fasterxml.jackson.module.kotlin.readValue
+import com.fasterxml.jackson.module.kotlin.registerKotlinModule
 import com.github.javaparser.ASTHelper
 import com.github.javaparser.ast.Node
 import com.github.javaparser.ast.body.VariableDeclarator
 import com.github.javaparser.ast.expr.*
 import com.github.javaparser.ast.stmt.BlockStmt
 import com.github.javaparser.ast.stmt.ExpressionStmt
+import com.github.javaparser.ast.stmt.ReturnStmt
 import com.github.javaparser.ast.stmt.Statement
 import com.github.javaparser.ast.type.ClassOrInterfaceType
-import org.jgrapht.alg.DijkstraShortestPath
-import com.fasterxml.jackson.module.kotlin.*
-import com.github.javaparser.ast.stmt.ReturnStmt
-import org.jgrapht.graph.DirectedPseudograph
 import java.io.File
 
 /**
@@ -29,27 +27,55 @@ data class Replacement(val oldNode: Node,
                        val removeOldNode: Boolean = pendingExpressions.isEmpty(),
                        var makeVariable: Boolean = true)
 
+data class Route(val oldNode: Node,
+                 val route: List<Edge>,
+                 val edge: Edge)
+
 class Migration(val library1: Library,
                 val library2: Library,
                 val codeElements: CodeElements,
-//                val graph1: DirectedPseudograph<State, Edge> = toJGrapht(library1),
-//                val graph2: DirectedPseudograph<State, Edge> = toJGrapht(library2),
                 val functionName: String,
-                val file: File,
+                val sourceFile: File,
                 val traceFile: File) {
     val dependencies: MutableMap<StateMachine, Expression> = mutableMapOf()
-    val context: MutableMap<StateMachine, State> = mutableMapOf()
+    val context: MutableSet<State> = mutableSetOf()
     // val pendingStmts = mutableListOf<Statement>()
     var nameGeneratorCounter = 0
+    val replacements: MutableList<Replacement> = mutableListOf()
+    val globalRoute: MutableList<Route> = mutableListOf()
+
+    val extractor = RouteExtractor(library1, codeElements, functionName, sourceFile)
+    val replacementPerformer = ReplacementPerformer(replacements, library2)
 
     fun doMigration() {
         println("Function: $functionName")
-        val extractor = RouteExtractor(library1, codeElements, functionName, file)
+        makeRoutes()
+
+        for (route in globalRoute) {
+            replacements += when (route.edge) {
+                is CallEdge -> {
+                    println("  Has a call action")
+                    migrateMethodCall(route.edge, route.route, route.oldNode as MethodCallExpr)
+                }
+                is ConstructorEdge -> {
+                    println("  Has a constructor action")
+                    migrateConstructorCall(route.edge, route.route, route.oldNode as ObjectCreationExpr)
+                }
+                is LinkedEdge -> {
+                    println("  Has a linked action")
+                    migrateLinkedEdge(route.edge, route.route, route.oldNode as MethodCallExpr)
+                }
+                else -> TODO()
+            }
+        }
+        replacementPerformer.apply()
+    }
+
+    fun makeRoutes() {
         val path = extractor.extractFromJSON(traceFile)
 //        checkRoute(path)
 
         fillContextWithInit()
-        val replacements: MutableList<Replacement> = mutableListOf()
         for (usage in path) {
             val edge = usage.edge
             println("Processing " + edge.label() + "... ")
@@ -62,32 +88,48 @@ class Migration(val library1: Library,
                 replacements += Replacement(usage.node, listOf())
                 continue
             }
-            val route = findRoute(context.values.toSet(), edge.dst)
-            when (edge) {
-                is AutoEdge -> println("  Has an auto action, skipping") // TODO: Should be error
-                is CallEdge -> {
-                    println("  Has a call action")
-                    val replacement = migrateMethodCall(edge, route, usage.node as MethodCallExpr)
-                    replacements += replacement
+            val route = findRoute(context, edge.dst)
+            globalRoute += Route(oldNode = usage.node, route = extendRoute(route), edge = edge)
+        }
+    }
+
+    private fun extendRoute(route: List<Edge>): List<Edge> {
+        val outputRoute = mutableListOf<Edge>()
+        for (step in route) {
+            when (step) {
+                is UsageEdge -> {
+                    if ((step.edge is CallEdge && step.edge.isStatic) == false) {
+                        val dependencyStep = getDependencyStep(step)
+                        val newRoute = findRoute(context, dependencyStep.src)
+                        outputRoute += newRoute
+                        outputRoute += dependencyStep
+                        for (edge in newRoute) {
+                            context.removeAll { it.machine == edge.dst.machine }
+                            context += edge.dst
+                        }
+                    }
                 }
                 is ConstructorEdge -> {
-                    println("  Has a constructor action")
-                    val replacement = migrateConstructorCall(edge, route, usage.node as ObjectCreationExpr)
-                    replacements += replacement
-                }
-                is LinkedEdge -> {
-                    println("  Has a linked action")
-                    val replacement = migrateLinkedEdge(edge, route, usage.node as MethodCallExpr)
-                    replacements += replacement
+                    val missingDeps = step.param.filterNot { param -> context.contains(param.state) }
+                    for (dependency in missingDeps) {
+                        val newRoute = findRoute(context, dependency.state)
+                        outputRoute += newRoute
+                        for (edge in newRoute) {
+                            context.removeAll { it.machine == edge.dst.machine }
+                            context += edge.dst
+                        }
+                    }
                 }
             }
+            outputRoute += step
+            context.removeAll { it.machine == step.dst.machine }
+            context += step.dst
         }
-        val performer = ReplacementPerformer(replacements, library2)
-        performer.apply()
+        return outputRoute
     }
 
     private fun fillContextWithInit() {
-        context += library2.stateMachines.flatMap { machine -> machine.states }.filter(State::isInit).map { state -> state.machine to state }
+        context += library2.stateMachines.flatMap { machine -> machine.states }.filter(State::isInit).toMutableSet()
     }
 
     private fun associateEdges(edges: Collection<Edge>, node: Node) = edges.map { edge -> edge to node }
@@ -110,10 +152,8 @@ class Migration(val library1: Library,
 
     private fun migrateConstructorCall(edge: ConstructorEdge, route: List<Edge>, usage: ObjectCreationExpr): Replacement {
         val oldVarName = getVariableNameFromExpression(usage)
-        // makeDependenciesFromEdge(edge)
-        val pendingStmts = applySteps(route, oldVarName)
-        println("Pending !!! $pendingStmts")
-        return Replacement(oldNode = usage, pendingExpressions = pendingStmts)
+        val pendingExpressions = applySteps(route, oldVarName)
+        return Replacement(oldNode = usage, pendingExpressions = pendingExpressions)
     }
 
     private fun applySteps(steps: List<Edge>, oldVarName: String?): List<PendingExpression> {
@@ -132,10 +172,8 @@ class Migration(val library1: Library,
     }
 
     private fun makeStep(step: Edge, name: String) = when (step) {
-        is CallEdge, is LinkedEdge, is TemplateEdge -> makeSimpleEdge(step, name)
-        is UsageEdge -> makeUsageEdge(step, name)
-        is ConstructorEdge -> makeConstructorEdge(step, name)
-        is AutoEdge -> listOf()
+        is CallEdge, is LinkedEdge, is TemplateEdge, is ConstructorEdge -> makeSimpleEdge(step, name)
+        is UsageEdge, is AutoEdge -> emptyList()
         is MakeArrayEdge -> TODO() // makeArray(step.action)
         else -> TODO("Unknown action!")
     }
@@ -150,35 +188,7 @@ class Migration(val library1: Library,
         if (pendingExpression.provides != null) {
             dependencies[pendingExpression.edge.dst.machine] = NameExpr(pendingExpression.provides)
         }
-        context[pendingExpression.edge.dst.machine] = pendingExpression.edge.dst
-    }
-
-    private fun makeUsageEdge(step: UsageEdge, oldVarName: String?): List<PendingExpression> {
-        if (step.edge is CallEdge && step.edge.isStatic) {
-            return emptyList()
-        }
-
-        val dependencyStep = getDependencyStep(step)
-        val route = findRoute(context.values.toSet(), dependencyStep.src)
-        println("Usage route: $route")
-        val steps = applySteps(route, null)
-
-        val initExpr: Expression = makeExpression(dependencyStep)
-//        val callStatement = makeCallStatement(step.edge as CallEdge)
-        return steps + listOf(PendingExpression(edge = step, expression = initExpr, provides = oldVarName ?: generateVariableName(step)))
-    }
-
-    private fun makeConstructorEdge(step: ConstructorEdge, name: String): List<PendingExpression> {
-        val missingDeps = step.param.filterNot { param -> context.values.contains(param.state) }
-        val steps = mutableListOf<PendingExpression>()
-        for (dependency in missingDeps) {
-            val route = findRoute(context.values.toSet(), dependency.state)
-            println("Usage route: $route")
-            val newSteps = applySteps(route, null)
-            steps += newSteps
-        }
-        val expr = makeConstructorExpression(step)
-        return steps + listOf(PendingExpression(edge = step, expression = expr, provides = name))
+        addToContext(pendingExpression.edge.dst)
     }
 
     private fun getDependencyStep(step: Edge) = library2.stateMachines.flatMap { machine -> machine.edges }
@@ -196,15 +206,6 @@ class Migration(val library1: Library,
     private fun getVariableNameFromExpression(methodCall: Node): String? {
         val parent = methodCall.parentNode
         return if (parent is VariableDeclarator) parent.id.name else null
-    }
-
-    private fun replaceName(node: Node, src: String, dst: String) {
-        if (node is NameExpr && node.name == src) {
-            node.name = dst
-        }
-        for (child in node.childrenNodes) {
-            replaceName(child, src, dst)
-        }
     }
 
     private fun makeCallExpressionParams(edge: CallEdge): CallExpressionParams {
@@ -252,9 +253,9 @@ class Migration(val library1: Library,
             codeElements.methodCalls.filter { methodCall -> methodCall.name == methodName }
 
     private fun extractDependenciesFromNode(edge: Edge, node: Node) = when {
-        node is MethodCallExpr && edge is CallEdge -> extractDependenciesFromMethod(edge, node);
-        node is MethodCallExpr && edge is LinkedEdge -> extractDependenciesFromMethod(edge.edge as CallEdge, node);
-        node is ObjectCreationExpr && edge is ConstructorEdge -> extractDependenciesFromConstructor(edge, node);
+        node is MethodCallExpr && edge is CallEdge -> extractDependenciesFromMethod(edge, node)
+        node is MethodCallExpr && edge is LinkedEdge -> extractDependenciesFromMethod(edge.edge as CallEdge, node)
+        node is ObjectCreationExpr && edge is ConstructorEdge -> extractDependenciesFromConstructor(edge, node)
         else -> TODO()
     }
 
@@ -275,10 +276,10 @@ class Migration(val library1: Library,
     private fun addDependenciesToContext(deps: Map<State, Expression?>) {
         for ((dep, expr) in deps) {
             println("Machine ${dep.machine.label()} is now in state ${dep.label()}")
-            if (context.contains(dep.machine)) {
+            if (context.contains(dep)) {
                 continue
             }
-            context[dep.machine] = dep
+            addToContext(dep)
 
             if (expr != null) {
                 println("Machine ${dep.machine.label()} can be accessed by expr \"$expr\"")
@@ -288,11 +289,17 @@ class Migration(val library1: Library,
                 for (autoDep in autoDeps) {
                     val dstMachine = autoDep.dst.machine
                     println("Additionally machine ${dstMachine.label()} can be accessed by expr \"$expr\"")
-                    context[dstMachine] = autoDep.dst
+                    addToContext(autoDep.dst)
                     dependencies[dstMachine] = expr
                 }
             }
         }
+    }
+
+    private fun addToContext(state: State) {
+        val removed = context.filter { it.machine == state.machine }
+        context.removeAll(removed)
+        context += state
     }
 }
 
