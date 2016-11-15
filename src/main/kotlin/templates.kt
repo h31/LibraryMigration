@@ -27,5 +27,5 @@ fun main(args: Array<String>) {
     val machine = StateMachine(name = "Test")
     val edge = CallEdge(machine = machine, methodName = "method")
 
-//    println(fillPlaceholders("Hello {{ obj }}", params = mapOf("obj" to edge), variables = mapOf(machine to "object")))
+//    println(fillPlaceholders("Hello {{ obj }}", templateParams = mapOf("obj" to edge), variables = mapOf(machine to "object")))
 }

@@ -58,7 +58,7 @@ fun makeJava(): Library {
             machine = connection,
             template = "new BufferedReader(new InputStreamReader({{ conn }}.getInputStream()))" +
                     ".lines().collect(Collectors.joining(\"\\n\", \"\", \"\\n\"))",
-            params = mapOf("conn" to connection.getDefaultState()),
+            templateParams = mapOf("conn" to connection.getDefaultState()),
             additionalTypes = listOf("java.io.BufferedReader", "java.io.InputStreamReader", "java.util.stream.Collectors")
     )
 
@@ -92,7 +92,7 @@ fun makeJava(): Library {
             edge = TemplateEdge(
                     machine = connection,
                     template = "((HttpURLConnection) {{ response }})",
-                    params = mapOf("response" to connection.getConstructedState())
+                    templateParams = mapOf("response" to connection.getConstructedState())
             )
     )
 
@@ -160,7 +160,7 @@ fun makeApache(): Library {
             src = url.getConstructedState(),
             dst = encodedURL,
             template = "{{ url }}.replace(\"{\", \"%7B\").replace(\"}\", \"%7D\")",
-            params = mapOf("url" to url.getConstructedState())
+            templateParams = mapOf("url" to url.getConstructedState())
     )
 
     ConstructorEdge(
@@ -220,7 +220,7 @@ fun makeApache(): Library {
 //    val toStringTemplate = TemplateEdge(
 //            machine = main,
 //            template = "EntityUtils.toString({{ httpResponse }}.getEntity())",
-//            params = mapOf("httpResponse" to connection.getConstructedState()),
+//            templateParams = mapOf("httpResponse" to connection.getConstructedState()),
 //            isStatic = true
 //    )
 
@@ -242,7 +242,7 @@ fun makeApache(): Library {
 //            edge = TemplateEdge(
 //                    machine = connection,
 //                    template = "{{ httpResponse }}.getEntity().getContent()",
-//                    params = mapOf("httpResponse" to connection.getConstructedState())
+//                    templateParams = mapOf("httpResponse" to connection.getConstructedState())
 //            )
 //    )
 
@@ -258,7 +258,7 @@ fun makeApache(): Library {
             edge = TemplateEdge(
                     machine = connection,
                     template = "{{ conn }}.getStatusLine().getStatusCode()",
-                    params = mapOf("conn" to connection.getDefaultState())
+                    templateParams = mapOf("conn" to connection.getDefaultState())
             )
     )
 
@@ -268,7 +268,7 @@ fun makeApache(): Library {
 //            edge = TemplateEdge(
 //                    machine = connection,
 //                    template = "{{ httpResponse }}.getEntity().getContentLength()",
-//                    params = mapOf("httpResponse" to connection.getConstructedState())
+//                    templateParams = mapOf("httpResponse" to connection.getConstructedState())
 //            )
 //    )
 

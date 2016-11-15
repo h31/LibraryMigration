@@ -178,7 +178,7 @@ class Migration(val library1: Library,
     }
 
     private fun makeTemplateExpression(step: TemplateEdge): Expression {
-        val stringParams = step.params.mapValues { state -> checkNotNull(dependencies[state.value.machine].toString()) }
+        val stringParams = step.templateParams.mapValues { state -> checkNotNull(dependencies[state.value.machine].toString()) }
         return templateIntoAST(fillPlaceholders(step.template, stringParams))
     }
 

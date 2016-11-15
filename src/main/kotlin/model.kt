@@ -108,6 +108,7 @@ interface Edge : Labelable {
 interface ExpressionEdge : Edge {
     var linkedEdge: LinkedEdge?
     val isStatic: Boolean
+    val param: List<Param>
 
     fun createUsageEdges(params: List<Param>, dst: State) = params.map { param ->
         UsageEdge(
@@ -125,7 +126,7 @@ data class CallEdge(override val machine: StateMachine,
                     override val action: Action? = null,
 
                     val methodName: String,
-                    val param: List<Param> = listOf(),
+                    override val param: List<Param> = listOf(),
                     override val isStatic: Boolean = false) : ExpressionEdge {
     override fun getStyle() = "bold"
 
@@ -158,7 +159,7 @@ data class ConstructorEdge(override val machine: StateMachine,
                            override val dst: State = src,
                            override val action: Action? = null,
 
-                           val param: List<Param> = listOf()) : ExpressionEdge {
+                           override val param: List<Param> = listOf()) : ExpressionEdge {
     override fun getStyle() = "bold"
 
     var constructedMachine: StateMachine? = null
@@ -217,17 +218,18 @@ data class TemplateEdge(override val machine: StateMachine,
                         override val action: Action? = null,
 
                         val template: String,
-                        val params: Map<String, State>,
+                        val templateParams: Map<String, State>,
                         override val isStatic: Boolean = false,
                         val additionalTypes: List<String> = listOf()) : ExpressionEdge {
     override fun getStyle() = "bold"
+    override val param: List<Param> = templateParams.map { Param(it.value.machine, it.value) }
 
     override var linkedEdge: LinkedEdge? = null
     val usageEdges: MutableSet<UsageEdge> = mutableSetOf()
 
     init {
         machine.edges += this
-        for (param in params) {
+        for (param in templateParams) {
             if (param.value == src) {
                 continue
             }
