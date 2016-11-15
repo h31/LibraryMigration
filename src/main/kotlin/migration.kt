@@ -115,26 +115,27 @@ class Migration(val library1: Library,
         val pendingExpr = mutableListOf<PendingExpression>()
         for (step in steps) {
             println("    Step: " + step.label())
+            val newExpressions: List<PendingExpression> = makeStep(step)
             val name = if ((step == steps.last()) && (oldVarName != null)) oldVarName else generateVariableName(step)
-            val newExpressions: List<PendingExpression> = makeStep(step, name)
-            println("Received expressions: " + newExpressions.toString())
-            for (expr in newExpressions) {
+            val namedExpressions = newExpressions.map { it.copy(provides = name) }
+            println("Received expressions: " + namedExpressions.toString())
+            for (expr in namedExpressions) {
                 addToContext(expr)
             }
-            pendingExpr.addAll(newExpressions)
+            pendingExpr.addAll(namedExpressions)
         }
         return pendingExpr
     }
 
-    private fun makeStep(step: Edge, name: String) = when (step) {
-        is CallEdge, is LinkedEdge, is TemplateEdge, is ConstructorEdge -> makeSimpleEdge(step, name)
+    private fun makeStep(step: Edge) = when (step) {
+        is CallEdge, is LinkedEdge, is TemplateEdge, is ConstructorEdge -> makeSimpleEdge(step)
         is UsageEdge, is AutoEdge -> emptyList()
         is MakeArrayEdge -> TODO() // makeArray(step.action)
         else -> TODO("Unknown action!")
     }
 
-    private fun makeSimpleEdge(step: Edge, name: String): List<PendingExpression> {
-        return listOf(PendingExpression(edge = step, expression = makeExpression(step), provides = name))
+    private fun makeSimpleEdge(step: Edge): List<PendingExpression> {
+        return listOf(PendingExpression(edge = step, expression = makeExpression(step)))
     }
 
     private fun generateVariableName(step: Edge) = "migration_${step.dst.machine.name}_${nameGeneratorCounter++}"
