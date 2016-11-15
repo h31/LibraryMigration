@@ -33,7 +33,7 @@ fun main(args: Array<String>) {
 //            from = models["okhttp"]!!,
 //            to = models["java"]!!
 //    )
-    migrate(projectDir = Paths.get("/home/artyom/Compile/acme4j/acme4j-client"),
+    migrate(projectDir = Paths.get("examples/HTTP"),
             from = models["java"]!!,
             to = models["apache"]!!
     )

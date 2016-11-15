@@ -51,6 +51,7 @@ class Migration(val library1: Library,
     fun doMigration() {
         println("Function: $functionName")
         routeMaker.makeRoutes()
+        calcIfNeedToMakeVariable()
 
         for (route in globalRoute) {
             replacements += when (route.edge) {
@@ -79,8 +80,9 @@ class Migration(val library1: Library,
                 allSteps += Pair(route, step)
             }
         }
-        for (stepIndexed in allSteps.withIndex()) {
-            val step = stepIndexed.value
+        for (step in allSteps) {
+            val count = allSteps.count { pair -> pair.second.src.machine == step.second.machine || pair.second is CallEdge && (pair.second as CallEdge).param.any { it.machine == step.second.machine } }
+            needToMakeVariable.put(step, count > 1)
 //            if (allSteps.drop(stepIndexed.index+1).any { furtherStep -> furtherStep.second.src == step.second.dst })
         }
     }
