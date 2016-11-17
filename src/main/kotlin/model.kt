@@ -29,6 +29,8 @@ data class Library(val name: String,
     fun simpleType(type: String) = type.substringAfterLast('.').replace('$', '.')
 
     fun allTypes() = machineTypes.values + additionalTypes
+
+    fun states() = stateMachines.flatMap(StateMachine::states)
 }
 
 //data class Type(val entity: Entity,
@@ -88,6 +90,7 @@ data class State(val name: String,
     override fun label() = name
     fun stateAndMachineName() = machine.name + "." + name
     fun isInit() = name == "Init"
+    fun isFinal() = name == "Final"
 }
 
 fun makeInitState(machine: StateMachine) = State("Init", machine)

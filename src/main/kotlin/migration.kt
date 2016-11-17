@@ -25,11 +25,13 @@ data class PendingExpression(val expression: Expression,
 data class Replacement(val oldNode: Node,
                        val pendingExpressions: List<PendingExpression>,
                        val removeOldNode: Boolean = pendingExpressions.isEmpty(),
+                       val finalizerExpressions: List<PendingExpression> = listOf(),
                        var makeVariable: Boolean = true)
 
 data class Route(val oldNode: Node,
                  val route: List<Edge>,
-                 val edge: Edge)
+                 val edge: Edge,
+                 var finalizerRoute: List<Edge> = listOf())
 
 class Migration(val library1: Library,
                 val library2: Library,
@@ -57,15 +59,15 @@ class Migration(val library1: Library,
             replacements += when (route.edge) {
                 is CallEdge -> {
                     println("  Has a call action")
-                    migrateMethodCall(route.edge, route.route, route.oldNode as MethodCallExpr)
+                    migrateMethodCall(route)
                 }
                 is ConstructorEdge -> {
                     println("  Has a constructor action")
-                    migrateConstructorCall(route.edge, route.route, route.oldNode as ObjectCreationExpr)
+                    migrateConstructorCall(route)
                 }
                 is LinkedEdge -> {
                     println("  Has a linked action")
-                    migrateLinkedEdge(route.edge, route.route, route.oldNode as MethodCallExpr)
+                    migrateLinkedEdge(route)
                 }
                 else -> TODO()
             }
@@ -89,26 +91,29 @@ class Migration(val library1: Library,
 
     private fun associateEdges(edges: Collection<Edge>, node: Node) = edges.map { edge -> edge to node }
 
-    private fun migrateLinkedEdge(edge: LinkedEdge, route: List<Edge>, usage: MethodCallExpr): Replacement {
-        val oldVarName = getVariableNameFromExpression(usage)
-        val pendingExpressions = applySteps(route, oldVarName)
+    private fun migrateLinkedEdge(route: Route): Replacement {
+        val oldVarName = getVariableNameFromExpression(route.oldNode)
+        val pendingExpressions = applySteps(route.route, oldVarName)
         if (pendingExpressions.isNotEmpty()) {
-            return Replacement(oldNode = usage, pendingExpressions = pendingExpressions)
+            val finalizerExpressions = applySteps(route.finalizerRoute, null)
+            return Replacement(oldNode = route.oldNode, pendingExpressions = pendingExpressions, finalizerExpressions = finalizerExpressions)
         } else {
-            val newNode = dependencies[edge.dst.machine] ?: error("No such dependency")
-            return Replacement(oldNode = usage, pendingExpressions = listOf(PendingExpression(expression = newNode, edge = edge)), makeVariable = false)
+            val newNode = dependencies[route.edge.dst.machine] ?: error("No such dependency")
+            return Replacement(oldNode = route.oldNode, pendingExpressions = listOf(PendingExpression(expression = newNode, edge = route.edge)), makeVariable = false)
         }
     }
 
-    private fun migrateMethodCall(edge: CallEdge, route: List<Edge>, usage: MethodCallExpr): Replacement {
-        val pendingExpressions = applySteps(route, null)
-        return Replacement(oldNode = usage, pendingExpressions = pendingExpressions)
+    private fun migrateMethodCall(route: Route): Replacement {
+        val pendingExpressions = applySteps(route.route, null)
+        val finalizerExpressions = applySteps(route.finalizerRoute, null)
+        return Replacement(oldNode = route.oldNode, pendingExpressions = pendingExpressions, finalizerExpressions = finalizerExpressions)
     }
 
-    private fun migrateConstructorCall(edge: ConstructorEdge, route: List<Edge>, usage: ObjectCreationExpr): Replacement {
-        val oldVarName = getVariableNameFromExpression(usage)
-        val pendingExpressions = applySteps(route, oldVarName)
-        return Replacement(oldNode = usage, pendingExpressions = pendingExpressions)
+    private fun migrateConstructorCall(route: Route): Replacement {
+        val oldVarName = getVariableNameFromExpression(route.oldNode)
+        val pendingExpressions = applySteps(route.route, oldVarName)
+        val finalizerExpressions = applySteps(route.finalizerRoute, null)
+        return Replacement(oldNode = route.oldNode, pendingExpressions = pendingExpressions, finalizerExpressions = finalizerExpressions)
     }
 
     private fun applySteps(steps: List<Edge>, oldVarName: String?): List<PendingExpression> {
@@ -221,6 +226,16 @@ class ReplacementPerformer(val replacements: List<Replacement>,
         } else if (replacement.oldNode.parentNode is ExpressionStmt || replacement.oldNode.parentNode is VariableDeclarator) {
             statements.remove(statement)
         }
+
+        makeFinalizers(statements, replacement)
+    }
+
+    private fun makeFinalizers(statements: MutableList<Statement>, replacement: Replacement) {
+        val lastNotReturnStatement = statements.indexOfLast { stmt -> stmt !is ReturnStmt }
+        if (replacement.finalizerExpressions.isNotEmpty()) {
+            val newStatements = replacement.finalizerExpressions.map { ExpressionStmt(it.expression) }
+            statements.addAll(lastNotReturnStatement + 1, newStatements)
+        }
     }
 
     private fun replaceNode(newExpr: Expression, oldExpr: Node) {
@@ -305,7 +320,7 @@ class RouteExtractor(val library1: Library,
 //                    println("Cannot find edge for $invocation")
                     continue
                 }
-                val methodCall = codeElements.methodCalls.first { call -> call.name == invocation.name && call.endLine == invocation.line }
+                val methodCall = codeElements.methodCalls.first { call -> call.name == invocation.name && call.end.line == invocation.line }
                 usedEdges += LocatedEdge(callEdge, methodCall)
                 if (methodCall.parentNode is ExpressionStmt == false) {
                     val linkedEdge = callEdge.linkedEdge
@@ -322,7 +337,7 @@ class RouteExtractor(val library1: Library,
 //                    println("Cannot find edge for $invocation")
                     continue
                 }
-                val constructorCall = codeElements.objectCreation.firstOrNull { objectCreation -> (objectCreation.type.toString() == invocation.simpleType()) && (objectCreation.beginLine == invocation.line) }
+                val constructorCall = codeElements.objectCreation.firstOrNull { objectCreation -> (objectCreation.type.toString() == invocation.simpleType()) && (objectCreation.end.line == invocation.line) }
                 if (constructorCall == null) {
                     error("Cannot find node for $invocation")
                 }
@@ -362,8 +377,8 @@ class RouteExtractor(val library1: Library,
     data class LocatedEdge(
             val edge: Edge,
             val node: Node,
-            val nodeLine: Int = node.endLine,
-            val nodeColumn: Int = node.endColumn
+            val nodeLine: Int = node.end.line,
+            val nodeColumn: Int = node.end.column
     )
 
     @JsonIgnoreProperties("node")
@@ -410,6 +425,7 @@ class RouteMaker(val globalRoute: MutableList<Route>,
             val route = findRoute(context, edge.dst)
             globalRoute += Route(oldNode = usage.node, route = extendRoute(route), edge = edge)
         }
+        addFinalizers()
     }
 
     private fun extendRoute(route: List<Edge>): List<Edge> {
@@ -449,6 +465,18 @@ class RouteMaker(val globalRoute: MutableList<Route>,
 
     private fun fillContextWithInit() {
         context += library2.stateMachines.flatMap { machine -> machine.states }.filter(State::isInit).toMutableSet()
+    }
+
+    private fun addFinalizers() {
+        val contextMachines = context.map(State::machine)
+        val needsFinalization = contextMachines.filter { machine -> library2.stateMachines.contains(machine) && machine.states.any(State::isFinal) }
+        for (machine in needsFinalization) {
+            val route = findRoute(context, machine.getFinalState())
+            if (route.isNotEmpty()) {
+                val firstOccurence = globalRoute.first { route -> route.route.any { edge -> edge.machine == machine } }
+                firstOccurence.finalizerRoute = route
+            }
+        }
     }
 
     private fun findRoute(src: Set<State>, dst: State): List<Edge> {
