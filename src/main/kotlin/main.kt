@@ -320,17 +320,18 @@ fun checkMigrationCorrectness(testDir: Path, testClassName: String?): Boolean {
     val connector = GradleConnector.newConnector()
     val connection = connector.forProjectDirectory(testDir.toFile()).connect()
 
-    val (buildResult, buildOutput) = runGradleTask(connection, "build")
+    val (buildResult, buildOutput) = runGradleTask(connection, "assemble")
     if (buildResult == false) {
         println("Compilation failed!")
         println(buildOutput)
         return false
     }
 
-    val (testResult, testOutput) = if (testClassName != null) {
-        runGradleTest(connection, testClassName)
-    } else {
-        runGradleTask(connection, "test")
+    val runTests = true
+    val (testResult, testOutput) = when {
+        runTests && testClassName != null -> runGradleTest(connection, testClassName)
+        runTests && testClassName == null -> runGradleTask(connection, "test")
+        else -> Pair(true, "")
     }
     connection.close()
     if (testResult) {

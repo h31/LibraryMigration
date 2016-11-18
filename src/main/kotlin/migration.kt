@@ -356,6 +356,14 @@ class RouteExtractor(val library1: Library,
         return usedEdgesCleanedUp.distinct()
     }
 
+    fun makeProps(edges: List<LocatedEdge>): PropsContext {
+        val props: PropsContext = PropsContext()
+        for (edge in edges) {
+            props.addEdgeFromTrace(edge.edge)
+        }
+        return props
+    }
+
     fun checkRoute(route: List<Edge>) {
         route.filterNot { edge -> edge is UsageEdge }.fold(listOf<Edge>(), { visited, edge ->
             if (visited.isEmpty() || visited.any { prevEdge -> edge.src == prevEdge.dst }) {
@@ -404,9 +412,11 @@ class RouteMaker(val globalRoute: MutableList<Route>,
                  val library2: Library,
                  val dependencies: MutableMap<StateMachine, Expression>) {
     val context: MutableSet<State> = mutableSetOf()
+    val props: MutableMap<State, Map<String, Any>> = mutableMapOf()
 
     fun makeRoutes() {
         val path = extractor.extractFromJSON(traceFile)
+        val srcProps = extractor.makeProps(path)
 //        checkRoute(path)
 
         fillContextWithInit()
@@ -423,7 +433,8 @@ class RouteMaker(val globalRoute: MutableList<Route>,
                 continue
             }
             val route = findRoute(context, edge.dst)
-            globalRoute += Route(oldNode = usage.node, route = extendRoute(route), edge = edge)
+            props += route.stateProps
+            globalRoute += Route(oldNode = usage.node, route = extendRoute(route.path), edge = edge)
         }
         addFinalizers()
     }
@@ -436,23 +447,25 @@ class RouteMaker(val globalRoute: MutableList<Route>,
                     if ((step.edge is CallEdge && step.edge.isStatic) == false) {
                         val dependencyStep = getDependencyStep(step)
                         val newRoute = findRoute(context, dependencyStep.src)
-                        outputRoute += newRoute
+                        outputRoute += newRoute.path
                         outputRoute += dependencyStep
-                        for (edge in newRoute) {
+                        for (edge in newRoute.path) {
                             context.removeAll { it.machine == edge.dst.machine }
                             context += edge.dst
                         }
+                        props += newRoute.stateProps
                     }
                 }
                 is ConstructorEdge -> {
                     val missingDeps = step.param.filterNot { param -> context.contains(param.state) }
                     for (dependency in missingDeps) {
                         val newRoute = findRoute(context, dependency.state)
-                        outputRoute += newRoute
-                        for (edge in newRoute) {
+                        outputRoute += newRoute.path
+                        for (edge in newRoute.path) {
                             context.removeAll { it.machine == edge.dst.machine }
                             context += edge.dst
                         }
+                        props += newRoute.stateProps
                     }
                 }
             }
@@ -471,7 +484,7 @@ class RouteMaker(val globalRoute: MutableList<Route>,
         val contextMachines = context.map(State::machine)
         val needsFinalization = contextMachines.filter { machine -> library2.stateMachines.contains(machine) && machine.states.any(State::isFinal) }
         for (machine in needsFinalization) {
-            val route = findRoute(context, machine.getFinalState())
+            val route = findRoute(context, machine.getFinalState()).path
             if (route.isNotEmpty()) {
                 val firstOccurence = globalRoute.first { route -> route.route.any { edge -> edge.machine == machine } }
                 firstOccurence.finalizerRoute = route
@@ -479,16 +492,12 @@ class RouteMaker(val globalRoute: MutableList<Route>,
         }
     }
 
-    private fun findRoute(src: Set<State>, dst: State): List<Edge> {
+    private fun findRoute(src: Set<State>, dst: State): PathFinder.Model {
         println("  Searching route from %s to %s".format(src.joinToString(transform = State::stateAndMachineName), dst.stateAndMachineName()))
         val edges = library2.stateMachines.flatMap(StateMachine::edges).toSet()
-        val pathFinder = PathFinder(edges, src)
-        val path2 = pathFinder.findPath(dst)
-        if (false) {
-            graphvizRender(toDOT(library1, path2), "path2")
-            error("Paths are not equal")
-        }
-        return path2
+        val pathFinder = PathFinder(edges, src, props)
+        pathFinder.findPath(dst)
+        return pathFinder.resultModel
     }
 
 //    private fun getUsages(methodName: String) =

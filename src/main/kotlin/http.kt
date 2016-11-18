@@ -193,7 +193,8 @@ fun makeApache(): Library {
                     machine = request,
                     state = hasURL
             )
-            )
+            ),
+            allowTransition = { map -> map.put("method", "GET"); true }
     )
 
     CallEdge(

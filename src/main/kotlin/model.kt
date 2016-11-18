@@ -103,6 +103,7 @@ interface Edge : Labelable {
     val src: State
     val dst: State
     val action: Action?
+    var allowTransition: (MutableMap<String, Any>) -> Boolean
 
     fun getSubsequentAutoEdges() = dst.machine.edges.filter { edge -> edge is AutoEdge && edge.src == dst }
     fun getStyle(): String
@@ -127,6 +128,7 @@ data class CallEdge(override val machine: StateMachine,
                     override val src: State = makeConstructedState(machine),
                     override val dst: State = src,
                     override val action: Action? = null,
+                    override var allowTransition: (MutableMap<String, Any>) -> Boolean = {true},
 
                     val methodName: String,
                     override val param: List<Param> = listOf(),
@@ -147,7 +149,8 @@ data class CallEdge(override val machine: StateMachine,
 data class AutoEdge(override val machine: StateMachine,
                     override val src: State = makeConstructedState(machine),
                     override val dst: State = src,
-                    override val action: Action? = null) : Edge {
+                    override val action: Action? = null,
+                    override var allowTransition: (MutableMap<String, Any>) -> Boolean = {true}) : Edge {
     override fun getStyle() = "solid"
 
     init {
@@ -161,6 +164,7 @@ data class ConstructorEdge(override val machine: StateMachine,
                            override val src: State = makeConstructedState(machine),
                            override val dst: State = src,
                            override val action: Action? = null,
+                           override var allowTransition: (MutableMap<String, Any>) -> Boolean = {true},
 
                            override val param: List<Param> = listOf()) : ExpressionEdge {
     override fun getStyle() = "bold"
@@ -183,6 +187,7 @@ data class LinkedEdge(override val machine: StateMachine,
                       override val src: State = makeConstructedState(machine),
                       override val dst: State = src,
                       override val action: Action? = null,
+                      override var allowTransition: (MutableMap<String, Any>) -> Boolean = {true},
 
                       val edge: ExpressionEdge) : Edge {
     override fun getStyle() = "dotted"
@@ -203,6 +208,7 @@ data class MakeArrayEdge(override val machine: StateMachine,
                          override val src: State = makeConstructedState(machine),
                          override val dst: State = src,
                          override val action: Action? = null,
+                         override var allowTransition: (MutableMap<String, Any>) -> Boolean = {true},
 
                          val getSize: CallEdge,
                          val getItem: CallEdge) : Edge {
@@ -219,6 +225,7 @@ data class TemplateEdge(override val machine: StateMachine,
                         override val src: State = makeConstructedState(machine),
                         override val dst: State = src,
                         override val action: Action? = null,
+                        override var allowTransition: (MutableMap<String, Any>) -> Boolean = {true},
 
                         val template: String,
                         val templateParams: Map<String, State>,
@@ -252,6 +259,7 @@ data class UsageEdge(override val machine: StateMachine,
                      override val src: State = makeConstructedState(machine),
                      override val dst: State = src,
                      override val action: Action? = null,
+                     override var allowTransition: (MutableMap<String, Any>) -> Boolean = {true},
 
                      val edge: ExpressionEdge) : Edge {
     override fun getStyle() = "dashed"
@@ -269,7 +277,8 @@ fun makeLinkedEdge(machine: StateMachine,
 
                    methodName: String,
                    param: List<Param> = listOf(),
-                   isStatic: Boolean = false): CallEdge {
+                   isStatic: Boolean = false,
+                   allowTransition: (MutableMap<String, Any>) -> Boolean = {true}): CallEdge {
     val callEdge = CallEdge(
             machine = machine,
             src = src,
@@ -282,7 +291,8 @@ fun makeLinkedEdge(machine: StateMachine,
             machine = machine,
             src = src,
             dst = dst,
-            edge = callEdge
+            edge = callEdge,
+            allowTransition = allowTransition
     )
 
     return callEdge

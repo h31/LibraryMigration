@@ -21,6 +21,13 @@ class MigrationTest {
 
     val examples = Paths.get("examples")
 
+    val stripAspects = {path: Path ->
+        val testFile = path.resolve("build.gradle").toFile()
+        val lines = testFile.readLines()
+        val newContent = lines.filterNot { s -> s.contains("aspectj") }.joinToString("\n")
+        testFile.writeText(newContent)
+    }
+
     @Before
     fun init() {
         libraries.putAll(libraryModels())
@@ -31,7 +38,8 @@ class MigrationTest {
     fun migrateInstagramOkHttp() {
         Assert.assertTrue(migrate(projectDir = examples.resolve("instagram-java-scraper"),
                 from = okhttp,
-                to = apache
+                to = apache,
+                testPatcher = stripAspects
         ))
     }
 
@@ -39,7 +47,8 @@ class MigrationTest {
     fun migrateInstagramJava() {
         Assert.assertTrue(migrate(projectDir = examples.resolve("instagram-java-scraper"),
                 from = okhttp,
-                to = java
+                to = java,
+                testPatcher = stripAspects
         ))
     }
 
@@ -48,7 +57,8 @@ class MigrationTest {
         Assert.assertTrue(migrate(projectDir = examples.resolve("HTTP"),
                 from = java,
                 to = apache,
-                testClassName = "migration.Java"
+                testClassName = "migration.Java",
+                testPatcher = stripAspects
         ))
     }
 
@@ -75,7 +85,8 @@ class MigrationTest {
         Assert.assertTrue(migrate(projectDir = examples.resolve("HTTP"),
                 from = java,
                 to = okhttp,
-                testClassName = "migration.Java"
+                testClassName = "migration.Java",
+                testPatcher = stripAspects
         ))
     }
 
@@ -84,7 +95,8 @@ class MigrationTest {
         Assert.assertTrue(migrate(projectDir = examples.resolve("HTTP"),
                 from = apache,
                 to = java,
-                testClassName = "migration.Apache"
+                testClassName = "migration.Apache",
+                testPatcher = stripAspects
         ))
     }
 
@@ -93,7 +105,8 @@ class MigrationTest {
         Assert.assertTrue(migrate(projectDir = examples.resolve("HTTP"),
                 from = apache,
                 to = okhttp,
-                testClassName = "migration.Apache"
+                testClassName = "migration.Apache",
+                testPatcher = stripAspects
         ))
     }
 
@@ -102,7 +115,8 @@ class MigrationTest {
         Assert.assertTrue(migrate(projectDir = examples.resolve("HTTP"),
                 from = okhttp,
                 to = java,
-                testClassName = "migration.OkHttp"
+                testClassName = "migration.OkHttp",
+                testPatcher = stripAspects
         ))
     }
 
@@ -111,7 +125,7 @@ class MigrationTest {
         Assert.assertTrue(migrate(projectDir = examples.resolve("HTTP"),
                 from = okhttp,
                 to = apache,
-                testClassName = "migration.OkHttp"
+                testPatcher = stripAspects
         ))
     }
 }
