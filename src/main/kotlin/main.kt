@@ -43,7 +43,8 @@ fun migrate(projectDir: Path,
             traceFile: Path = projectDir.resolve("log.json"),
             from: Library,
             to: Library,
-            testPatcher: (Path) -> Unit = {}): Boolean {
+            testPatcher: (Path) -> Unit = {},
+            testClassName: String? = null): Boolean {
     val importsForMigration = diffLibraryClasses(from, to)
     val pending = findJavaFilesForMigration(projectDir, importsForMigration)
     if (pending.none()) {
@@ -68,7 +69,7 @@ fun migrate(projectDir: Path,
         Files.write(testDir.resolve(relativePath), migratedCode.toByteArray())
     }
     testPatcher(testDir)
-    return checkMigrationCorrectness(testDir)
+    return checkMigrationCorrectness(testDir, testClassName)
 }
 
 private fun prepareTestDir(projectDir: Path, testDir: Path) {
@@ -313,12 +314,11 @@ class MethodOrConstructorDeclaration(val node: BodyDeclaration) {
 data class ClassDiff(val name: String,
                      val methodsChanged: Map<MethodDeclaration, MethodDiff>)
 
-fun checkMigrationCorrectness(testDir: Path): Boolean {
+fun checkMigrationCorrectness(testDir: Path, testClassName: String?): Boolean {
     println("Running migrated code")
 
     val connector = GradleConnector.newConnector()
     val connection = connector.forProjectDirectory(testDir.toFile()).connect()
-    val buildOutputStream = ByteArrayOutputStream()
 
     val (buildResult, buildOutput) = runGradleTask(connection, "build")
     if (buildResult == false) {
@@ -327,7 +327,11 @@ fun checkMigrationCorrectness(testDir: Path): Boolean {
         return false
     }
 
-    val (testResult, testOutput) = runGradleTask(connection, "test")
+    val (testResult, testOutput) = if (testClassName != null) {
+        runGradleTest(connection, testClassName)
+    } else {
+        runGradleTask(connection, "test")
+    }
     connection.close()
     if (testResult) {
         println("Migration OK")
@@ -342,11 +346,22 @@ fun checkMigrationCorrectness(testDir: Path): Boolean {
 
 private fun runGradleTask(connection: ProjectConnection, taskName: String): Pair<Boolean, String> {
     val buildOutputStream = ByteArrayOutputStream()
-    val buildLauncher = connection.newBuild().forTasks(taskName).setStandardOutput(buildOutputStream)
+    val buildLauncher = connection.newBuild().forTasks(taskName).withArguments("-i").setStandardOutput(buildOutputStream)
     try {
         buildLauncher.run()
         return Pair(true, "")
     } catch (ex: Exception) {
-        return Pair(false, buildOutputStream.toString(Charset.defaultCharset().toString()))
+        return Pair(false, ex.toString() + "\n" + buildOutputStream.toString(Charset.defaultCharset().toString()))
+    }
+}
+
+private fun runGradleTest(connection: ProjectConnection, testClassName: String): Pair<Boolean, String> {
+    val buildOutputStream = ByteArrayOutputStream()
+    val buildLauncher = connection.newTestLauncher().withJvmTestClasses(testClassName).withArguments("-i").setStandardOutput(buildOutputStream)
+    try {
+        buildLauncher.run()
+        return Pair(true, "")
+    } catch (ex: Exception) {
+        return Pair(false, ex.toString() + "\n" + buildOutputStream.toString(Charset.defaultCharset().toString()))
     }
 }

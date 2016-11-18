@@ -47,7 +47,8 @@ class MigrationTest {
     fun migrateJavaApache() {
         Assert.assertTrue(migrate(projectDir = examples.resolve("HTTP"),
                 from = java,
-                to = apache
+                to = apache,
+                testClassName = "migration.Java"
         ))
     }
 
@@ -73,7 +74,8 @@ class MigrationTest {
     fun migrateJavaOkhttp() {
         Assert.assertTrue(migrate(projectDir = examples.resolve("HTTP"),
                 from = java,
-                to = okhttp
+                to = okhttp,
+                testClassName = "migration.Java"
         ))
     }
 
@@ -81,7 +83,8 @@ class MigrationTest {
     fun migrateApacheJava() {
         Assert.assertTrue(migrate(projectDir = examples.resolve("HTTP"),
                 from = apache,
-                to = java
+                to = java,
+                testClassName = "migration.Apache"
         ))
     }
 
@@ -89,7 +92,8 @@ class MigrationTest {
     fun migrateApacheOkhttp() {
         Assert.assertTrue(migrate(projectDir = examples.resolve("HTTP"),
                 from = apache,
-                to = okhttp
+                to = okhttp,
+                testClassName = "migration.Apache"
         ))
     }
 
@@ -97,7 +101,8 @@ class MigrationTest {
     fun migrateOkhttpJava() {
         Assert.assertTrue(migrate(projectDir = examples.resolve("HTTP"),
                 from = okhttp,
-                to = java
+                to = java,
+                testClassName = "migration.OkHttp"
         ))
     }
 
@@ -105,7 +110,8 @@ class MigrationTest {
     fun migrateOkhttpApache() {
         Assert.assertTrue(migrate(projectDir = examples.resolve("HTTP"),
                 from = okhttp,
-                to = apache
+                to = apache,
+                testClassName = "migration.OkHttp"
         ))
     }
 }

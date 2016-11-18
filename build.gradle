@@ -29,7 +29,7 @@ dependencies {
     compile 'ch.qos.logback:logback-classic:1.1.7'
     compile 'com.fasterxml.jackson.core:jackson-databind:2.8.4'
     compile 'com.fasterxml.jackson.module:jackson-module-kotlin:2.8.4'
-    compile "org.gradle:gradle-tooling-api:3.1"
+    compile "org.gradle:gradle-tooling-api:${gradle.gradleVersion}"
     testCompile 'junit:junit:4.12'
 }
 
