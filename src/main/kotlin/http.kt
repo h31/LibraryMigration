@@ -2,6 +2,14 @@
  * Created by artyom on 05.07.16.
  */
 
+object HttpModels {
+    val java: Library = makeJava()
+    val apache: Library = makeApache()
+    val okhttp: Library = makeOkHttp()
+
+    fun withName() = listOf(java, apache, okhttp).associateBy(Library::name)
+}
+
 fun makeJava(): Library {
     val url = StateMachine(name = "URL")
 

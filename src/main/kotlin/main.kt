@@ -26,16 +26,15 @@ import java.nio.file.Paths
  */
 
 fun main(args: Array<String>) {
-    val models = libraryModels()
-    makePictures(models)
+    makePictures(HttpModels.withName())
 
 //    migrate(projectDir = Paths.get("examples/instagram-java-scraper"),
 //            from = models["okhttp"]!!,
 //            to = models["java"]!!
 //    )
     migrate(projectDir = Paths.get("examples/HTTP"),
-            from = models["java"]!!,
-            to = models["apache"]!!
+            from = HttpModels.java,
+            to = HttpModels.apache
     )
 }
 
