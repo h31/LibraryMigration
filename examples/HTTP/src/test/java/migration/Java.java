@@ -51,4 +51,14 @@ public class Java {
             Assert.fail("Error!");
         }
     }
+
+    @Test
+    public void javaHeader() throws IOException {
+        URL url = new URL("http://kspt.icc.spbstu.ru/media/css/new/forms.css");
+        URLConnection conn = url.openConnection();
+        conn.setRequestProperty("X-Header", "Test");
+        String response = new BufferedReader(new InputStreamReader(conn.getInputStream())).lines().collect(Collectors.joining("\n", "", "\n"));
+        String hash = DigestUtils.md5Hex(response);
+        Assert.assertEquals(hash, Main.MD5_HASH);
+    }
 }

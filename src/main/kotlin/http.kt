@@ -10,6 +10,10 @@ object HttpModels {
     fun withName() = listOf(java, apache, okhttp).associateBy(Library::name)
 }
 
+object Actions {
+    val setHeader = Action("setHeader")
+}
+
 fun makeJava(): Library {
     val url = StateMachine(name = "URL")
 
@@ -83,6 +87,17 @@ fun makeJava(): Library {
                     machine = connection,
                     methodName = "getInputStream"
             )
+    )
+
+    CallEdge(
+            machine = connection,
+            methodName = "setRequestProperty",
+            action = Actions.setHeader
+    )
+
+    CallEdge(
+            machine = connection,
+            methodName = "setDoOutput"
     )
 
     LinkedEdge(
@@ -180,6 +195,12 @@ fun makeApache(): Library {
                     state = encodedURL
             )
             )
+    )
+
+    CallEdge(
+            machine = request,
+            methodName = "addHeader",
+            action = Actions.setHeader
     )
 
 //    val setURI = CallEdge(

@@ -144,6 +144,7 @@ data class CallEdge(override val machine: StateMachine,
     }
 
     override fun label() = "%s(%s)".format(methodName, param.map(Param::label).joinToString())
+    override fun toString() = label()
 }
 
 data class AutoEdge(override val machine: StateMachine,
@@ -305,4 +306,4 @@ data class Param(val machine: StateMachine,
 }
 
 data class Action(val name: String,
-                  val feature: String)
+                  val feature: String = "Main")

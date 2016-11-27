@@ -3,7 +3,8 @@ import java.util.*
 /**
  * Created by artyom on 08.09.16.
  */
-class PathFinder(val edges: Set<Edge>, val src: Set<State>, val props: MutableMap<State, Map<String, Any>>) {
+class PathFinder(val edges: Set<Edge>, val src: Set<State>, val initProps: MutableMap<State, Map<String, Any>>,
+                 val requiredActions: List<Action>) {
     lateinit var resultModel: Model
 
     fun findPath(goal: State) {
@@ -35,34 +36,40 @@ class PathFinder(val edges: Set<Edge>, val src: Set<State>, val props: MutableMa
     }
 
     data class Model(val state: State,
-                     val props: MutableMap<String, Any> = mutableMapOf()) {
+                     val props: MutableMap<String, Any> = mutableMapOf(),
+                     val actions: List<Action> = listOf()) {
         var path: List<Edge> = listOf()
         var stateProps: Map<State, Map<String, Any>> = mapOf()
     }
 
     fun makeProps(state: State): MutableMap<String, Any> {
-        val existingProps = props[state]
+        val existingProps = initProps[state]
         return if (existingProps != null) LinkedHashMap(existingProps) else mutableMapOf()
     }
+
+    fun makeActions(oldActions: List<Action>, newAction: Action?) = if (newAction != null) oldActions + newAction else oldActions
 
     private val visited = mutableSetOf<Model>()
     private val pending = PriorityQueue<Model>(ModelCompare())
 
     fun aStar(current: Model, goal: State, edges: Set<Edge>): Boolean {
-        if (current.state == goal) {
+        if (current.state == goal && current.actions.containsAll(requiredActions)) {
             return true
         }
+        current.actions == requiredActions
         if (visited.contains(current)) {
             return false
         }
         visited += current
         val availableEdges = edges.filter { edge -> edge.src == current.state }
         for (edge in availableEdges) {
-            val newModel = Model(state = edge.dst, props = makeProps(edge.dst))
+            val action = edge.action
+            val newModel = Model(state = edge.dst, props = makeProps(edge.dst), actions = makeActions(current.actions, action))
             val isAllowed = edge.allowTransition(newModel.props)
             newModel.path = current.path + edge
             newModel.stateProps = current.stateProps + Pair(newModel.state, newModel.props)
-            if (isAllowed) {
+            val isProperAction = if (action != null) requiredActions.contains(action) else true
+            if (isAllowed && isProperAction) {
                 pending.add(newModel)
             }
         }

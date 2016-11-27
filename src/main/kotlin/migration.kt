@@ -423,7 +423,7 @@ class RouteMaker(val globalRoute: MutableList<Route>,
         for (usage in path) {
             val edge = usage.edge
             println("Processing " + edge.label() + "... ")
-            if (edge.src == edge.dst) {
+            if (edge.src == edge.dst && edge.action == null) {
                 println("  Makes a loop, skipping")
                 continue
             }
@@ -432,7 +432,7 @@ class RouteMaker(val globalRoute: MutableList<Route>,
                 replacements += Replacement(usage.node, listOf())
                 continue
             }
-            val route = findRoute(context, edge.dst)
+            val route = findRoute(context, edge.dst, edge.action)
             props += route.stateProps
             globalRoute += Route(oldNode = usage.node, route = extendRoute(route.path), edge = edge)
         }
@@ -446,7 +446,7 @@ class RouteMaker(val globalRoute: MutableList<Route>,
                 is UsageEdge -> {
                     if ((step.edge is CallEdge && step.edge.isStatic) == false) {
                         val dependencyStep = getDependencyStep(step)
-                        val newRoute = findRoute(context, dependencyStep.src)
+                        val newRoute = findRoute(context, dependencyStep.src, dependencyStep.action)
                         outputRoute += newRoute.path
                         outputRoute += dependencyStep
                         for (edge in newRoute.path) {
@@ -459,7 +459,7 @@ class RouteMaker(val globalRoute: MutableList<Route>,
                 is ConstructorEdge -> {
                     val missingDeps = step.param.filterNot { param -> context.contains(param.state) }
                     for (dependency in missingDeps) {
-                        val newRoute = findRoute(context, dependency.state)
+                        val newRoute = findRoute(context, dependency.state, null)
                         outputRoute += newRoute.path
                         for (edge in newRoute.path) {
                             context.removeAll { it.machine == edge.dst.machine }
@@ -484,7 +484,7 @@ class RouteMaker(val globalRoute: MutableList<Route>,
         val contextMachines = context.map(State::machine)
         val needsFinalization = contextMachines.filter { machine -> library2.stateMachines.contains(machine) && machine.states.any(State::isFinal) }
         for (machine in needsFinalization) {
-            val route = findRoute(context, machine.getFinalState()).path
+            val route = findRoute(context, machine.getFinalState(), null).path
             if (route.isNotEmpty()) {
                 val firstOccurence = globalRoute.first { route -> route.route.any { edge -> edge.machine == machine } }
                 firstOccurence.finalizerRoute = route
@@ -492,10 +492,10 @@ class RouteMaker(val globalRoute: MutableList<Route>,
         }
     }
 
-    private fun findRoute(src: Set<State>, dst: State): PathFinder.Model {
+    private fun findRoute(src: Set<State>, dst: State, action: Action?): PathFinder.Model {
         println("  Searching route from %s to %s".format(src.joinToString(transform = State::stateAndMachineName), dst.stateAndMachineName()))
         val edges = library2.stateMachines.flatMap(StateMachine::edges).toSet()
-        val pathFinder = PathFinder(edges, src, props)
+        val pathFinder = PathFinder(edges, src, props, listOfNotNull(action))
         pathFinder.findPath(dst)
         return pathFinder.resultModel
     }

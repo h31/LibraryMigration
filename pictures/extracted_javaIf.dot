@@ -53,6 +53,8 @@ digraph G {
         Constructed_Connection -> virtual2 [ style = "bold" label="getInputStream()" , color = red ];
         virtual2 -> Constructed_Connection [ style = "bold" , color = red ];
         virtual2 -> Constructed_InputStream [ label="return InputStream()" , color = red ];
+        Constructed_Connection -> Constructed_Connection [ label="setRequestProperty()", style = "bold"  ];
+        Constructed_Connection -> Constructed_Connection [ label="setDoOutput()", style = "bold"  ];
         Constructed_Connection -> virtual3 [ style = "bold" label="getContentLengthLong()" , color = red ];
         virtual3 -> Constructed_Connection [ style = "bold" , color = red ];
         virtual3 -> Constructed_ContentLength [ label="return long()" , color = red ];
