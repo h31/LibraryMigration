@@ -39,7 +39,7 @@ fun makeJava(): Library {
             machine = request,
             src = request.getInitState(),
             dst = hasURL,
-            param = listOf(Param(
+            param = listOf(EntityParam(
                     machine = url,
                     state = encodedURL
             )
@@ -91,6 +91,7 @@ fun makeJava(): Library {
 
     CallEdge(
             machine = connection,
+            src = hasURL,
             methodName = "setRequestProperty",
             action = Actions.setHeader
     )
@@ -190,7 +191,7 @@ fun makeApache(): Library {
             machine = request,
             src = request.getInitState(),
             dst = hasURL,
-            param = listOf(Param(
+            param = listOf(EntityParam(
                     machine = url,
                     state = encodedURL
             )
@@ -199,6 +200,7 @@ fun makeApache(): Library {
 
     CallEdge(
             machine = request,
+            src = hasURL,
             methodName = "addHeader",
             action = Actions.setHeader
     )
@@ -208,7 +210,7 @@ fun makeApache(): Library {
 //            src = request.getConstructedState(),
 //            dst = hasURL,
 //            methodName = "setURI",
-//            param = listOf(Param(
+//            param = listOf(EntityParam(
 //                    machine = url
 //            )
 //            )
@@ -218,7 +220,7 @@ fun makeApache(): Library {
             machine = client,
             dst = connection.getDefaultState(),
             methodName = "execute",
-            param = listOf(Param(
+            param = listOf(EntityParam(
                     machine = request,
                     state = hasURL
             )
@@ -243,7 +245,7 @@ fun makeApache(): Library {
             machine = entityUtils,
             dst = body.getDefaultState(),
             methodName = "toString",
-            param = listOf(Param(machine = entity)),
+            param = listOf(EntityParam(machine = entity)),
             isStatic = true
     )
 
@@ -360,7 +362,7 @@ fun makeOkHttp(): Library {
             machine = builder,
             dst = builderHasURL,
             methodName = "url",
-            param = listOf(Param(machine = url))
+            param = listOf(EntityParam(machine = url))
     )
 
     makeLinkedEdge(
@@ -374,7 +376,7 @@ fun makeOkHttp(): Library {
             machine = client,
             dst = call.getDefaultState(),
             methodName = "newCall",
-            param = listOf(Param(machine = request, state = hasURL))
+            param = listOf(EntityParam(machine = request, state = hasURL))
     )
 
     AutoEdge(

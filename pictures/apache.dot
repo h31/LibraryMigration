@@ -59,6 +59,7 @@ digraph G {
         Constructed_URL -> encodedURL_URL [ label="Template", style = "bold"  ];
         encodedURL_URL -> hasURL_Request [ label="Usage in new Request: HttpGet(URL: String)", style = "dashed"  ];
         Init_Request -> hasURL_Request [ label="new Request: HttpGet(URL: String)", style = "bold"  ];
+        hasURL_Request -> hasURL_Request [ label="addHeader()", style = "bold"  ];
         hasURL_Request -> Constructed_Client [ label="Usage in execute(Request: HttpGet)", style = "dashed"  ];
         Constructed_Client -> virtual0 [ style = "bold" label="execute(Request: HttpGet)"  ];
         virtual0 -> Constructed_Client [ style = "bold"  ];

@@ -53,7 +53,7 @@ digraph G {
         Constructed_Connection -> virtual2 [ style = "bold" label="getInputStream()"  ];
         virtual2 -> Constructed_Connection [ style = "bold"  ];
         virtual2 -> Constructed_InputStream [ label="return InputStream()"  ];
-        Constructed_Connection -> Constructed_Connection [ label="setRequestProperty()", style = "bold"  ];
+        hasURL_Request -> hasURL_Request [ label="setRequestProperty()", style = "bold"  ];
         Constructed_Connection -> Constructed_Connection [ label="setDoOutput()", style = "bold"  ];
         Constructed_Connection -> virtual3 [ style = "bold" label="getContentLengthLong()"  ];
         virtual3 -> Constructed_Connection [ style = "bold"  ];

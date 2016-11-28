@@ -114,7 +114,7 @@ interface ExpressionEdge : Edge {
     val isStatic: Boolean
     val param: List<Param>
 
-    fun createUsageEdges(params: List<Param>, dst: State) = params.map { param ->
+    fun createUsageEdges(params: List<Param>, dst: State) = params.filterIsInstance<EntityParam>().map { param ->
         UsageEdge(
                 machine = param.machine,
                 src = param.state,
@@ -233,7 +233,7 @@ data class TemplateEdge(override val machine: StateMachine,
                         override val isStatic: Boolean = false,
                         val additionalTypes: List<String> = listOf()) : ExpressionEdge {
     override fun getStyle() = "bold"
-    override val param: List<Param> = templateParams.map { Param(it.value.machine, it.value) }
+    override val param: List<Param> = templateParams.map { EntityParam(it.value.machine, it.value) }
 
     override var linkedEdge: LinkedEdge? = null
     val usageEdges: MutableSet<UsageEdge> = mutableSetOf()
@@ -299,10 +299,16 @@ fun makeLinkedEdge(machine: StateMachine,
     return callEdge
 }
 
-data class Param(val machine: StateMachine,
-                 val state: State = machine.getConstructedState()) : Labelable {
+interface Param : Labelable
+
+data class EntityParam(val machine: StateMachine,
+                 val state: State = machine.getConstructedState()) : Param {
     override fun toString() = machine.name
     override fun label() = machine.label()
+}
+
+data class PropertyParam(val propertyName: String) : Param {
+    override fun label() = toString()
 }
 
 data class Action(val name: String,

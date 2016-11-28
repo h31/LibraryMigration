@@ -83,7 +83,7 @@ class Migration(val library1: Library,
             }
         }
         for (step in allSteps) {
-            val count = allSteps.count { pair -> pair.second.src.machine == step.second.machine || pair.second is CallEdge && (pair.second as CallEdge).param.any { it.machine == step.second.machine } }
+            val count = allSteps.count { pair -> pair.second.src.machine == step.second.machine || pair.second is CallEdge && (pair.second as CallEdge).param.filterIsInstance<EntityParam>().any { it.machine == step.second.machine } }
             needToMakeVariable.put(step, count > 1)
 //            if (allSteps.drop(stepIndexed.index+1).any { furtherStep -> furtherStep.second.src == step.second.dst })
         }
@@ -106,7 +106,7 @@ class Migration(val library1: Library,
     private fun migrateMethodCall(route: Route): Replacement {
         val pendingExpressions = applySteps(route.route, null)
         val finalizerExpressions = applySteps(route.finalizerRoute, null)
-        return Replacement(oldNode = route.oldNode, pendingExpressions = pendingExpressions, finalizerExpressions = finalizerExpressions)
+        return Replacement(oldNode = route.oldNode, pendingExpressions = pendingExpressions, finalizerExpressions = finalizerExpressions, makeVariable = false)
     }
 
     private fun migrateConstructorCall(route: Route): Replacement {
@@ -172,7 +172,7 @@ class Migration(val library1: Library,
             checkNotNull(dependencies[edge.machine])
         }
 
-        val args = edge.param.map { param -> checkNotNull(dependencies[param.machine]) }
+        val args = edge.param.filterIsInstance<EntityParam>().map { param -> checkNotNull(dependencies[param.machine]) }
 
         return CallExpressionParams(scope, args)
     }
@@ -189,7 +189,7 @@ class Migration(val library1: Library,
     }
 
     private fun makeConstructorExpression(step: ConstructorEdge): Expression {
-        val params = step.param.map { param -> checkNotNull(dependencies[param.machine]) }
+        val params = step.param.filterIsInstance<EntityParam>().map { param -> checkNotNull(dependencies[param.machine]) }
         val expr = ObjectCreationExpr(null, ClassOrInterfaceType(step.dst.machine.type()), params)
         return expr
     }
@@ -265,6 +265,7 @@ class ReplacementPerformer(val replacements: List<Replacement>,
             }
             is ReturnStmt -> parent.expr = newExpr
             is CastExpr -> parent.expr = newExpr
+            is ExpressionStmt -> parent.expression = newExpr
             else -> error("Don't know how to insert into " + parent.toString())
         }
     }
@@ -457,7 +458,7 @@ class RouteMaker(val globalRoute: MutableList<Route>,
                     }
                 }
                 is ConstructorEdge -> {
-                    val missingDeps = step.param.filterNot { param -> context.contains(param.state) }
+                    val missingDeps = step.param.filterIsInstance<EntityParam>().filterNot { param -> context.contains(param.state) }
                     for (dependency in missingDeps) {
                         val newRoute = findRoute(context, dependency.state, null)
                         outputRoute += newRoute.path
@@ -511,14 +512,14 @@ class RouteMaker(val globalRoute: MutableList<Route>,
     }
 
     private fun extractDependenciesFromMethod(edge: CallEdge, methodCall: MethodCallExpr) {
-        val args = edge.param.mapIndexed { i, param -> param.state to methodCall.args[i] }.toMap()
+        val args = edge.param.filterIsInstance<EntityParam>().mapIndexed { i, param -> param.state to methodCall.args[i] }.toMap()
         val scope = (edge.src to methodCall.scope)
         val deps = args + scope
         addDependenciesToContext(deps)
     }
 
     private fun extractDependenciesFromConstructor(edge: ConstructorEdge, constructorCall: ObjectCreationExpr) {
-        val args = edge.param.mapIndexed { i, param -> param.state to constructorCall.args[i] }.toMap()
+        val args = edge.param.filterIsInstance<EntityParam>().mapIndexed { i, param -> param.state to constructorCall.args[i] }.toMap()
 //        val scope = (edge.src to methodCall.scope)
         val deps = args // TODO: scope
         addDependenciesToContext(deps)

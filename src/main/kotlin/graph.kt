@@ -10,7 +10,7 @@ fun makeGraph1(): Library {
     val getNode = CallEdge(
             machine = node,
             methodName = "getNode",
-            param = listOf(Param(
+            param = listOf(EntityParam(
                     machine = num
             )
             )
@@ -52,7 +52,7 @@ fun makeGraph1(): Library {
 //            dst = child.getDefaultState(),
 //            action = CallAction(
 //                    methodName = "get",
-//                    param = Param(
+//                    param = EntityParam(
 //                            entity = GraphEntities.num,
 //                            pos = 0
 //                    )
@@ -77,7 +77,7 @@ fun makeGraph2(): Library {
     val listGet = CallEdge(
             machine = nodeList,
             methodName = "get",
-            param = listOf(Param(
+            param = listOf(EntityParam(
                     machine = num
             )
             )
