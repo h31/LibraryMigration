@@ -32,7 +32,7 @@ fun main(args: Array<String>) {
 //            from = models["okhttp"]!!,
 //            to = models["java"]!!
 //    )
-    migrate(projectDir = Paths.get("examples/HTTP"),
+    migrate(projectDir = Paths.get("/home/artyom/Compile/acme4j/acme4j-client"),
             from = HttpModels.java,
             to = HttpModels.apache
     )
@@ -145,8 +145,6 @@ private fun findJavaFilesForMigration(root: Path, importsForMigration: List<Stri
     }
 }
 
-fun libraryModels() = listOf(makeJava(), makeApache(), makeOkHttp()).associateBy(Library::name)
-
 fun makePictures(libraries: Map<String, Library>) = libraries.forEach {
     library ->
     graphvizRender(toDOT(library.value), library.key)
@@ -169,9 +167,9 @@ fun migrateFile(library1: Library,
                 traceFile = traceFile)
 
         migration.doMigration()
-//        migrateClassMembers(library1, library2, codeElements)
-//        migrateFunctionArguments(library1, library2, methodDecl)
-//        migrateReturnValue(library1, library2, methodDecl)
+        migrateClassMembers(library1, library2, codeElements)
+        migrateFunctionArguments(library1, library2, methodDecl)
+        migrateReturnValue(library1, library2, methodDecl)
     }
 //    fixEntityTypes(codeElements, library1, library2)
 }

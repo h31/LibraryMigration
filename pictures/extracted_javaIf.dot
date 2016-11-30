@@ -19,6 +19,7 @@ digraph G {
         virtual2 [ shape = point ];
         virtual3 [ shape = point ];
         virtual4 [ shape = point ];
+        virtual5 [ shape = point ];
     }
     subgraph cluster3 {
     label = <<B>Body: String</B>>;
@@ -39,7 +40,15 @@ digraph G {
     subgraph cluster7 {
     label = <<B>HttpConnection: HttpURLConnection</B>>;
         Constructed_HttpConnection [ label="Constructed" ];
-        virtual5 [ shape = point ];
+        virtual6 [ shape = point ];
+    }
+    subgraph cluster8 {
+    label = <<B>OutputStream: OutputStream</B>>;
+        Constructed_OutputStream [ label="Constructed" ];
+    }
+    subgraph cluster9 {
+    label = <<B>Payload: String</B>>;
+        Constructed_Payload [ label="Constructed" ];
     }
         Constructed_URL -> encodedURL_URL [ label="", style = "solid"  ];
         encodedURL_URL -> hasURL_Request [ label="Usage in new Request: URL(URL: String)", style = "dashed"  ];
@@ -53,16 +62,25 @@ digraph G {
         Constructed_Connection -> virtual2 [ style = "bold" label="getInputStream()" , color = red ];
         virtual2 -> Constructed_Connection [ style = "bold" , color = red ];
         virtual2 -> Constructed_InputStream [ label="return InputStream()" , color = red ];
-        hasURL_Request -> hasURL_Request [ label="setRequestProperty()", style = "bold"  ];
+        hasURL_Request -> hasURL_Request [ label="setRequestProperty(ActionParam(propertyName&#x3D;headerName), ActionParam(propertyName&#x3D;headerValue))", style = "bold"  ];
         Constructed_Connection -> Constructed_Connection [ label="setDoOutput()", style = "bold"  ];
         Constructed_Connection -> virtual3 [ style = "bold" label="getContentLengthLong()" , color = red ];
         virtual3 -> Constructed_Connection [ style = "bold" , color = red ];
         virtual3 -> Constructed_ContentLength [ label="return long()" , color = red ];
-        Constructed_Connection -> virtual4 [ style = "bold" label="Template"  ];
+        Constructed_Connection -> virtual4 [ style = "bold" label="getOutputStream()"  ];
         virtual4 -> Constructed_Connection [ style = "bold"  ];
-        virtual4 -> Constructed_HttpConnection [ label="return HttpURLConnection()"  ];
+        virtual4 -> Constructed_OutputStream [ label="return OutputStream()"  ];
+        Constructed_Connection -> virtual5 [ style = "bold" label="Template"  ];
+        virtual5 -> Constructed_Connection [ style = "bold"  ];
+        virtual5 -> Constructed_HttpConnection [ label="return HttpURLConnection()"  ];
         Constructed_HttpConnection -> Constructed_Connection [ label="", style = "solid"  ];
-        Constructed_HttpConnection -> virtual5 [ style = "bold" label="getResponseCode()"  ];
-        virtual5 -> Constructed_HttpConnection [ style = "bold"  ];
-        virtual5 -> Constructed_StatusCode [ label="return int()"  ];
+        Constructed_HttpConnection -> virtual6 [ style = "bold" label="getResponseCode()"  ];
+        virtual6 -> Constructed_HttpConnection [ style = "bold"  ];
+        virtual6 -> Constructed_StatusCode [ label="return int()"  ];
+        Constructed_HttpConnection -> Constructed_HttpConnection [ label="setRequestProperty()", style = "bold"  ];
+        Constructed_HttpConnection -> Constructed_HttpConnection [ label="setDoOutput()", style = "bold"  ];
+        Constructed_OutputStream -> Constructed_OutputStream [ label="close()", style = "bold"  ];
+        Constructed_OutputStream -> Constructed_OutputStream [ label="flush()", style = "bold"  ];
+        Constructed_OutputStream -> Constructed_OutputStream [ label="write(Payload: String)", style = "bold"  ];
+        Constructed_Payload -> Constructed_OutputStream [ label="Usage in write(Payload: String)", style = "dashed"  ];
 }

@@ -48,7 +48,7 @@ class Migration(val library1: Library,
 
     val extractor = RouteExtractor(library1, codeElements, functionName, sourceFile)
     val routeMaker = RouteMaker(globalRoute, extractor, traceFile, replacements, library1, library2, dependencies)
-    val replacementPerformer = ReplacementPerformer(replacements, library2)
+    val replacementPerformer = ReplacementPerformer(replacements, routeMaker)
 
     fun doMigration() {
         println("Function: $functionName")
@@ -57,18 +57,9 @@ class Migration(val library1: Library,
 
         for (route in globalRoute) {
             replacements += when (route.edge) {
-                is CallEdge -> {
-                    println("  Has a call action")
-                    migrateMethodCall(route)
-                }
-                is ConstructorEdge -> {
-                    println("  Has a constructor action")
-                    migrateConstructorCall(route)
-                }
-                is LinkedEdge -> {
-                    println("  Has a linked action")
-                    migrateLinkedEdge(route)
-                }
+                is CallEdge -> migrateMethodCall(route)
+                is ConstructorEdge -> migrateConstructorCall(route)
+                is LinkedEdge -> migrateLinkedEdge(route)
                 else -> TODO()
             }
         }
@@ -122,7 +113,7 @@ class Migration(val library1: Library,
             println("    Step: " + step.label())
             val newExpressions: List<PendingExpression> = makeStep(step)
             val name = if ((step == steps.last()) && (oldVarName != null)) oldVarName else generateVariableName(step)
-            val namedExpressions = newExpressions.map { it.copy(provides = name) }
+            val namedExpressions = newExpressions.map { if (it.edge is CallEdge && it.edge.hasReturnValue) it else it.copy(provides = name) }
             println("Received expressions: " + namedExpressions.toString())
             for (expr in namedExpressions) {
                 addToContext(expr)
@@ -172,7 +163,11 @@ class Migration(val library1: Library,
             checkNotNull(dependencies[edge.machine])
         }
 
-        val args = edge.param.filterIsInstance<EntityParam>().map { param -> checkNotNull(dependencies[param.machine]) }
+        val args = edge.param.map { param -> when (param) {
+            is EntityParam -> checkNotNull(dependencies[param.machine])
+            is ActionParam -> NameExpr(routeMaker.srcProps.actionParams[edge.action]!![param.propertyName] as String) // TODO
+            else -> TODO()
+        } }
 
         return CallExpressionParams(scope, args)
     }
@@ -190,13 +185,13 @@ class Migration(val library1: Library,
 
     private fun makeConstructorExpression(step: ConstructorEdge): Expression {
         val params = step.param.filterIsInstance<EntityParam>().map { param -> checkNotNull(dependencies[param.machine]) }
-        val expr = ObjectCreationExpr(null, ClassOrInterfaceType(step.dst.machine.type()), params)
+        val expr = ObjectCreationExpr(null, ClassOrInterfaceType(step.dst.machine.type(routeMaker.props[step.dst.machine]!!)), params)
         return expr
     }
 }
 
 class ReplacementPerformer(val replacements: List<Replacement>,
-                           val library2: Library) {
+                           val routeMaker: RouteMaker) {
     fun apply() {
         for (replacement in replacements) {
             applyReplacement(replacement)
@@ -224,6 +219,7 @@ class ReplacementPerformer(val replacements: List<Replacement>,
             }
             replaceNode(newExpr, oldExpr)
         } else if (replacement.oldNode.parentNode is ExpressionStmt || replacement.oldNode.parentNode is VariableDeclarator) {
+            println("Remove $statement")
             statements.remove(statement)
         }
 
@@ -244,8 +240,14 @@ class ReplacementPerformer(val replacements: List<Replacement>,
         val parent = oldExpr.parentNode
         when (parent) {
             is VariableDeclarator -> {
-                statements.remove(statement)
-                statement.parentNode = null
+                if (newExpr is NameExpr) {
+                    statements.remove(statement)
+                    statement.parentNode = null
+                } else {
+                    val pos = statements.indexOf(statement)
+                    statements[pos] = ExpressionStmt(newExpr)
+                    statement.parentNode = null
+                }
             }
             is AssignExpr -> parent.value = newExpr
             is BinaryExpr -> parent.left = newExpr
@@ -282,8 +284,9 @@ class ReplacementPerformer(val replacements: List<Replacement>,
 
     private fun makeNewStatement(pendingExpression: PendingExpression): Statement {
         if (pendingExpression.provides != null) {
+            val machine = pendingExpression.edge.dst.machine
             return makeNewVariable(
-                    type = checkNotNull(library2.machineSimpleTypes[pendingExpression.edge.dst.machine]),
+                    type = checkNotNull(machine.type(routeMaker.props[machine]!!)),
                     name = pendingExpression.provides,
                     initExpr = pendingExpression.expression
             )
@@ -360,7 +363,7 @@ class RouteExtractor(val library1: Library,
     fun makeProps(edges: List<LocatedEdge>): PropsContext {
         val props: PropsContext = PropsContext()
         for (edge in edges) {
-            props.addEdgeFromTrace(edge.edge)
+            props.addEdgeFromTrace(edge)
         }
         return props
     }
@@ -413,23 +416,28 @@ class RouteMaker(val globalRoute: MutableList<Route>,
                  val library2: Library,
                  val dependencies: MutableMap<StateMachine, Expression>) {
     val context: MutableSet<State> = mutableSetOf()
-    val props: MutableMap<State, Map<String, Any>> = mutableMapOf()
+    val props: MutableMap<StateMachine, Map<String, Any>> = mutableMapOf()
+    lateinit var srcProps: PropsContext
 
     fun makeRoutes() {
         val path = extractor.extractFromJSON(traceFile)
-        val srcProps = extractor.makeProps(path)
+        srcProps = extractor.makeProps(path)
+        props += library2.stateMachines.map { machine -> machine to machine.migrateProperties(srcProps.stateProps) }
 //        checkRoute(path)
 
         fillContextWithInit()
         for (usage in path) {
             val edge = usage.edge
             println("Processing " + edge.label() + "... ")
-            if (edge.src == edge.dst && edge.action == null) {
+            if (edge.canBeSkipped()) {
                 println("  Makes a loop, skipping")
                 continue
             }
             extractDependenciesFromNode(edge, usage.node)
             if (edge.dst.machine in library2.stateMachines == false) {
+                if (globalRoute.any { route -> route.oldNode == usage.node }) {
+                    continue
+                }
                 replacements += Replacement(usage.node, listOf())
                 continue
             }
@@ -457,7 +465,7 @@ class RouteMaker(val globalRoute: MutableList<Route>,
                         props += newRoute.stateProps
                     }
                 }
-                is ConstructorEdge -> {
+                is ExpressionEdge -> {
                     val missingDeps = step.param.filterIsInstance<EntityParam>().filterNot { param -> context.contains(param.state) }
                     for (dependency in missingDeps) {
                         val newRoute = findRoute(context, dependency.state, null)

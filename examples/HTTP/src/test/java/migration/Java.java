@@ -7,6 +7,7 @@ import org.junit.Test;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.OutputStream;
 import java.net.URL;
 import java.net.URLConnection;
 import java.util.stream.Collectors;
@@ -57,6 +58,21 @@ public class Java {
         URL url = new URL("http://kspt.icc.spbstu.ru/media/css/new/forms.css");
         URLConnection conn = url.openConnection();
         conn.setRequestProperty("X-Header", "Test");
+        String response = new BufferedReader(new InputStreamReader(conn.getInputStream())).lines().collect(Collectors.joining("\n", "", "\n"));
+        String hash = DigestUtils.md5Hex(response);
+        Assert.assertEquals(hash, Main.MD5_HASH);
+    }
+
+    @Test
+    public void javaPost() throws IOException {
+        URL url = new URL("http://kspt.icc.spbstu.ru/media/css/new/forms.css");
+        URLConnection conn = url.openConnection();
+        conn.setDoOutput(true);
+        String data = "Hi!";
+        OutputStream os = conn.getOutputStream();
+        os.write(data.getBytes());
+        os.flush();
+        os.close();
         String response = new BufferedReader(new InputStreamReader(conn.getInputStream())).lines().collect(Collectors.joining("\n", "", "\n"));
         String hash = DigestUtils.md5Hex(response);
         Assert.assertEquals(hash, Main.MD5_HASH);

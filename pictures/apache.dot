@@ -56,15 +56,25 @@ digraph G {
     label = <<B>StatusCode: int</B>>;
         Constructed_StatusCode [ label="Constructed" ];
     }
+    subgraph cluster11 {
+    label = <<B>ByteArrayEntity: ByteArrayEntity</B>>;
+        Constructed_ByteArrayEntity [ label="Constructed" ];
+        Init_ByteArrayEntity [ label="Init" ];
+    }
+    subgraph cluster12 {
+    label = <<B>Payload: String</B>>;
+        Constructed_Payload [ label="Constructed" ];
+    }
         Constructed_URL -> encodedURL_URL [ label="Template", style = "bold"  ];
         encodedURL_URL -> hasURL_Request [ label="Usage in new Request: HttpGet(URL: String)", style = "dashed"  ];
         Init_Request -> hasURL_Request [ label="new Request: HttpGet(URL: String)", style = "bold"  ];
-        hasURL_Request -> hasURL_Request [ label="addHeader()", style = "bold"  ];
+        hasURL_Request -> hasURL_Request [ label="addHeader(ActionParam(propertyName&#x3D;headerName), ActionParam(propertyName&#x3D;headerValue))", style = "bold"  ];
         hasURL_Request -> Constructed_Client [ label="Usage in execute(Request: HttpGet)", style = "dashed"  ];
         Constructed_Client -> virtual0 [ style = "bold" label="execute(Request: HttpGet)"  ];
         virtual0 -> Constructed_Client [ style = "bold"  ];
         virtual0 -> Constructed_Connection [ label="return CloseableHttpResponse()"  ];
         Constructed_Client -> Final_Client [ label="close()", style = "bold"  ];
+        Constructed_Connection -> Constructed_Connection [ label="setEntity(ByteArrayEntity: ByteArrayEntity)", style = "bold"  ];
         Constructed_Connection -> virtual1 [ style = "bold" label="getEntity()"  ];
         virtual1 -> Constructed_Connection [ style = "bold"  ];
         virtual1 -> Constructed_Entity [ label="return HttpEntity()"  ];
@@ -84,4 +94,7 @@ digraph G {
         Constructed_EntityUtils -> virtual6 [ style = "bold" label="toString(Entity: HttpEntity)"  ];
         virtual6 -> Constructed_EntityUtils [ style = "bold"  ];
         virtual6 -> Constructed_Body [ label="return String()"  ];
+        Init_ByteArrayEntity -> Constructed_ByteArrayEntity [ label="new ByteArrayEntity: ByteArrayEntity(Payload: String)", style = "bold"  ];
+        Constructed_ByteArrayEntity -> Constructed_Connection [ label="Usage in setEntity(ByteArrayEntity: ByteArrayEntity)", style = "dashed"  ];
+        Constructed_Payload -> Constructed_ByteArrayEntity [ label="Usage in new ByteArrayEntity: ByteArrayEntity(Payload: String)", style = "dashed"  ];
 }

@@ -3,7 +3,7 @@ import java.util.*
 /**
  * Created by artyom on 08.09.16.
  */
-class PathFinder(val edges: Set<Edge>, val src: Set<State>, val initProps: MutableMap<State, Map<String, Any>>,
+class PathFinder(val edges: Set<Edge>, val src: Set<State>, val initProps: MutableMap<StateMachine, Map<String, Any>>,
                  val requiredActions: List<Action>) {
     lateinit var resultModel: Model
 
@@ -39,11 +39,11 @@ class PathFinder(val edges: Set<Edge>, val src: Set<State>, val initProps: Mutab
                      val props: MutableMap<String, Any> = mutableMapOf(),
                      val actions: List<Action> = listOf()) {
         var path: List<Edge> = listOf()
-        var stateProps: Map<State, Map<String, Any>> = mapOf()
+        var stateProps: Map<StateMachine, Map<String, Any>> = mapOf()
     }
 
     fun makeProps(state: State): MutableMap<String, Any> {
-        val existingProps = initProps[state]
+        val existingProps = initProps[state.machine]
         return if (existingProps != null) LinkedHashMap(existingProps) else mutableMapOf()
     }
 
@@ -56,7 +56,6 @@ class PathFinder(val edges: Set<Edge>, val src: Set<State>, val initProps: Mutab
         if (current.state == goal && current.actions.containsAll(requiredActions)) {
             return true
         }
-        current.actions == requiredActions
         if (visited.contains(current)) {
             return false
         }
@@ -67,7 +66,7 @@ class PathFinder(val edges: Set<Edge>, val src: Set<State>, val initProps: Mutab
             val newModel = Model(state = edge.dst, props = makeProps(edge.dst), actions = makeActions(current.actions, action))
             val isAllowed = edge.allowTransition(newModel.props)
             newModel.path = current.path + edge
-            newModel.stateProps = current.stateProps + Pair(newModel.state, newModel.props)
+            newModel.stateProps = current.stateProps + Pair(newModel.state.machine, newModel.props)
             val isProperAction = if (action != null) requiredActions.contains(action) else true
             if (isAllowed && isProperAction) {
                 pending.add(newModel)
@@ -78,17 +77,25 @@ class PathFinder(val edges: Set<Edge>, val src: Set<State>, val initProps: Mutab
 }
 
 class PropsContext {
-    var stateProps: Map<State, Map<String, Any>> = mapOf()
+    var stateProps: Map<StateMachine, Map<String, Any>> = mapOf()
+    var actionParams: Map<Action, Map<String, Any>> = mapOf()
+    var actions: List<Action> = listOf()
 
-    fun addEdgeFromTrace(edge: Edge) {
+    fun addEdgeFromTrace(locatedEdge: RouteExtractor.LocatedEdge) {
+        val edge = locatedEdge.edge
         val props = makeProps(edge.dst)
         val isAllowed = edge.allowTransition(props)
         if (!isAllowed) error("Not allowed")
-        stateProps += Pair(edge.dst, props)
+        stateProps += Pair(edge.dst.machine, props)
+        val action = edge.action
+        if (action != null) {
+            actions += action
+            actionParams += Pair(action, edge.actionParams(locatedEdge.node))
+        }
     }
 
     fun makeProps(state: State): MutableMap<String, Any> {
-        val existingProps = stateProps[state]
+        val existingProps = stateProps[state.machine]
         return if (existingProps != null) LinkedHashMap(existingProps) else mutableMapOf()
     }
 
