@@ -418,7 +418,13 @@ fun makeOkHttp(): Library {
     client.states += makeFinalState(client)
 
     val hasURL = State(name = "hasURL", machine = request)
+    val encodedURL = State(name = "encodedURL", machine = url)
     val builderHasURL = State(name = "hasURL", machine = builder)
+
+    AutoEdge(
+            machine = url,
+            dst = encodedURL
+    )
 
     ConstructorEdge(
             machine = client,
@@ -436,7 +442,15 @@ fun makeOkHttp(): Library {
             machine = builder,
             dst = builderHasURL,
             methodName = "url",
-            param = listOf(EntityParam(machine = url))
+            param = listOf(EntityParam(machine = url, state = encodedURL))
+    )
+
+    CallEdge(
+            machine = builder,
+            src = builderHasURL,
+            methodName = "header",
+            action = Actions.setHeader,
+            param = listOf(ActionParam("headerName"), ActionParam("headerValue"))
     )
 
     makeLinkedEdge(
