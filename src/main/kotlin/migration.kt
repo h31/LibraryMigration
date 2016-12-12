@@ -445,7 +445,7 @@ class RouteMaker(val globalRoute: MutableList<Route>,
             props += route.stateProps
             globalRoute += Route(oldNode = usage.node, route = extendRoute(route.path), edge = edge)
         }
-        addFinalizers()
+        // addFinalizers() // TODO
     }
 
     private fun extendRoute(route: List<Edge>): List<Edge> {

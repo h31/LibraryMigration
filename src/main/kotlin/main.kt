@@ -123,7 +123,7 @@ private fun getNewType(oldType: String, library1: Library, library2: Library): C
     val machine = library1.machineTypes.filterValues { type -> library1.simpleType(type) == oldType }.keys.firstOrNull()
     if (machine != null) {
         val realMachine = if (machine.name == "HttpConnection") library1.stateMachines.first { it.name == "Connection" } else machine
-        if (library2.machineTypes.contains(realMachine) == false) TODO()
+        if (library2.machineTypes.contains(realMachine) == false) return null // TODO()
         val newType = library2.machineTypes[realMachine]
         return ClassOrInterfaceType(newType)
     } else {
@@ -300,7 +300,7 @@ class MethodOrConstructorDeclaration(val node: BodyDeclaration) {
         return methodLocalCodeElements
     }
 
-    fun name() = if (node is MethodDeclaration) node.name else "constructor"
+    fun name() = if (node is MethodDeclaration) node.name else "<init>"
     fun arguments() = when (node) {
         is MethodDeclaration -> node.parameters
         is ConstructorDeclaration -> node.parameters
@@ -344,7 +344,7 @@ fun checkMigrationCorrectness(testDir: Path, testClassName: String?): Boolean {
 
 private fun runGradleTask(connection: ProjectConnection, taskName: String): Pair<Boolean, String> {
     val buildOutputStream = ByteArrayOutputStream()
-    val buildLauncher = connection.newBuild().forTasks(taskName).withArguments("-i").setStandardOutput(buildOutputStream)
+    val buildLauncher = connection.newBuild().forTasks(taskName).withArguments("-i").setStandardError(buildOutputStream)
     try {
         buildLauncher.run()
         return Pair(true, "")

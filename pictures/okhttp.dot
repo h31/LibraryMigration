@@ -7,7 +7,7 @@ digraph G {
     }
     subgraph cluster1 {
     label = <<B>Request: Request</B>>;
-        hasURL_Request [ label="hasURL" ];
+        Constructed_Request [ label="Constructed" ];
     }
     subgraph cluster2 {
     label = <<B>Client: OkHttpClient</B>>;
@@ -17,8 +17,8 @@ digraph G {
         virtual0 [ shape = point ];
     }
     subgraph cluster3 {
-    label = <<B>Connection: Response</B>>;
-        Constructed_Connection [ label="Constructed" ];
+    label = <<B>Response: Response</B>>;
+        Constructed_Response [ label="Constructed" ];
         virtual1 [ shape = point ];
         virtual2 [ shape = point ];
     }
@@ -59,17 +59,17 @@ digraph G {
     }
         Constructed_URL -> encodedURL_URL [ label="", style = "solid"  ];
         encodedURL_URL -> hasURL_Builder [ label="Usage in url(URL: String)", style = "dashed"  ];
-        hasURL_Request -> Constructed_Client [ label="Usage in newCall(Request: Request)", style = "dashed"  ];
+        Constructed_Request -> Constructed_Client [ label="Usage in newCall(Request: Request)", style = "dashed"  ];
         Init_Client -> Constructed_Client [ label="new Client: OkHttpClient()", style = "bold"  ];
         Constructed_Client -> virtual0 [ style = "bold" label="newCall(Request: Request)"  ];
         virtual0 -> Constructed_Client [ style = "bold"  ];
         virtual0 -> Constructed_Call [ label="return Call()"  ];
         Constructed_Client -> Final_Client [ label="", style = "solid"  ];
-        Constructed_Connection -> virtual1 [ style = "bold" label="body()"  ];
-        virtual1 -> Constructed_Connection [ style = "bold"  ];
+        Constructed_Response -> virtual1 [ style = "bold" label="body()"  ];
+        virtual1 -> Constructed_Response [ style = "bold"  ];
         virtual1 -> Constructed_Entity [ label="return ResponseBody()"  ];
-        Constructed_Connection -> virtual2 [ style = "bold" label="code()"  ];
-        virtual2 -> Constructed_Connection [ style = "bold"  ];
+        Constructed_Response -> virtual2 [ style = "bold" label="code()"  ];
+        virtual2 -> Constructed_Response [ style = "bold"  ];
         virtual2 -> Constructed_StatusCode [ label="return int()"  ];
         Constructed_Entity -> virtual3 [ style = "bold" label="string()"  ];
         virtual3 -> Constructed_Entity [ style = "bold"  ];
@@ -85,8 +85,8 @@ digraph G {
         hasURL_Builder -> hasURL_Builder [ label="header(ActionParam(propertyName&#x3D;headerName), ActionParam(propertyName&#x3D;headerValue))", style = "bold"  ];
         hasURL_Builder -> virtual6 [ style = "bold" label="build()"  ];
         virtual6 -> hasURL_Builder [ style = "bold"  ];
-        virtual6 -> hasURL_Request [ label="return Request()"  ];
+        virtual6 -> Constructed_Request [ label="return Request()"  ];
         Constructed_Call -> virtual7 [ style = "bold" label="execute()"  ];
         virtual7 -> Constructed_Call [ style = "bold"  ];
-        virtual7 -> Constructed_Connection [ label="return Response()"  ];
+        virtual7 -> Constructed_Response [ label="return Response()"  ];
 }

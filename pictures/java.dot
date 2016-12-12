@@ -6,15 +6,15 @@ digraph G {
         encodedURL_URL [ label="encodedURL" ];
     }
     subgraph cluster1 {
-    label = <<B>Request: URL</B>>;
-        Constructed_Request [ label="Constructed" ];
-        hasURL_Request [ label="hasURL" ];
-        Init_Request [ label="Init" ];
+    label = <<B>URLData: URL</B>>;
+        Constructed_URLData [ label="Constructed" ];
+        hasURL_URLData [ label="hasURL" ];
+        Init_URLData [ label="Init" ];
         virtual0 [ shape = point ];
     }
     subgraph cluster2 {
-    label = <<B>Connection: URLConnection</B>>;
-        Constructed_Connection [ label="Constructed" ];
+    label = <<B>Request: URLConnection</B>>;
+        Constructed_Request [ label="Constructed" ];
         virtual1 [ shape = point ];
         virtual2 [ shape = point ];
         virtual3 [ shape = point ];
@@ -51,29 +51,29 @@ digraph G {
         Constructed_Payload [ label="Constructed" ];
     }
         Constructed_URL -> encodedURL_URL [ label="", style = "solid"  ];
-        encodedURL_URL -> hasURL_Request [ label="Usage in new Request: URL(URL: String)", style = "dashed"  ];
-        Init_Request -> hasURL_Request [ label="new Request: URL(URL: String)", style = "bold"  ];
-        hasURL_Request -> virtual0 [ style = "bold" label="openConnection()"  ];
-        virtual0 -> hasURL_Request [ style = "bold"  ];
-        virtual0 -> Constructed_Connection [ label="return URLConnection()"  ];
-        Constructed_Connection -> virtual1 [ style = "bold" label="Template"  ];
-        virtual1 -> Constructed_Connection [ style = "bold"  ];
+        encodedURL_URL -> hasURL_URLData [ label="Usage in new URLData: URL(URL: String)", style = "dashed"  ];
+        Init_URLData -> hasURL_URLData [ label="new URLData: URL(URL: String)", style = "bold"  ];
+        hasURL_URLData -> virtual0 [ style = "bold" label="openConnection()"  ];
+        virtual0 -> hasURL_URLData [ style = "bold"  ];
+        virtual0 -> Constructed_Request [ label="return URLConnection()"  ];
+        Constructed_Request -> virtual1 [ style = "bold" label="Template"  ];
+        virtual1 -> Constructed_Request [ style = "bold"  ];
         virtual1 -> Constructed_Body [ label="return String()"  ];
-        Constructed_Connection -> virtual2 [ style = "bold" label="getInputStream()"  ];
-        virtual2 -> Constructed_Connection [ style = "bold"  ];
+        Constructed_Request -> virtual2 [ style = "bold" label="getInputStream()"  ];
+        virtual2 -> Constructed_Request [ style = "bold"  ];
         virtual2 -> Constructed_InputStream [ label="return InputStream()"  ];
-        hasURL_Request -> hasURL_Request [ label="setRequestProperty(ActionParam(propertyName&#x3D;headerName), ActionParam(propertyName&#x3D;headerValue))", style = "bold"  ];
-        Constructed_Connection -> Constructed_Connection [ label="setDoOutput()", style = "bold"  ];
-        Constructed_Connection -> virtual3 [ style = "bold" label="getContentLengthLong()"  ];
-        virtual3 -> Constructed_Connection [ style = "bold"  ];
+        hasURL_URLData -> hasURL_URLData [ label="setRequestProperty(ActionParam(propertyName&#x3D;headerName), ActionParam(propertyName&#x3D;headerValue))", style = "bold"  ];
+        Constructed_Request -> Constructed_Request [ label="setDoOutput()", style = "bold"  ];
+        Constructed_Request -> virtual3 [ style = "bold" label="getContentLengthLong()"  ];
+        virtual3 -> Constructed_Request [ style = "bold"  ];
         virtual3 -> Constructed_ContentLength [ label="return long()"  ];
-        Constructed_Connection -> virtual4 [ style = "bold" label="getOutputStream()"  ];
-        virtual4 -> Constructed_Connection [ style = "bold"  ];
+        Constructed_Request -> virtual4 [ style = "bold" label="getOutputStream()"  ];
+        virtual4 -> Constructed_Request [ style = "bold"  ];
         virtual4 -> Constructed_OutputStream [ label="return OutputStream()"  ];
-        Constructed_Connection -> virtual5 [ style = "bold" label="Template"  ];
-        virtual5 -> Constructed_Connection [ style = "bold"  ];
+        Constructed_Request -> virtual5 [ style = "bold" label="Template"  ];
+        virtual5 -> Constructed_Request [ style = "bold"  ];
         virtual5 -> Constructed_HttpConnection [ label="return HttpURLConnection()"  ];
-        Constructed_HttpConnection -> Constructed_Connection [ label="", style = "solid"  ];
+        Constructed_HttpConnection -> Constructed_Request [ label="", style = "solid"  ];
         Constructed_HttpConnection -> virtual6 [ style = "bold" label="getResponseCode()"  ];
         virtual6 -> Constructed_HttpConnection [ style = "bold"  ];
         virtual6 -> Constructed_StatusCode [ label="return int()"  ];

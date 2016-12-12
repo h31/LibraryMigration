@@ -8,7 +8,6 @@ digraph G {
     subgraph cluster1 {
     label = <<B>Request: HttpGet</B>>;
         Constructed_Request [ label="Constructed" ];
-        hasURL_Request [ label="hasURL" ];
         Init_Request [ label="Init" ];
     }
     subgraph cluster2 {
@@ -18,8 +17,8 @@ digraph G {
         virtual0 [ shape = point ];
     }
     subgraph cluster3 {
-    label = <<B>Connection: CloseableHttpResponse</B>>;
-        Constructed_Connection [ label="Constructed" ];
+    label = <<B>Response: CloseableHttpResponse</B>>;
+        Constructed_Response [ label="Constructed" ];
         virtual1 [ shape = point ];
         virtual2 [ shape = point ];
     }
@@ -28,9 +27,9 @@ digraph G {
         Constructed_Body [ label="Constructed" ];
     }
     subgraph cluster5 {
-    label = <<B>httpClients: HttpClients</B>>;
-        Constructed_httpClients [ label="Constructed" ];
-        Init_httpClients [ label="Init" ];
+    label = <<B>HttpClientFactory: HttpClients</B>>;
+        Constructed_HttpClientFactory [ label="Constructed" ];
+        Init_HttpClientFactory [ label="Init" ];
         virtual3 [ shape = point ];
     }
     subgraph cluster6 {
@@ -66,23 +65,22 @@ digraph G {
         Constructed_Payload [ label="Constructed" ];
     }
         Constructed_URL -> encodedURL_URL [ label="Template", style = "bold"  ];
-        encodedURL_URL -> hasURL_Request [ label="Usage in new Request: HttpGet(URL: String)", style = "dashed"  ];
-        Init_Request -> hasURL_Request [ label="new Request: HttpGet(URL: String)", style = "bold"  ];
-        hasURL_Request -> hasURL_Request [ label="addHeader(ActionParam(propertyName&#x3D;headerName), ActionParam(propertyName&#x3D;headerValue))", style = "bold"  ];
-        hasURL_Request -> Constructed_Client [ label="Usage in execute(Request: HttpGet)", style = "dashed"  ];
+        encodedURL_URL -> Constructed_Request [ label="Usage in new Request: HttpGet(URL: String)", style = "dashed"  ];
+        Init_Request -> Constructed_Request [ label="new Request: HttpGet(URL: String)", style = "bold"  ];
+        Constructed_Request -> Constructed_Request [ label="addHeader(ActionParam(propertyName&#x3D;headerName), ActionParam(propertyName&#x3D;headerValue))", style = "bold"  ];
+        Constructed_Request -> Constructed_Client [ label="Usage in execute(Request: HttpGet)", style = "dashed"  ];
         Constructed_Client -> virtual0 [ style = "bold" label="execute(Request: HttpGet)"  ];
         virtual0 -> Constructed_Client [ style = "bold"  ];
-        virtual0 -> Constructed_Connection [ label="return CloseableHttpResponse()"  ];
+        virtual0 -> Constructed_Response [ label="return CloseableHttpResponse()"  ];
         Constructed_Client -> Final_Client [ label="close()", style = "bold"  ];
-        Constructed_Connection -> Constructed_Connection [ label="setEntity(ByteArrayEntity: ByteArrayEntity)", style = "bold"  ];
-        Constructed_Connection -> virtual1 [ style = "bold" label="getEntity()"  ];
-        virtual1 -> Constructed_Connection [ style = "bold"  ];
+        Constructed_Response -> virtual1 [ style = "bold" label="getEntity()"  ];
+        virtual1 -> Constructed_Response [ style = "bold"  ];
         virtual1 -> Constructed_Entity [ label="return HttpEntity()"  ];
-        Constructed_Connection -> virtual2 [ style = "bold" label="Template"  ];
-        virtual2 -> Constructed_Connection [ style = "bold"  ];
+        Constructed_Response -> virtual2 [ style = "bold" label="Template"  ];
+        virtual2 -> Constructed_Response [ style = "bold"  ];
         virtual2 -> Constructed_StatusCode [ label="return int()"  ];
-        Init_httpClients -> virtual3 [ style = "bold" label="createDefault()"  ];
-        virtual3 -> Init_httpClients [ style = "bold"  ];
+        Init_HttpClientFactory -> virtual3 [ style = "bold" label="createDefault()"  ];
+        virtual3 -> Init_HttpClientFactory [ style = "bold"  ];
         virtual3 -> Constructed_Client [ label="return CloseableHttpClient()"  ];
         Constructed_Entity -> Constructed_EntityUtils [ label="Usage in toString(Entity: HttpEntity)", style = "dashed"  ];
         Constructed_Entity -> virtual4 [ style = "bold" label="getContent()"  ];
@@ -95,6 +93,5 @@ digraph G {
         virtual6 -> Constructed_EntityUtils [ style = "bold"  ];
         virtual6 -> Constructed_Body [ label="return String()"  ];
         Init_ByteArrayEntity -> Constructed_ByteArrayEntity [ label="new ByteArrayEntity: ByteArrayEntity(Payload: String)", style = "bold"  ];
-        Constructed_ByteArrayEntity -> Constructed_Connection [ label="Usage in setEntity(ByteArrayEntity: ByteArrayEntity)", style = "dashed"  ];
         Constructed_Payload -> Constructed_ByteArrayEntity [ label="Usage in new ByteArrayEntity: ByteArrayEntity(Payload: String)", style = "dashed"  ];
 }
