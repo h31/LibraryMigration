@@ -73,6 +73,7 @@ digraph G {
         virtual0 -> Constructed_Client [ style = "bold"  ];
         virtual0 -> Constructed_Response [ label="return CloseableHttpResponse()"  ];
         Constructed_Client -> Final_Client [ label="close()", style = "bold"  ];
+        Constructed_Response -> Constructed_Response [ label="setEntity(ByteArrayEntity: ByteArrayEntity)", style = "bold"  ];
         Constructed_Response -> virtual1 [ style = "bold" label="getEntity()"  ];
         virtual1 -> Constructed_Response [ style = "bold"  ];
         virtual1 -> Constructed_Entity [ label="return HttpEntity()"  ];
@@ -93,5 +94,6 @@ digraph G {
         virtual6 -> Constructed_EntityUtils [ style = "bold"  ];
         virtual6 -> Constructed_Body [ label="return String()"  ];
         Init_ByteArrayEntity -> Constructed_ByteArrayEntity [ label="new ByteArrayEntity: ByteArrayEntity(Payload: String)", style = "bold"  ];
+        Constructed_ByteArrayEntity -> Constructed_Response [ label="Usage in setEntity(ByteArrayEntity: ByteArrayEntity)", style = "dashed"  ];
         Constructed_Payload -> Constructed_ByteArrayEntity [ label="Usage in new ByteArrayEntity: ByteArrayEntity(Payload: String)", style = "dashed"  ];
 }

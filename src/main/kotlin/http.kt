@@ -298,12 +298,12 @@ fun makeApache(): Library {
             param = listOf(EntityParam(payload))
     )
 
-//    CallEdge(
-//            machine = response,
-//            methodName = "setEntity",
-//            param = listOf(EntityParam(byteArrayEntity)),
-//            action = Actions.setPayload
-//    )
+    CallEdge(
+            machine = response,
+            methodName = "setEntity",
+            param = listOf(EntityParam(byteArrayEntity)),
+            action = Actions.setPayload
+    )
 
     makeLinkedEdge(
             machine = response,

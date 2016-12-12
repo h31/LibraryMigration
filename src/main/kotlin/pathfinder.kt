@@ -3,7 +3,7 @@ import java.util.*
 /**
  * Created by artyom on 08.09.16.
  */
-class PathFinder(val edges: Set<Edge>, val src: Set<State>, val initProps: MutableMap<StateMachine, Map<String, Any>>,
+class PathFinder(val edges: Set<Edge>, val src: Set<State>, val initProps: Map<StateMachine, Map<String, Any>>,
                  val requiredActions: List<Action>) {
     lateinit var resultModel: Model
 
@@ -68,12 +68,62 @@ class PathFinder(val edges: Set<Edge>, val src: Set<State>, val initProps: Mutab
             newModel.path = current.path + edge
             newModel.stateProps = current.stateProps + Pair(newModel.state.machine, newModel.props)
             val isProperAction = if (action != null) requiredActions.contains(action) else true
+            if (edge is UsageEdge && edge.edge is CallEdge && edge.edge.methodName == "setEntity") {
+                if (requiredActions.contains(edge.edge.action) == false) {
+                    continue
+                }
+//                val deps = backPropagation(edge, current)
+            }
             if (isAllowed && isProperAction) {
                 pending.add(newModel)
             }
         }
         return false
     }
+
+    private fun backPropagation(step: Edge, current: Model): List<Edge> {
+        val outputRoute = mutableListOf<Edge>()
+        when (step) {
+            is UsageEdge -> {
+                if ((step.edge is CallEdge && step.edge.isStatic) == false) {
+                    val dependencyStep = step.edge
+                    val newRoute = findRoute(src, dependencyStep.src, initProps) // TODO
+                    outputRoute += newRoute.path
+                    outputRoute += dependencyStep
+//                    for (edge in newRoute.path) {
+//                        context.removeAll { it.machine == edge.dst.machine }
+//                        context += edge.dst
+//                    }
+//                    props += newRoute.stateProps
+                }
+            }
+//            is ExpressionEdge -> {
+//                val missingDeps = step.param.filterIsInstance<EntityParam>().filterNot { param -> context.contains(param.state) }
+//                for (dependency in missingDeps) {
+//                    val newRoute = findRoute(context, dependency.state, null)
+//                    outputRoute += newRoute.path
+//                    for (edge in newRoute.path) {
+//                        context.removeAll { it.machine == edge.dst.machine }
+//                        context += edge.dst
+//                    }
+//                    props += newRoute.stateProps
+//                }
+//            }
+        }
+//        outputRoute += step
+//        context.removeAll { it.machine == step.dst.machine }
+//        context += step.dst
+        return outputRoute
+    }
+
+    private fun findRoute(src: Set<State>, dst: State, props: Map<StateMachine, Map<String, Any>>): PathFinder.Model {
+        println("  Searching route from %s to %s".format(src.joinToString(transform = State::stateAndMachineName), dst.stateAndMachineName()))
+        val pathFinder = PathFinder(edges, src, props, listOf())
+        pathFinder.findPath(dst)
+        return pathFinder.resultModel
+    }
+
+    private fun getDependencyStep(step: Edge) = edges.first { edge: Edge -> (edge.src != edge.dst) && (edge is UsageEdge == false) && (edge.dst == step.dst) }
 }
 
 class PropsContext {
