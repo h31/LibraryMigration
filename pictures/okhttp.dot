@@ -57,6 +57,20 @@ digraph G {
     label = <<B>StatusCode: int</B>>;
         Constructed_StatusCode [ label="Constructed" ];
     }
+    subgraph cluster11 {
+    label = <<B>RequestBody: RequestBody</B>>;
+        Constructed_RequestBody [ label="Constructed" ];
+        Init_RequestBody [ label="Init" ];
+    }
+    subgraph cluster12 {
+    label = <<B>ContentType: String</B>>;
+        Constructed_ContentType [ label="Constructed" ];
+        Init_ContentType [ label="Init" ];
+    }
+    subgraph cluster13 {
+    label = <<B>Payload: String</B>>;
+        Constructed_Payload [ label="Constructed" ];
+    }
         Constructed_URL -> encodedURL_URL [ label="", style = "solid"  ];
         encodedURL_URL -> hasURL_Builder [ label="Usage in url(URL: String)", style = "dashed"  ];
         Constructed_Request -> Constructed_Client [ label="Usage in newCall(Request: Request)", style = "dashed"  ];
@@ -82,6 +96,7 @@ digraph G {
         virtual5 -> Constructed_ContentLength [ label="return long()"  ];
         Init_Builder -> Constructed_Builder [ label="new Builder: Request.Builder()", style = "bold"  ];
         Constructed_Builder -> hasURL_Builder [ label="url(URL: String)", style = "bold"  ];
+        hasURL_Builder -> hasURL_Builder [ label="post(RequestBody: RequestBody)", style = "bold"  ];
         hasURL_Builder -> hasURL_Builder [ label="header(ActionParam(propertyName&#x3D;headerName), ActionParam(propertyName&#x3D;headerValue))", style = "bold"  ];
         hasURL_Builder -> virtual6 [ style = "bold" label="build()"  ];
         virtual6 -> hasURL_Builder [ style = "bold"  ];
@@ -89,4 +104,9 @@ digraph G {
         Constructed_Call -> virtual7 [ style = "bold" label="execute()"  ];
         virtual7 -> Constructed_Call [ style = "bold"  ];
         virtual7 -> Constructed_Response [ label="return Response()"  ];
+        Init_RequestBody -> Constructed_RequestBody [ label="create(ContentType: String, Payload: String)", style = "bold"  ];
+        Constructed_RequestBody -> hasURL_Builder [ label="Usage in post(RequestBody: RequestBody)", style = "dashed"  ];
+        Init_ContentType -> Constructed_ContentType [ label="Template", style = "bold"  ];
+        Constructed_ContentType -> Constructed_RequestBody [ label="Usage in create(ContentType: String, Payload: String)", style = "dashed"  ];
+        Constructed_Payload -> Constructed_RequestBody [ label="Usage in create(ContentType: String, Payload: String)", style = "dashed"  ];
 }

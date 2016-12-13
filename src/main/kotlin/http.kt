@@ -96,7 +96,6 @@ fun makeJava(): Library {
 
     CallEdge(
             machine = request,
-            src = hasURL,
             methodName = "setRequestProperty",
             action = Actions.setHeader,
             callActionParams = {node ->
@@ -226,7 +225,7 @@ fun makeApache(): Library {
     request.states += makeInitState(request)
     byteArrayEntity.states += makeInitState(byteArrayEntity)
     httpClientFactory.states += makeInitState(httpClientFactory)
-//    request.migrateProperties = { oldProps -> oldProps[response]!! }
+    request.migrateProperties = { oldProps -> oldProps[request] ?: mapOf() }
 
     makeLinkedEdge(
             machine = httpClientFactory,
@@ -299,7 +298,7 @@ fun makeApache(): Library {
     )
 
     CallEdge(
-            machine = response,
+            machine = request,
             methodName = "setEntity",
             param = listOf(EntityParam(byteArrayEntity)),
             action = Actions.setPayload
@@ -392,7 +391,14 @@ fun makeApache(): Library {
                     statusCode to "int",
                     byteArrayEntity to "org.apache.http.entity.ByteArrayEntity",
                     payload to "String"
-            )
+            ),
+            typeGenerator = { machine, props ->
+                when {
+                    machine.name == "Request" && props["method"] == "POST" -> "HttpPost"
+                    machine.name == "Request" && props["method"] == "GET" -> "HttpGet"
+                    else -> null
+                }
+            }
     )
 }
 
@@ -409,9 +415,14 @@ fun makeOkHttp(): Library {
     val body = StateMachine(name = "Body")
     val statusCode = StateMachine(name = "StatusCode")
     val static = StateMachine(name = "Static")
+    val requestBody = StateMachine(name = "RequestBody")
+    val contentType = StateMachine(name = "ContentType")
+    val payload = StateMachine(name = "Payload")
 
     client.states += makeInitState(client)
     builder.states += makeInitState(builder)
+    requestBody.states += makeInitState(requestBody)
+    contentType.states += makeInitState(contentType)
     client.states += makeFinalState(client)
 
     val encodedURL = State(name = "encodedURL", machine = url)
@@ -439,6 +450,31 @@ fun makeOkHttp(): Library {
             dst = builderHasURL,
             methodName = "url",
             param = listOf(EntityParam(machine = url, state = encodedURL))
+    )
+
+    TemplateEdge(
+            machine = contentType,
+            src = contentType.getInitState(),
+            dst = contentType.getConstructedState(),
+            template = "\"application/x-www-form-urlencoded\"",
+            templateParams = mapOf()
+    )
+
+    CallEdge(
+            machine = requestBody,
+            src = requestBody.getInitState(),
+            dst = requestBody.getConstructedState(),
+            methodName = "create",
+            isStatic = true,
+            param = listOf(EntityParam(contentType), EntityParam(payload))
+    )
+
+    CallEdge(
+            machine = builder,
+            src = builderHasURL,
+            methodName = "post",
+            param = listOf(EntityParam(machine = requestBody)),
+            action = Actions.setPayload
     )
 
     CallEdge(
@@ -507,7 +543,7 @@ fun makeOkHttp(): Library {
     return Library(
             name = "okhttp",
             stateMachines = listOf(url, request, client, response, body,
-                    inputStream, contentLength, entity, builder, call, statusCode),
+                    inputStream, contentLength, entity, builder, call, statusCode, requestBody, contentType, payload),
             machineTypes = mapOf(
                     url to "String",
                     request to "okhttp3.Request",
@@ -517,6 +553,9 @@ fun makeOkHttp(): Library {
                     inputStream to "java.io.InputStream",
                     contentLength to "long",
                     entity to "okhttp3.ResponseBody",
+                    requestBody to "okhttp3.RequestBody",
+                    contentType to "String",
+                    payload to "String",
                     builder to "okhttp3.Request\$Builder",
                     call to "okhttp3.Call",
                     statusCode to "int"

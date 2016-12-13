@@ -62,7 +62,7 @@ digraph G {
         Constructed_Request -> virtual2 [ style = "bold" label="getInputStream()" , color = red ];
         virtual2 -> Constructed_Request [ style = "bold" , color = red ];
         virtual2 -> Constructed_InputStream [ label="return InputStream()" , color = red ];
-        hasURL_URLData -> hasURL_URLData [ label="setRequestProperty(ActionParam(propertyName&#x3D;headerName), ActionParam(propertyName&#x3D;headerValue))", style = "bold"  ];
+        Constructed_Request -> Constructed_Request [ label="setRequestProperty(ActionParam(propertyName&#x3D;headerName), ActionParam(propertyName&#x3D;headerValue))", style = "bold"  ];
         Constructed_Request -> Constructed_Request [ label="setDoOutput()", style = "bold"  ];
         Constructed_Request -> virtual3 [ style = "bold" label="getContentLengthLong()"  ];
         virtual3 -> Constructed_Request [ style = "bold"  ];

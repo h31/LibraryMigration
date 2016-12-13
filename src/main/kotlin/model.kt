@@ -16,19 +16,21 @@ interface Identifiable {
 
 data class Library(val name: String,
                    val stateMachines: List<StateMachine>,
-                   val machineTypes: Map<StateMachine, String>) {
-    val machineSimpleTypes: MutableMap<StateMachine, String> = mutableMapOf()
+                   val machineTypes: Map<StateMachine, String>,
+                   val typeGenerator: (StateMachine, Map<String, Any>) -> String? = {machine, props -> null}) {
+    val machineSimpleTypes: Map<StateMachine, String> get() = machineTypes.mapValues { entry -> simpleType(entry.value) }
     val edges: List<Edge> = stateMachines.flatMap(StateMachine::edges)
-    val additionalTypes: List<String> = edges.filterIsInstance<TemplateEdge>().flatMap(TemplateEdge::additionalTypes)
+    private val additionalTypes: List<String> = edges.filterIsInstance<TemplateEdge>().flatMap(TemplateEdge::additionalTypes)
     init {
         for (machine in stateMachines) {
             machine.library = this
         }
         if (machineTypes.size != stateMachines.size) error("Types: ${machineTypes.size}, machines: ${stateMachines.size}")
-        machineTypes.mapValuesTo(machineSimpleTypes, { entry -> simpleType(entry.value)})
     }
 
     fun simpleType(type: String) = type.substringAfterLast('.').replace('$', '.')
+
+    fun getType(machine: StateMachine, props: Map<String, Any>?): String = if (props != null) typeGenerator(machine, props) ?: machineSimpleTypes[machine] ?: TODO() else machineSimpleTypes[machine] ?: TODO()
 
     fun allTypes() = machineTypes.values + additionalTypes
 
@@ -70,14 +72,6 @@ data class StateMachine(val name: String,
     }
 
     fun type() = checkNotNull(library.machineSimpleTypes[this])
-    fun type(props: Map<String, Any>): String {
-        val mainType = type()
-        if (mainType == "HttpGet" && props["method"] == "POST") {
-            return "HttpPost"
-        } else {
-            return mainType
-        }
-    }
 }
 
 data class State(val name: String,
@@ -232,6 +226,7 @@ data class LinkedEdge(override val machine: StateMachine,
     }
 
     override fun label() = "return " + edge.linkedEdge?.dst?.machine?.type() + "()"
+    override fun toString() = label()
 }
 
 data class MakeArrayEdge(override val machine: StateMachine,

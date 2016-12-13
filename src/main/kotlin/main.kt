@@ -80,7 +80,7 @@ private fun prepareTestDir(projectDir: Path, testDir: Path) {
 }
 
 private fun addImports(cu: CompilationUnit, library: Library) {
-    cu.imports.addAll((library.machineTypes.values + library.additionalTypes)
+    cu.imports.addAll((library.allTypes())
             .filter { type -> type.contains('.') }
             .filterNot { type -> type.contains('$') }
             .map { type -> ImportDeclaration(NameExpr(type), false, false) })
@@ -355,7 +355,7 @@ private fun runGradleTask(connection: ProjectConnection, taskName: String): Pair
 
 private fun runGradleTest(connection: ProjectConnection, testClassName: String): Pair<Boolean, String> {
     val buildOutputStream = ByteArrayOutputStream()
-    val buildLauncher = connection.newTestLauncher().withJvmTestClasses(testClassName).withArguments("-i").setStandardOutput(buildOutputStream)
+    val buildLauncher = connection.newTestLauncher().withJvmTestClasses(testClassName).withArguments("-i").setStandardError(buildOutputStream)
     try {
         buildLauncher.run()
         return Pair(true, "")
