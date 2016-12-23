@@ -93,6 +93,7 @@ data class State(val name: String,
 
     override fun id() = name + "_" + machine.name
     override fun label() = name
+    override fun toString() = stateAndMachineName()
     fun stateAndMachineName() = machine.name + "." + name
     fun isInit() = name == "Init"
     fun isFinal() = name == "Final"
@@ -297,6 +298,7 @@ data class UsageEdge(override val machine: StateMachine,
     }
 
     override fun label() = "Usage in " + edge.label()
+    override fun toString() = label()
 }
 
 fun makeLinkedEdge(machine: StateMachine,
