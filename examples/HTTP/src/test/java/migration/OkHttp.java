@@ -34,6 +34,7 @@ public class OkHttp {
 
         Request request = new Request.Builder()
                 .url("http://kspt.icc.spbstu.ru/media/css/new/forms.css")
+                .post(requestBody)
                 .build();
 
         Response response = client.newCall(request).execute();
