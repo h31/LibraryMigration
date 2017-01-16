@@ -21,7 +21,7 @@ fun makeJava(): Library {
     val url = StateMachine(name = "URL")
 
     val urlData = StateMachine(name = "URLData")
-    val request = StateMachine(name = "Request")
+    val request = StateMachine(name = "JavaRequest")
 
     val hasURL = State(name = "hasURL", machine = urlData)
     val encodedURL = State(name = "encodedURL", machine = url)
@@ -109,7 +109,9 @@ fun makeJava(): Library {
     CallEdge(
             machine = request,
             methodName = "setDoOutput",
-            allowTransition = { map -> map.put("method", "POST"); true }
+            allowTransition = { map -> map.put("method", "POST"); true },
+            hasReturnValue = false,
+            param = listOf(ConstParam("true"))
     )
 
     LinkedEdge(
@@ -127,7 +129,7 @@ fun makeJava(): Library {
             edge = CallEdge(
                     machine = request,
                     methodName = "getOutputStream",
-                    action = Actions.setPayload
+                    allowTransition = { map -> map["method"] == "POST"}
             )
     )
 
@@ -147,7 +149,9 @@ fun makeJava(): Library {
             machine = outputStream,
             methodName = "write",
             param = listOf(EntityParam(payload)),
-            allowTransition = { map -> map.put("Written", true); true }
+            allowTransition = { map -> map.put("Written", true); true },
+            action = Actions.setPayload,
+            hasReturnValue = false
     )
 
     LinkedEdge(
@@ -205,7 +209,8 @@ fun makeJava(): Library {
 fun makeApache(): Library {
     val url = StateMachine(name = "URL")
     val client = StateMachine(name = "Client")
-    val request = StateMachine(name = "Request")
+    val request = StateMachine(name = "GetRequest")
+    val postRequest = StateMachine(name = "PostRequest")
     val response = StateMachine(name = "Response")
     val httpClientFactory = StateMachine(name = "HttpClientFactory")
     val inputStream = StateMachine(name = "InputStream")
@@ -223,9 +228,12 @@ fun makeApache(): Library {
 //    client.edges.clear()
     client.states += makeFinalState(client)
     request.states += makeInitState(request)
+    postRequest.states += makeInitState(postRequest)
     byteArrayEntity.states += makeInitState(byteArrayEntity)
+    entityUtils.states += makeInitState(entityUtils)
     httpClientFactory.states += makeInitState(httpClientFactory)
-    request.migrateProperties = { oldProps -> oldProps[request] ?: mapOf() }
+    request.migrateProperties = { oldProps -> oldProps[StateMachine(name = "JavaRequest")] ?: oldProps[StateMachine(name = "Builder")] ?: mapOf() }
+    postRequest.migrateProperties = { oldProps -> oldProps[StateMachine(name = "JavaRequest")] ?: oldProps[StateMachine(name = "Builder")] ?: mapOf() }
 
     makeLinkedEdge(
             machine = httpClientFactory,
@@ -255,11 +263,24 @@ fun makeApache(): Library {
             )
     )
 
+    ConstructorEdge(
+            machine = postRequest,
+            src = postRequest.getInitState(),
+            dst = postRequest.getConstructedState(),
+            param = listOf(EntityParam(
+                    machine = url,
+                    state = encodedURL
+            )
+            ),
+            allowTransition = {props -> props["method"] == "POST"}
+    )
+
     CallEdge(
             machine = request,
             methodName = "addHeader",
             action = Actions.setHeader,
-            param = listOf(ActionParam("headerName"), ActionParam("headerValue"))
+            param = listOf(ActionParam("headerName"), ActionParam("headerValue")),
+            hasReturnValue = false
     )
 
 //    val setURI = CallEdge(
@@ -273,12 +294,22 @@ fun makeApache(): Library {
 //            )
 //    )
 
-    val execute = makeLinkedEdge(
+    makeLinkedEdge(
             machine = client,
             dst = response.getDefaultState(),
             methodName = "execute",
             param = listOf(EntityParam(
                     machine = request
+            )
+            )
+    )
+
+    makeLinkedEdge(
+            machine = client,
+            dst = response.getDefaultState(),
+            methodName = "execute",
+            param = listOf(EntityParam(
+                    machine = postRequest
             )
             )
     )
@@ -298,10 +329,11 @@ fun makeApache(): Library {
     )
 
     CallEdge(
-            machine = request,
+            machine = postRequest,
             methodName = "setEntity",
             param = listOf(EntityParam(byteArrayEntity)),
-            action = Actions.setPayload
+            action = Actions.setPayload,
+            hasReturnValue = false
     )
 
     makeLinkedEdge(
@@ -312,6 +344,7 @@ fun makeApache(): Library {
 
     makeLinkedEdge(
             machine = entityUtils,
+            src = entityUtils.getInitState(),
             dst = body.getDefaultState(),
             methodName = "toString",
             param = listOf(EntityParam(machine = entity)),
@@ -376,10 +409,11 @@ fun makeApache(): Library {
     return Library(
             name = "apache",
             stateMachines = listOf(url, request, client, response, body, httpClientFactory,
-                    inputStream, contentLength, entity, entityUtils, statusCode, byteArrayEntity, payload),
+                    inputStream, contentLength, entity, entityUtils, statusCode, byteArrayEntity, payload, postRequest),
             machineTypes = mapOf(
                     url to "String",
                     request to "org.apache.http.client.methods.HttpGet",
+                    postRequest to "org.apache.http.client.methods.HttpPost",
                     client to "org.apache.http.impl.client.CloseableHttpClient",
                     response to "org.apache.http.client.methods.CloseableHttpResponse",
                     body to "String",
@@ -417,12 +451,14 @@ fun makeOkHttp(): Library {
     val static = StateMachine(name = "Static")
     val requestBody = StateMachine(name = "RequestBody")
     val contentType = StateMachine(name = "ContentType")
+    val mediaType = StateMachine(name = "MediaType")
     val payload = StateMachine(name = "Payload")
 
     client.states += makeInitState(client)
     builder.states += makeInitState(builder)
     requestBody.states += makeInitState(requestBody)
     contentType.states += makeInitState(contentType)
+    mediaType.states += makeInitState(mediaType)
     client.states += makeFinalState(client)
 
     val encodedURL = State(name = "encodedURL", machine = url)
@@ -461,12 +497,21 @@ fun makeOkHttp(): Library {
     )
 
     CallEdge(
+            machine = mediaType,
+            src = mediaType.getInitState(),
+            dst = mediaType.getConstructedState(),
+            methodName = "parse",
+            isStatic = true,
+            param = listOf(EntityParam(machine = contentType))
+    )
+
+    CallEdge(
             machine = requestBody,
             src = requestBody.getInitState(),
             dst = requestBody.getConstructedState(),
             methodName = "create",
             isStatic = true,
-            param = listOf(EntityParam(contentType), EntityParam(payload))
+            param = listOf(EntityParam(mediaType), EntityParam(payload))
     )
 
     CallEdge(
@@ -474,7 +519,9 @@ fun makeOkHttp(): Library {
             src = builderHasURL,
             methodName = "post",
             param = listOf(EntityParam(machine = requestBody)),
-            action = Actions.setPayload
+            action = Actions.setPayload,
+            allowTransition = { map -> map.put("method", "POST"); true },
+            hasReturnValue = true
     )
 
     CallEdge(
@@ -543,7 +590,7 @@ fun makeOkHttp(): Library {
     return Library(
             name = "okhttp",
             stateMachines = listOf(url, request, client, response, body,
-                    inputStream, contentLength, entity, builder, call, statusCode, requestBody, contentType, payload),
+                    inputStream, contentLength, entity, builder, call, statusCode, requestBody, contentType, payload, mediaType),
             machineTypes = mapOf(
                     url to "String",
                     request to "okhttp3.Request",
@@ -555,6 +602,7 @@ fun makeOkHttp(): Library {
                     entity to "okhttp3.ResponseBody",
                     requestBody to "okhttp3.RequestBody",
                     contentType to "String",
+                    mediaType to "okhttp3.MediaType",
                     payload to "String",
                     builder to "okhttp3.Request\$Builder",
                     call to "okhttp3.Call",

@@ -26,6 +26,7 @@ data class Replacement(val oldNode: Node,
                        val pendingExpressions: List<PendingExpression>,
                        val removeOldNode: Boolean = pendingExpressions.isEmpty(),
                        val finalizerExpressions: List<PendingExpression> = listOf(),
+                       val hasReturnValue: Boolean = true,
                        var makeVariable: Boolean = true)
 
 data class Route(val oldNode: Node,
@@ -60,6 +61,7 @@ class Migration(val library1: Library,
                 is CallEdge -> migrateMethodCall(route)
                 is ConstructorEdge -> migrateConstructorCall(route)
                 is LinkedEdge -> migrateLinkedEdge(route)
+                is AutoEdge -> Replacement(route.oldNode, listOf())
                 else -> TODO()
             }
         }
@@ -97,7 +99,7 @@ class Migration(val library1: Library,
     private fun migrateMethodCall(route: Route): Replacement {
         val pendingExpressions = applySteps(route.route, null)
         val finalizerExpressions = applySteps(route.finalizerRoute, null)
-        return Replacement(oldNode = route.oldNode, pendingExpressions = pendingExpressions, finalizerExpressions = finalizerExpressions, makeVariable = false)
+        return Replacement(oldNode = route.oldNode, pendingExpressions = pendingExpressions, finalizerExpressions = finalizerExpressions, removeOldNode = true, makeVariable = true, hasReturnValue = pendingExpressions.lastOrNull()?.provides != null)
     }
 
     private fun migrateConstructorCall(route: Route): Replacement {
@@ -166,6 +168,7 @@ class Migration(val library1: Library,
         val args = edge.param.map { param -> when (param) {
             is EntityParam -> checkNotNull(dependencies[param.machine])
             is ActionParam -> NameExpr(routeMaker.srcProps.actionParams[edge.action]!![param.propertyName] as String) // TODO
+            is ConstParam -> NameExpr(param.value)
             else -> TODO()
         } }
 
@@ -205,19 +208,23 @@ class ReplacementPerformer(val replacements: List<Replacement>,
 
         if (replacement.pendingExpressions.isNotEmpty()) {
             val pos = statements.indexOf(statement)
-            val pushedPendingExpressions = if (replacement.makeVariable) replacement.pendingExpressions else replacement.pendingExpressions.dropLast(1)
+            val pushedPendingExpressions = if ((replacement.hasReturnValue == false) || replacement.makeVariable) replacement.pendingExpressions else replacement.pendingExpressions.dropLast(1)
             val pendingStatements = pushedPendingExpressions.map { pending -> makeNewStatement(pending) }
             statements.addAll(pos, pendingStatements)
             for (stmt in pushedPendingExpressions) {
                 stmt.expression.parentNode = blockStmt
             }
 
-            val newExpr = if (replacement.makeVariable) {
+            val newExpr = if (replacement.makeVariable && replacement.hasReturnValue) {
                 NameExpr(getNewVarName(replacement.pendingExpressions))
             } else {
                 replacement.pendingExpressions.last().expression
             }
-            replaceNode(newExpr, oldExpr)
+            if (replacement.removeOldNode) {
+                statements.remove(statement)
+            } else {
+                replaceNode(newExpr, oldExpr)
+            }
         } else if (replacement.oldNode.parentNode is ExpressionStmt || replacement.oldNode.parentNode is VariableDeclarator) {
             println("Remove $statement")
             statements.remove(statement)
@@ -434,16 +441,25 @@ class RouteMaker(val globalRoute: MutableList<Route>,
                 continue
             }
             extractDependenciesFromNode(edge, usage.node)
+            var dst: State? = edge.dst
             if (edge.dst.machine in library2.stateMachines == false) {
-                if (globalRoute.any { route -> route.oldNode == usage.node }) {
+                if (edge.action != null) {
+                    dst = null
+                } else {
+                    if (globalRoute.any { route -> route.oldNode == usage.node }) {
+                        continue
+                    }
+                    globalRoute += Route(oldNode = usage.node, route = listOf(), edge = AutoEdge(edge.machine)) // TODO
+//                    replacements += Replacement(usage.node, listOf())
                     continue
                 }
-                replacements += Replacement(usage.node, listOf())
-                continue
             }
-            val route = findRoute(context, edge.dst, edge.action)
+            val route = findRoute(context, dst, edge.action)
             props += route.stateProps
             var extendedRoute = route.path
+            for (step in route.path) {
+                addToContext(step.dst)
+            }
 //            do {
 //                val newRoute = extendRoute(extendedRoute)
 //                val sameRoute = (newRoute == extendedRoute)
@@ -526,8 +542,8 @@ class RouteMaker(val globalRoute: MutableList<Route>,
         }
     }
 
-    private fun findRoute(src: Set<State>, dst: State, action: Action?): PathFinder.Model {
-        println("  Searching route from ${src.joinToString(transform = State::stateAndMachineName)} to ${dst.stateAndMachineName()} with ${action?.name ?: "none"}")
+    private fun findRoute(src: Set<State>, dst: State?, action: Action?): PathFinder.Model {
+        println("  Searching route from ${src.joinToString(transform = State::stateAndMachineName)} to ${dst?.stateAndMachineName()} with ${action?.name ?: "none"}")
         val edges = library2.stateMachines.flatMap(StateMachine::edges).toSet()
         val pathFinder = PathFinder(edges, src, props, listOfNotNull(action))
         pathFinder.findPath(dst)

@@ -346,5 +346,9 @@ data class ActionParam(val propertyName: String) : Param {
     override fun label() = toString()
 }
 
+data class ConstParam(val value: String) : Param {
+    override fun label() = value
+}
+
 data class Action(val name: String,
                   val feature: String = "Main")

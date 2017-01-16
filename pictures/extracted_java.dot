@@ -13,8 +13,8 @@ digraph G {
         virtual0 [ shape = point ];
     }
     subgraph cluster2 {
-    label = <<B>Request: URLConnection</B>>;
-        Constructed_Request [ label="Constructed" ];
+    label = <<B>JavaRequest: URLConnection</B>>;
+        Constructed_JavaRequest [ label="Constructed" ];
         virtual1 [ shape = point ];
         virtual2 [ shape = point ];
         virtual3 [ shape = point ];
@@ -55,25 +55,27 @@ digraph G {
         Init_URLData -> hasURL_URLData [ label="new URLData: URL(URL: String)", style = "bold" , color = red ];
         hasURL_URLData -> virtual0 [ style = "bold" label="openConnection()" , color = red ];
         virtual0 -> hasURL_URLData [ style = "bold" , color = red ];
-        virtual0 -> Constructed_Request [ label="return URLConnection()" , color = red ];
-        Constructed_Request -> virtual1 [ style = "bold" label="Template"  ];
-        virtual1 -> Constructed_Request [ style = "bold"  ];
+        virtual0 -> Constructed_JavaRequest [ label="return URLConnection()" , color = red ];
+        Constructed_URLData -> Constructed_URLData [ label="", style = "solid"  ];
+        Constructed_JavaRequest -> virtual1 [ style = "bold" label="Template"  ];
+        virtual1 -> Constructed_JavaRequest [ style = "bold"  ];
         virtual1 -> Constructed_Body [ label="return String()"  ];
-        Constructed_Request -> virtual2 [ style = "bold" label="getInputStream()" , color = red ];
-        virtual2 -> Constructed_Request [ style = "bold" , color = red ];
+        Constructed_JavaRequest -> virtual2 [ style = "bold" label="getInputStream()" , color = red ];
+        virtual2 -> Constructed_JavaRequest [ style = "bold" , color = red ];
         virtual2 -> Constructed_InputStream [ label="return InputStream()" , color = red ];
-        Constructed_Request -> Constructed_Request [ label="setRequestProperty(ActionParam(propertyName&#x3D;headerName), ActionParam(propertyName&#x3D;headerValue))", style = "bold"  ];
-        Constructed_Request -> Constructed_Request [ label="setDoOutput()", style = "bold"  ];
-        Constructed_Request -> virtual3 [ style = "bold" label="getContentLengthLong()"  ];
-        virtual3 -> Constructed_Request [ style = "bold"  ];
+        Constructed_JavaRequest -> Constructed_JavaRequest [ label="setRequestProperty(ActionParam(propertyName&#x3D;headerName), ActionParam(propertyName&#x3D;headerValue))", style = "bold"  ];
+        Constructed_JavaRequest -> Constructed_JavaRequest [ label="setDoOutput(true)", style = "bold"  ];
+        Constructed_JavaRequest -> virtual3 [ style = "bold" label="getContentLengthLong()"  ];
+        virtual3 -> Constructed_JavaRequest [ style = "bold"  ];
         virtual3 -> Constructed_ContentLength [ label="return long()"  ];
-        Constructed_Request -> virtual4 [ style = "bold" label="getOutputStream()"  ];
-        virtual4 -> Constructed_Request [ style = "bold"  ];
+        Constructed_JavaRequest -> virtual4 [ style = "bold" label="getOutputStream()"  ];
+        virtual4 -> Constructed_JavaRequest [ style = "bold"  ];
         virtual4 -> Constructed_OutputStream [ label="return OutputStream()"  ];
-        Constructed_Request -> virtual5 [ style = "bold" label="Template"  ];
-        virtual5 -> Constructed_Request [ style = "bold"  ];
+        Constructed_JavaRequest -> virtual5 [ style = "bold" label="Template"  ];
+        virtual5 -> Constructed_JavaRequest [ style = "bold"  ];
         virtual5 -> Constructed_HttpConnection [ label="return HttpURLConnection()"  ];
-        Constructed_HttpConnection -> Constructed_Request [ label="", style = "solid"  ];
+        Constructed_JavaRequest -> Constructed_JavaRequest [ label="", style = "solid"  ];
+        Constructed_HttpConnection -> Constructed_JavaRequest [ label="", style = "solid"  ];
         Constructed_HttpConnection -> virtual6 [ style = "bold" label="getResponseCode()"  ];
         virtual6 -> Constructed_HttpConnection [ style = "bold"  ];
         virtual6 -> Constructed_StatusCode [ label="return int()"  ];
@@ -82,5 +84,6 @@ digraph G {
         Constructed_OutputStream -> Constructed_OutputStream [ label="close()", style = "bold"  ];
         Constructed_OutputStream -> Constructed_OutputStream [ label="flush()", style = "bold"  ];
         Constructed_OutputStream -> Constructed_OutputStream [ label="write(Payload: String)", style = "bold"  ];
+        Constructed_OutputStream -> Constructed_OutputStream [ label="", style = "solid"  ];
         Constructed_Payload -> Constructed_OutputStream [ label="Usage in write(Payload: String)", style = "dashed"  ];
 }

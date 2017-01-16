@@ -7,7 +7,7 @@ class PathFinder(val edges: Set<Edge>, val src: Set<State>, val initProps: Map<S
                  val requiredActions: List<Action>) {
     lateinit var resultModel: Model
 
-    fun findPath(goal: State) {
+    fun findPath(goal: State?) {
         for (state in src) {
             pending += Model(state = state, props = makeProps(state)).setContext(src)
         }
@@ -19,8 +19,10 @@ class PathFinder(val edges: Set<Edge>, val src: Set<State>, val initProps: Map<S
                     if (requiredModels.size == requirements.size) {
                         println("Model ${model.state} received all dependencies ($requirements)")
                         val newModel = model.copy(actions = model.actions + requiredModels.flatMap { it.actions })
-                        newModel.path = newModel.path.dropLast(1) + requiredModels.flatMap { it.path } + newModel.path.last()
-                        newModel.context += requiredModels.flatMap { it.context }
+                        val newPath = model.path.toMutableList()
+                        newPath.addAll(Math.max(newPath.size - 1, 0), requiredModels.flatMap { it.path })
+                        newModel.path = newPath
+                        newModel.context += model.context + requiredModels.flatMap { it.context }
                         for (requiredModel in requiredModels) {
                             newModel.stateProps += requiredModel.stateProps
                         }
@@ -28,11 +30,11 @@ class PathFinder(val edges: Set<Edge>, val src: Set<State>, val initProps: Map<S
                         processedModels += model
                     }
                 }
-                processedModels.forEach { haveMissingRequirements.remove(it) }
+                processedModels.forEach { model -> haveMissingRequirements.removeAll { it.first == model } }
             }
             if (pending.isEmpty()) {
                 println("Not found!")
-                visited.add(Model(State(name = "Constructed", machine = StateMachine("Payload"))))
+//                visited.add(Model(State(name = "Constructed", machine = StateMachine("Payload"))))
 //                haveMissingRequirements.mapValues { model -> model.value.filterNot { state -> state.machine.name == "Payload" } }
 //                for (entry in haveMissingRequirements) {
 //                    val newList = entry.value.filterNot { state -> state.machine.name == "Payload" }
@@ -40,8 +42,8 @@ class PathFinder(val edges: Set<Edge>, val src: Set<State>, val initProps: Map<S
 //                        entry.setValue(newList)
 //                    }
 //                }
-                continue
-//                error("Empty pendings!")
+//                continue
+                error("Empty pendings!")
             }
             val model = pending.poll()
             if (aStar(model, goal, edges)) {
@@ -94,11 +96,11 @@ class PathFinder(val edges: Set<Edge>, val src: Set<State>, val initProps: Map<S
     }
 
     private val visited = mutableSetOf<Model>()
-    private val haveMissingRequirements = mutableMapOf<Model, List<State>>()
+    private val haveMissingRequirements = mutableListOf<Pair<Model, List<State>>>()
     private val pending = PriorityQueue<Model>(ModelCompare())
 
-    fun aStar(current: Model, goal: State, edges: Set<Edge>): Boolean {
-        if (current.state == goal && current.actions.containsAll(requiredActions)) {
+    fun aStar(current: Model, goal: State?, edges: Set<Edge>): Boolean {
+        if ((goal == null || current.state == goal) && current.actions.containsAll(requiredActions)) {
             return true
         }
         if (visited.contains(current)) {
@@ -121,7 +123,7 @@ class PathFinder(val edges: Set<Edge>, val src: Set<State>, val initProps: Map<S
 ////                val deps = resolveUsageDependency(edge, current)
 //            }
             val newModel = Model(state = edge.dst, props = makeProps(edge.dst), actions = makeActions(current.actions, action))
-            val isAllowed = edge.allowTransition(newModel.props)
+            val isAllowed = edge.allowTransition(newModel.props) && (if (edge is LinkedEdge) edge.edge.allowTransition(current.props) else true)
             newModel.path = current.path + edge
             newModel.stateProps = current.stateProps + Pair(newModel.state.machine, newModel.props)
             newModel.context = current.context.filterNot { it.machine == edge.dst.machine }.toSet() + edge.dst

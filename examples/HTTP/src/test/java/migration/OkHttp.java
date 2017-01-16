@@ -1,6 +1,10 @@
 package migration;
 
-import okhttp3.*;
+import okhttp3.MediaType;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.RequestBody;
+import okhttp3.Response;
 import okio.BufferedSink;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.junit.Assert;
@@ -25,6 +29,7 @@ public class OkHttp {
         Assert.assertEquals(hash, Main.MD5_HASH);
     }
 
+    @Test
     public void okhttpPost() throws IOException {
         OkHttpClient client = new OkHttpClient();
 

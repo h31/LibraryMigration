@@ -6,21 +6,22 @@ digraph G {
         encodedURL_URL [ label="encodedURL" ];
     }
     subgraph cluster1 {
-    label = <<B>Request: HttpGet</B>>;
-        Constructed_Request [ label="Constructed" ];
-        Init_Request [ label="Init" ];
+    label = <<B>GetRequest: HttpGet</B>>;
+        Constructed_GetRequest [ label="Constructed" ];
+        Init_GetRequest [ label="Init" ];
     }
     subgraph cluster2 {
     label = <<B>Client: CloseableHttpClient</B>>;
         Constructed_Client [ label="Constructed" ];
         Final_Client [ label="Final" ];
         virtual0 [ shape = point ];
+        virtual1 [ shape = point ];
     }
     subgraph cluster3 {
     label = <<B>Response: CloseableHttpResponse</B>>;
         Constructed_Response [ label="Constructed" ];
-        virtual1 [ shape = point ];
         virtual2 [ shape = point ];
+        virtual3 [ shape = point ];
     }
     subgraph cluster4 {
     label = <<B>Body: String</B>>;
@@ -30,7 +31,7 @@ digraph G {
     label = <<B>HttpClientFactory: HttpClients</B>>;
         Constructed_HttpClientFactory [ label="Constructed" ];
         Init_HttpClientFactory [ label="Init" ];
-        virtual3 [ shape = point ];
+        virtual4 [ shape = point ];
     }
     subgraph cluster6 {
     label = <<B>InputStream: InputStream</B>>;
@@ -43,13 +44,14 @@ digraph G {
     subgraph cluster8 {
     label = <<B>Entity: HttpEntity</B>>;
         Constructed_Entity [ label="Constructed" ];
-        virtual4 [ shape = point ];
         virtual5 [ shape = point ];
+        virtual6 [ shape = point ];
     }
     subgraph cluster9 {
     label = <<B>EntityUtils: EntityUtils</B>>;
         Constructed_EntityUtils [ label="Constructed" ];
-        virtual6 [ shape = point ];
+        Init_EntityUtils [ label="Init" ];
+        virtual7 [ shape = point ];
     }
     subgraph cluster10 {
     label = <<B>StatusCode: int</B>>;
@@ -64,36 +66,51 @@ digraph G {
     label = <<B>Payload: String</B>>;
         Constructed_Payload [ label="Constructed" ];
     }
+    subgraph cluster13 {
+    label = <<B>PostRequest: HttpPost</B>>;
+        Constructed_PostRequest [ label="Constructed" ];
+        Init_PostRequest [ label="Init" ];
+    }
         Constructed_URL -> encodedURL_URL [ label="Template", style = "bold"  ];
-        encodedURL_URL -> Constructed_Request [ label="Usage in new Request: HttpGet(URL: String)", style = "dashed"  ];
-        Init_Request -> Constructed_Request [ label="new Request: HttpGet(URL: String)", style = "bold"  ];
-        Constructed_Request -> Constructed_Request [ label="addHeader(ActionParam(propertyName&#x3D;headerName), ActionParam(propertyName&#x3D;headerValue))", style = "bold"  ];
-        Constructed_Request -> Constructed_Client [ label="Usage in execute(Request: HttpGet)", style = "dashed"  ];
-        Constructed_Request -> Constructed_Request [ label="setEntity(ByteArrayEntity: ByteArrayEntity)", style = "bold"  ];
-        Constructed_Client -> virtual0 [ style = "bold" label="execute(Request: HttpGet)"  ];
+        encodedURL_URL -> Constructed_GetRequest [ label="Usage in new GetRequest: HttpGet(URL: String)", style = "dashed"  ];
+        encodedURL_URL -> Constructed_PostRequest [ label="Usage in new PostRequest: HttpPost(URL: String)", style = "dashed"  ];
+        Init_GetRequest -> Constructed_GetRequest [ label="new GetRequest: HttpGet(URL: String)", style = "bold"  ];
+        Constructed_GetRequest -> Constructed_GetRequest [ label="addHeader(ActionParam(propertyName&#x3D;headerName), ActionParam(propertyName&#x3D;headerValue))", style = "bold"  ];
+        Constructed_GetRequest -> Constructed_Client [ label="Usage in execute(GetRequest: HttpGet)", style = "dashed"  ];
+        Constructed_GetRequest -> Constructed_GetRequest [ label="", style = "solid"  ];
+        Constructed_Client -> virtual0 [ style = "bold" label="execute(GetRequest: HttpGet)"  ];
         virtual0 -> Constructed_Client [ style = "bold"  ];
         virtual0 -> Constructed_Response [ label="return CloseableHttpResponse()"  ];
+        Constructed_Client -> virtual1 [ style = "bold" label="execute(PostRequest: HttpPost)"  ];
+        virtual1 -> Constructed_Client [ style = "bold"  ];
+        virtual1 -> Constructed_Response [ label="return CloseableHttpResponse()"  ];
         Constructed_Client -> Final_Client [ label="close()", style = "bold"  ];
-        Constructed_Response -> virtual1 [ style = "bold" label="getEntity()"  ];
-        virtual1 -> Constructed_Response [ style = "bold"  ];
-        virtual1 -> Constructed_Entity [ label="return HttpEntity()"  ];
-        Constructed_Response -> virtual2 [ style = "bold" label="Template"  ];
+        Constructed_Client -> Constructed_Client [ label="", style = "solid"  ];
+        Constructed_Response -> virtual2 [ style = "bold" label="getEntity()"  ];
         virtual2 -> Constructed_Response [ style = "bold"  ];
-        virtual2 -> Constructed_StatusCode [ label="return int()"  ];
-        Init_HttpClientFactory -> virtual3 [ style = "bold" label="createDefault()"  ];
-        virtual3 -> Init_HttpClientFactory [ style = "bold"  ];
-        virtual3 -> Constructed_Client [ label="return CloseableHttpClient()"  ];
-        Constructed_Entity -> Constructed_EntityUtils [ label="Usage in toString(Entity: HttpEntity)", style = "dashed"  ];
-        Constructed_Entity -> virtual4 [ style = "bold" label="getContent()"  ];
-        virtual4 -> Constructed_Entity [ style = "bold"  ];
-        virtual4 -> Constructed_InputStream [ label="return InputStream()"  ];
-        Constructed_Entity -> virtual5 [ style = "bold" label="getContentLength()"  ];
+        virtual2 -> Constructed_Entity [ label="return HttpEntity()"  ];
+        Constructed_Response -> virtual3 [ style = "bold" label="Template"  ];
+        virtual3 -> Constructed_Response [ style = "bold"  ];
+        virtual3 -> Constructed_StatusCode [ label="return int()"  ];
+        Constructed_Response -> Constructed_Response [ label="", style = "solid"  ];
+        Init_HttpClientFactory -> virtual4 [ style = "bold" label="createDefault()"  ];
+        virtual4 -> Init_HttpClientFactory [ style = "bold"  ];
+        virtual4 -> Constructed_Client [ label="return CloseableHttpClient()"  ];
+        Constructed_HttpClientFactory -> Constructed_HttpClientFactory [ label="", style = "solid"  ];
+        Constructed_Entity -> Init_EntityUtils [ label="Usage in toString(Entity: HttpEntity)", style = "dashed"  ];
+        Constructed_Entity -> virtual5 [ style = "bold" label="getContent()"  ];
         virtual5 -> Constructed_Entity [ style = "bold"  ];
-        virtual5 -> Constructed_ContentLength [ label="return long()"  ];
-        Constructed_EntityUtils -> virtual6 [ style = "bold" label="toString(Entity: HttpEntity)"  ];
-        virtual6 -> Constructed_EntityUtils [ style = "bold"  ];
-        virtual6 -> Constructed_Body [ label="return String()"  ];
+        virtual5 -> Constructed_InputStream [ label="return InputStream()"  ];
+        Constructed_Entity -> virtual6 [ style = "bold" label="getContentLength()"  ];
+        virtual6 -> Constructed_Entity [ style = "bold"  ];
+        virtual6 -> Constructed_ContentLength [ label="return long()"  ];
+        Init_EntityUtils -> virtual7 [ style = "bold" label="toString(Entity: HttpEntity)"  ];
+        virtual7 -> Init_EntityUtils [ style = "bold"  ];
+        virtual7 -> Constructed_Body [ label="return String()"  ];
         Init_ByteArrayEntity -> Constructed_ByteArrayEntity [ label="new ByteArrayEntity: ByteArrayEntity(Payload: String)", style = "bold"  ];
-        Constructed_ByteArrayEntity -> Constructed_Request [ label="Usage in setEntity(ByteArrayEntity: ByteArrayEntity)", style = "dashed"  ];
+        Constructed_ByteArrayEntity -> Constructed_PostRequest [ label="Usage in setEntity(ByteArrayEntity: ByteArrayEntity)", style = "dashed"  ];
         Constructed_Payload -> Constructed_ByteArrayEntity [ label="Usage in new ByteArrayEntity: ByteArrayEntity(Payload: String)", style = "dashed"  ];
+        Init_PostRequest -> Constructed_PostRequest [ label="new PostRequest: HttpPost(URL: String)", style = "bold"  ];
+        Constructed_PostRequest -> Constructed_Client [ label="Usage in execute(PostRequest: HttpPost)", style = "dashed"  ];
+        Constructed_PostRequest -> Constructed_PostRequest [ label="setEntity(ByteArrayEntity: ByteArrayEntity)", style = "bold"  ];
 }
