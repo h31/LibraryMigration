@@ -143,7 +143,7 @@ class PathFinder(val edges: Set<Edge>, val src: Set<State>, val initProps: Map<S
 
 class PropsContext {
     var stateProps: Map<StateMachine, Map<String, Any>> = mapOf()
-    var actionParams: Map<Action, Map<String, Any>> = mapOf()
+    var actionParams: List<Pair<Action, Map<String, Any>>> = listOf()
     var actions: List<Action> = listOf()
 
     fun addEdgeFromTrace(locatedEdge: RouteExtractor.LocatedEdge) {

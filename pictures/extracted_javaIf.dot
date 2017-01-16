@@ -49,6 +49,15 @@ digraph G {
     subgraph cluster9 {
     label = <<B>Payload: String</B>>;
         Constructed_Payload [ label="Constructed" ];
+        Init_Payload [ label="Init" ];
+    }
+    subgraph cluster10 {
+    label = <<B>RequestParamName: String</B>>;
+        Constructed_RequestParamName [ label="Constructed" ];
+    }
+    subgraph cluster11 {
+    label = <<B>RequestParamValue: String</B>>;
+        Constructed_RequestParamValue [ label="Constructed" ];
     }
         Constructed_URL -> encodedURL_URL [ label="", style = "solid"  ];
         encodedURL_URL -> hasURL_URLData [ label="Usage in new URLData: URL(URL: String)", style = "dashed"  ];
@@ -85,5 +94,8 @@ digraph G {
         Constructed_OutputStream -> Constructed_OutputStream [ label="flush()", style = "bold"  ];
         Constructed_OutputStream -> Constructed_OutputStream [ label="write(Payload: String)", style = "bold"  ];
         Constructed_OutputStream -> Constructed_OutputStream [ label="", style = "solid"  ];
+        Init_Payload -> Constructed_Payload [ label="Template", style = "bold"  ];
         Constructed_Payload -> Constructed_OutputStream [ label="Usage in write(Payload: String)", style = "dashed"  ];
+        Constructed_RequestParamName -> Constructed_Payload [ label="Usage in Template", style = "dashed"  ];
+        Constructed_RequestParamValue -> Constructed_Payload [ label="Usage in Template", style = "dashed"  ];
 }

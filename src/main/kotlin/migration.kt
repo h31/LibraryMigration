@@ -167,10 +167,18 @@ class Migration(val library1: Library,
 
         val args = edge.param.map { param -> when (param) {
             is EntityParam -> checkNotNull(dependencies[param.machine])
-            is ActionParam -> NameExpr(routeMaker.srcProps.actionParams[edge.action]!![param.propertyName] as String) // TODO
+            is ActionParam -> {
+                val pair = routeMaker.srcProps.actionParams.first { it.first == edge.action }
+                NameExpr(pair.second[param.propertyName].toString())
+            }
             is ConstParam -> NameExpr(param.value)
             else -> TODO()
         } }
+
+        if (edge.param.filterIsInstance<ActionParam>().isNotEmpty()) {
+            val pair = routeMaker.srcProps.actionParams.first { it.first == edge.action }
+            routeMaker.srcProps.actionParams -= pair
+        }
 
         return CallExpressionParams(scope, args)
     }
@@ -195,9 +203,14 @@ class Migration(val library1: Library,
 
 class ReplacementPerformer(val replacements: List<Replacement>,
                            val routeMaker: RouteMaker) {
+    val removedStmts = mutableListOf<Statement>()
+
     fun apply() {
         for (replacement in replacements) {
             applyReplacement(replacement)
+        }
+        for (stmt in removedStmts) {
+            (stmt.parentNode as BlockStmt).stmts.remove(stmt)
         }
     }
 
@@ -221,7 +234,8 @@ class ReplacementPerformer(val replacements: List<Replacement>,
                 replacement.pendingExpressions.last().expression
             }
             if (replacement.removeOldNode) {
-                statements.remove(statement)
+                removedStmts += statement
+//                statements.remove(statement)
             } else {
                 replaceNode(newExpr, oldExpr)
             }
@@ -436,11 +450,11 @@ class RouteMaker(val globalRoute: MutableList<Route>,
         for (usage in path) {
             val edge = usage.edge
             println("Processing " + edge.label() + "... ")
+            extractDependenciesFromNode(edge, usage.node)
             if (edge.canBeSkipped()) {
                 println("  Makes a loop, skipping")
                 continue
             }
-            extractDependenciesFromNode(edge, usage.node)
             var dst: State? = edge.dst
             if (edge.dst.machine in library2.stateMachines == false) {
                 if (edge.action != null) {

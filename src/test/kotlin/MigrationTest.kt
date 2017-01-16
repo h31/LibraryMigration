@@ -57,7 +57,7 @@ class MigrationTest {
         Assert.assertTrue(migrate(projectDir = examples.resolve("instagram-java-scraper"),
                 from = okhttp,
                 to = java,
-                testPatcher = {stripAspects(it); instagramDisableTest(it)}
+                testPatcher = {stripAspects(it)}
         ))
     }
 
