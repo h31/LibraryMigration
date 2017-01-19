@@ -9,13 +9,13 @@ class PathFinder(val edges: Set<Edge>, val src: Set<State>, val initProps: Map<S
 
     fun findPath(goal: State?) {
         for (state in src) {
-            pending += Model(state = state, props = makeProps(state)).setContext(src)
+            pending += Model(state = state, props = makeProps(state, null)).setContext(src)
         }
         while (true) {
             if (haveMissingRequirements.isNotEmpty()) {
                 val processedModels = mutableListOf<Model>()
                 for ((model, requirements) in haveMissingRequirements) {
-                    val requiredModels = visited.filter { requirements.contains(it.state) }
+                    val requiredModels = visited.filter { requirements.contains(it.state) }.filter { it.actions.isEmpty() } // TODO
                     if (requiredModels.size == requirements.size) {
                         println("Model ${model.state} received all dependencies ($requirements)")
                         val newModel = model.copy(actions = model.actions + requiredModels.flatMap { it.actions })
@@ -66,7 +66,7 @@ class PathFinder(val edges: Set<Edge>, val src: Set<State>, val initProps: Map<S
     }
 
     data class Model(val state: State,
-                     val props: MutableMap<String, Any> = mutableMapOf(),
+                     val props: Map<String, Any> = mutableMapOf(),
                      val actions: List<Action> = listOf()) {
         var path: List<Edge> = listOf()
         var stateProps: Map<StateMachine, Map<String, Any>> = mapOf()
@@ -78,12 +78,15 @@ class PathFinder(val edges: Set<Edge>, val src: Set<State>, val initProps: Map<S
         }
     }
 
-    fun makeProps(state: State): MutableMap<String, Any> {
+    fun makeProps(state: State, currentProps: Map<String, Any>?): MutableMap<String, Any> {
+        if (currentProps != null) {
+            return LinkedHashMap(currentProps)
+        }
         val existingProps = initProps[state.machine]
         return if (existingProps != null) LinkedHashMap(existingProps) else mutableMapOf()
     }
 
-    fun makeActions(oldActions: List<Action>, newAction: List<Action>) = if (newAction.isNotEmpty()) oldActions + newAction else oldActions
+    fun makeActions(oldActions: List<Action>, newAction: Action?) = if (newAction != null) (oldActions + newAction).sorted() else oldActions
 
     fun calcRequirements(edge: Edge, context: Set<State>): List<State> = when (edge) {
         is ExpressionEdge -> {
@@ -100,7 +103,7 @@ class PathFinder(val edges: Set<Edge>, val src: Set<State>, val initProps: Map<S
     private val pending = PriorityQueue<Model>(ModelCompare())
 
     fun aStar(current: Model, goal: State?, edges: Set<Edge>): Boolean {
-        if ((goal == null || current.state == goal) && current.actions.containsAll(requiredActions)) {
+        if ((goal == null || current.state == goal) && current.actions == requiredActions) {
             return true
         }
         if (visited.contains(current)) {
@@ -108,22 +111,37 @@ class PathFinder(val edges: Set<Edge>, val src: Set<State>, val initProps: Map<S
         }
         visited += current
         val availableEdges = edges.filter { edge -> edge.src == current.state }
+        val submittedModels = makeNewModel(current, availableEdges)
+        if (submittedModels == 0) {
+            print("")
+            for (state in current.context) {
+                val newModel = Model(state = state, props = makeProps(state, current.stateProps[state.machine]), actions = current.actions)
+                if (visited.contains(newModel)) {
+                    continue
+                }
+                newModel.path = current.path
+                newModel.stateProps = current.stateProps
+                newModel.context = current.context
+                pending.add(newModel)
+            }
+        }
+        return false
+    }
+
+    private fun makeNewModel(current: Model, availableEdges: List<Edge>): Int {
+        var submittedModels = 0
         for (edge in availableEdges) {
             if (edge is UsageEdge) {
                 continue
             }
-            val action = listOfNotNull(edge.action)
+            val action = edge.action
             val requirements = calcRequirements(edge, current.context)
-//            if (edge is UsageEdge && edge.edge is CallEdge && edge.edge.methodName == "setEntity") {
-//                if (requiredActions.contains(edge.edge.action) == false) {
-//                    continue
-//                } else {
-//                    action += edge.edge.action!!
-//                }
-////                val deps = resolveUsageDependency(edge, current)
-//            }
-            val newModel = Model(state = edge.dst, props = makeProps(edge.dst), actions = makeActions(current.actions, action))
-            val isAllowed = edge.allowTransition(newModel.props) && (if (edge is LinkedEdge) edge.edge.allowTransition(current.props) else true)
+            val newProps = makeProps(edge.dst, current.stateProps[edge.dst.machine])
+            val isAllowed = edge.allowTransition(newProps) && (if (edge is LinkedEdge) edge.edge.allowTransition(LinkedHashMap(current.props)) else true)
+            val newModel = Model(state = edge.dst, props = newProps, actions = makeActions(current.actions, action))
+            if (visited.contains(newModel)) {
+                continue
+            }
             newModel.path = current.path + edge
             newModel.stateProps = current.stateProps + Pair(newModel.state.machine, newModel.props)
             newModel.context = current.context.filterNot { it.machine == edge.dst.machine }.toSet() + edge.dst
@@ -132,12 +150,13 @@ class PathFinder(val edges: Set<Edge>, val src: Set<State>, val initProps: Map<S
                 haveMissingRequirements += Pair(newModel, requirements)
                 continue
             }
-            val isProperAction = if (action.isNotEmpty()) requiredActions.containsAll(action) && current.actions.none { action.contains(it) } else true
+            val isProperAction = if (action != null) requiredActions.contains(action) && newModel.actions.size <= requiredActions.size else true
             if (isAllowed && isProperAction) {
                 pending.add(newModel)
+                submittedModels++
             }
         }
-        return false
+        return submittedModels
     }
 }
 

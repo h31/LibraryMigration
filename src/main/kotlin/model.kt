@@ -115,11 +115,13 @@ interface Edge : Labelable {
     fun getSubsequentAutoEdges() = dst.machine.edges.filter { edge -> edge is AutoEdge && edge.src == dst }
     fun getStyle(): String
     fun canBeSkipped(): Boolean {
-        val loop = src == dst && action == null
+        val loop = src == dst
+        val withSideEffects = action?.withSideEffects == true
         val map = mutableMapOf<String, Any>()
         allowTransition(map)
-        return loop && map.isEmpty()
+        return loop && !withSideEffects // && map.isEmpty()
     }
+    fun getNonSideEffectsActions() = if (action?.withSideEffects == false) listOfNotNull(action) else listOf()
 }
 
 data class Requirements(val allowTransition: (Map<String, Any>) -> Boolean = {true},
@@ -207,14 +209,15 @@ data class ConstructorEdge(override val machine: StateMachine,
     override fun label() = "new %s(%s)".format(constructedMachine?.label(), param.map(Param::label).joinToString())
 }
 
-data class LinkedEdge(override val machine: StateMachine,
-                      override val src: State = makeConstructedState(machine),
-                      override val dst: State = src,
+data class LinkedEdge(val edge: ExpressionEdge,
+                      override val machine: StateMachine = edge.machine,
+                      override val src: State = edge.src,
+                      override val dst: State,
                       override val action: Action? = null,
                       override var allowTransition: (MutableMap<String, Any>) -> Boolean = {true},
-                      override val actionParams: (Any) -> Map<String, Any> = {mapOf()},
+                      override val actionParams: (Any) -> Map<String, Any> = {mapOf()}
 
-                      val edge: ExpressionEdge) : Edge {
+                      ) : Edge {
     override fun getStyle() = "dotted"
 
     init {
@@ -351,4 +354,8 @@ data class ConstParam(val value: String) : Param {
 }
 
 data class Action(val name: String,
-                  val feature: String = "Main")
+                  val feature: String = "Main",
+                  val withSideEffects: Boolean = false): Comparable<Action> {
+    override fun compareTo(other: Action) = name.compareTo(other.name)
+    override fun toString() = name
+}

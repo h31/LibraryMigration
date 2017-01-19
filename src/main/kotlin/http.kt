@@ -37,6 +37,8 @@ fun makeJava(): Library {
     urlData.states += makeInitState(urlData)
     payload.states += makeInitState(payload)
 
+    val connected = State(name = "Connected", machine = request)
+
     AutoEdge(
             machine = url,
             src = url.getConstructedState(),
@@ -74,25 +76,34 @@ fun makeJava(): Library {
 
     val body = StateMachine(name = "Body")
 
+    AutoEdge(
+            machine = request,
+            dst = connected
+    )
+
     val readerToString = TemplateEdge(
             machine = request,
+            src = connected,
             template = "new BufferedReader(new InputStreamReader({{ conn }}.getInputStream()))" +
                     ".lines().collect(Collectors.joining(\"\\n\", \"\", \"\\n\"))",
-            templateParams = mapOf("conn" to request.getDefaultState()),
+            templateParams = mapOf("conn" to connected),
             additionalTypes = listOf("java.io.BufferedReader", "java.io.InputStreamReader", "java.util.stream.Collectors")
     )
 
     LinkedEdge(
             machine = request,
+            src = connected,
             dst = body.getDefaultState(),
             edge = readerToString
     )
 
     LinkedEdge(
             machine = request,
+            src = connected,
             dst = inputStream.getDefaultState(),
             edge = CallEdge(
                     machine = request,
+                    src = connected,
                     methodName = "getInputStream"
             )
     )
@@ -120,18 +131,22 @@ fun makeJava(): Library {
 
     LinkedEdge(
             machine = request,
+            src = connected,
             dst = contentLength.getDefaultState(),
             edge = CallEdge(
                     machine = request,
+                    src = connected,
                     methodName = "getContentLengthLong"
             )
     )
 
     LinkedEdge(
             machine = request,
+            src = connected,
             dst = outputStream.getDefaultState(),
             edge = CallEdge(
                     machine = request,
+                    src = connected,
                     methodName = "getOutputStream",
                     allowTransition = { map -> map["method"] == "POST"}
             )
@@ -139,15 +154,14 @@ fun makeJava(): Library {
 
     CallEdge(
             machine = outputStream,
-            methodName = "close",
-            allowTransition = { map -> map.put("Closed", true); true }
-    )
+            methodName = "close"
+    ) //             allowTransition = { map -> map.put("Closed", true); true }
 
     CallEdge(
             machine = outputStream,
-            methodName = "flush",
-            allowTransition = { map -> map.put("Flushed", true); true }
-    )
+            methodName = "flush"
+    ) //             allowTransition = { map -> map.put("Flushed", true); true }
+
 
     TemplateEdge(
             machine = payload,
@@ -161,24 +175,25 @@ fun makeJava(): Library {
             machine = outputStream,
             methodName = "write",
             param = listOf(EntityParam(payload)),
-            allowTransition = { map -> map.put("Written", true); true },
             action = Actions.setPayload,
             hasReturnValue = false
-    )
+    ) //             allowTransition = { map -> val written = map.contains("Written"); map.put("Written", true); !written },
 
     LinkedEdge(
             machine = request,
+            src = connected,
             dst = httpConnection.getConstructedState(),
             edge = TemplateEdge(
                     machine = request,
+                    src = connected,
                     template = "((HttpURLConnection) {{ response }})",
-                    templateParams = mapOf("response" to request.getConstructedState())
+                    templateParams = mapOf("response" to connected)
             )
     )
 
     AutoEdge(
             machine = httpConnection,
-            dst = request.getConstructedState()
+            dst = connected
     )
 
     LinkedEdge(
