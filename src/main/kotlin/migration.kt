@@ -19,20 +19,22 @@ import java.io.File
 
 data class PendingExpression(val expression: Expression,
                              val edge: Edge,
-                             val provides: String? = null,
-                             val depends: List<String> = listOf())
+                             val provides: Expression? = null,
+                             val name: String? = null,
+                             val hasReturnValue: Boolean = provides != null,
+                             var makeVariable: Boolean = false)
 
 data class Replacement(val oldNode: Node,
                        val pendingExpressions: List<PendingExpression>,
                        val removeOldNode: Boolean = pendingExpressions.isEmpty(),
-                       val finalizerExpressions: List<PendingExpression> = listOf(),
-                       val hasReturnValue: Boolean = true,
-                       var makeVariable: Boolean = true)
+                       val finalizerExpressions: List<PendingExpression> = listOf())
 
 data class Route(val oldNode: Node,
                  val route: List<Edge>,
                  val edge: Edge,
-                 var finalizerRoute: List<Edge> = listOf())
+                 var finalizerRoute: List<Edge> = listOf()) {
+    val edgeInsertRules = mutableListOf<EdgeInsertRules>()
+}
 
 data class EdgeInsertRules(val edge: Edge,
                            val hasReturnValue: Boolean,
@@ -58,7 +60,8 @@ class Migration(val library1: Library,
     fun doMigration() {
         println("Function: $functionName")
         routeMaker.makeRoutes()
-        calcIfNeedToMakeVariable()
+        makeInsertRules()
+//        calcIfNeedToMakeVariable()
 
         for (route in globalRoute) {
             replacements += when (route.edge) {
@@ -87,13 +90,17 @@ class Migration(val library1: Library,
     }
 
     private fun makeInsertRules() {
-        val steps = globalRoute.flatMap { it.route }
-        val edgeInsertRules = mutableListOf<EdgeInsertRules>()
-        for ((index, step) in steps.withIndex()) {
-            val nextSteps = steps.drop(index + 1)
-            val usageCount = nextSteps.count { it.src.machine == step.machine || if (it is ExpressionEdge) it.param.any { it is EntityParam && it.machine == step.machine } else false }
+        val steps = mutableListOf<Triple<Int, Int, Edge>>()
+        for (route in globalRoute.withIndex()) {
+            for (edge in route.value.route.withIndex()) {
+                steps += Triple(route.index, edge.index, edge.value)
+            }
+        }
+        for ((routeIndex, edgeIndex, step) in steps) {
+            val nextSteps = steps.filter { it.first > routeIndex || (it.first == routeIndex && it.second > edgeIndex) }.map { it.third }
+            val usageCount = nextSteps.count { it.src.machine == step.dst.machine || if (it is ExpressionEdge) it.param.any { it is EntityParam && it.machine == step.dst.machine } else false }
             val hasReturnValue = edgeHasReturnValue(step)
-            edgeInsertRules += EdgeInsertRules(edge = step, hasReturnValue = hasReturnValue, makeStatement = !hasReturnValue || (usageCount > 1))
+            globalRoute[routeIndex].edgeInsertRules += EdgeInsertRules(edge = step, hasReturnValue = hasReturnValue, makeStatement = !hasReturnValue || (usageCount > 1))
         }
     }
 
@@ -109,36 +116,42 @@ class Migration(val library1: Library,
 
     private fun migrateLinkedEdge(route: Route): Replacement {
         val oldVarName = getVariableNameFromExpression(route.oldNode)
-        val pendingExpressions = applySteps(route.route, oldVarName)
+        val pendingExpressions = applySteps(route.route, route.edgeInsertRules, oldVarName)
         if (pendingExpressions.isNotEmpty()) {
-            val finalizerExpressions = applySteps(route.finalizerRoute, null)
+            val finalizerExpressions = applySteps(route.finalizerRoute, listOf(), null)
             return Replacement(oldNode = route.oldNode, pendingExpressions = pendingExpressions, finalizerExpressions = finalizerExpressions)
         } else {
             val newNode = dependencies[route.edge.dst.machine] ?: error("No such dependency")
-            return Replacement(oldNode = route.oldNode, pendingExpressions = listOf(PendingExpression(expression = newNode, edge = route.edge)), makeVariable = false)
+            return Replacement(oldNode = route.oldNode, pendingExpressions = listOf(PendingExpression(expression = newNode, edge = route.edge, provides = newNode)))
         }
     }
 
     private fun migrateMethodCall(route: Route): Replacement {
-        val pendingExpressions = applySteps(route.route, null)
-        val finalizerExpressions = applySteps(route.finalizerRoute, null)
-        return Replacement(oldNode = route.oldNode, pendingExpressions = pendingExpressions, finalizerExpressions = finalizerExpressions, removeOldNode = true, makeVariable = true, hasReturnValue = pendingExpressions.lastOrNull()?.provides != null)
+        val pendingExpressions = applySteps(route.route, route.edgeInsertRules, null)
+        val finalizerExpressions = applySteps(route.finalizerRoute, listOf(), null)
+        return Replacement(oldNode = route.oldNode, pendingExpressions = pendingExpressions, finalizerExpressions = finalizerExpressions, removeOldNode = true)
     }
 
     private fun migrateConstructorCall(route: Route): Replacement {
         val oldVarName = getVariableNameFromExpression(route.oldNode)
-        val pendingExpressions = applySteps(route.route, oldVarName)
-        val finalizerExpressions = applySteps(route.finalizerRoute, null)
+        val pendingExpressions = applySteps(route.route, route.edgeInsertRules, oldVarName)
+        val finalizerExpressions = applySteps(route.finalizerRoute, listOf(), null)
         return Replacement(oldNode = route.oldNode, pendingExpressions = pendingExpressions, finalizerExpressions = finalizerExpressions)
     }
 
-    private fun applySteps(steps: List<Edge>, oldVarName: String?): List<PendingExpression> {
+    private fun applySteps(steps: List<Edge>, rules: List<EdgeInsertRules>, oldVarName: String?): List<PendingExpression> {
         val pendingExpr = mutableListOf<PendingExpression>()
-        for (step in steps) {
+        for ((index, step) in steps.withIndex()) {
             println("    Step: " + step.label())
             val newExpressions: List<PendingExpression> = makeStep(step)
-            val name = if ((step == steps.last()) && (oldVarName != null)) oldVarName else generateVariableName(step)
-            val namedExpressions = newExpressions.map { if (it.edge is CallEdge && (it.edge.hasReturnValue == false)) it else it.copy(provides = name) }
+            val variableDeclarationReplacement = (step == steps.last()) && (oldVarName != null)
+            val name = if (variableDeclarationReplacement) oldVarName else generateVariableName(step)
+            val rule = rules[index]
+            val namedExpressions = newExpressions.map { when {
+                rule.makeStatement || variableDeclarationReplacement -> it.copy(provides = NameExpr(name), name = name, hasReturnValue = rule.hasReturnValue, makeVariable = true)
+                rule.hasReturnValue -> it.copy(provides = it.expression, hasReturnValue = true)
+                else -> it
+            } }
             println("Received expressions: " + namedExpressions.toString())
             for (expr in namedExpressions) {
                 addToContext(expr)
@@ -162,8 +175,8 @@ class Migration(val library1: Library,
     private fun generateVariableName(step: Edge) = "migration_${step.dst.machine.name}_${nameGeneratorCounter++}"
 
     private fun addToContext(pendingExpression: PendingExpression) {
-        if (pendingExpression.provides != null) {
-            dependencies[pendingExpression.edge.dst.machine] = NameExpr(pendingExpression.provides)
+        if (pendingExpression.hasReturnValue && pendingExpression.provides != null) {
+            dependencies[pendingExpression.edge.dst.machine] = pendingExpression.provides
         }
     }
 
@@ -233,7 +246,9 @@ class ReplacementPerformer(val replacements: List<Replacement>,
             applyReplacement(replacement)
         }
         for (stmt in removedStmts) {
-            (stmt.parentNode as BlockStmt).stmts.remove(stmt)
+//            if (replacements.flatMap { it.pendingExpressions }.none { getBlockStmt(it.expression).first == stmt } ) {
+                (stmt.parentNode as? BlockStmt)?.stmts?.remove(stmt)
+//            }
         }
     }
 
@@ -244,27 +259,23 @@ class ReplacementPerformer(val replacements: List<Replacement>,
 
         if (replacement.pendingExpressions.isNotEmpty()) {
             val pos = statements.indexOf(statement)
-            val pushedPendingExpressions = if ((replacement.hasReturnValue == false) || replacement.makeVariable) replacement.pendingExpressions else replacement.pendingExpressions.dropLast(1)
+            val pushedPendingExpressions = replacement.pendingExpressions.filter { it.makeVariable }
             val pendingStatements = pushedPendingExpressions.map { pending -> makeNewStatement(pending) }
             statements.addAll(pos, pendingStatements)
-            for (stmt in pushedPendingExpressions) {
-                stmt.expression.parentNode = blockStmt
+            for (stmt in pendingStatements) {
+                stmt.parentNode = blockStmt
             }
 
-            val newExpr = if (replacement.makeVariable && replacement.hasReturnValue) {
-                NameExpr(getNewVarName(replacement.pendingExpressions))
+            val lastExpr = replacement.pendingExpressions.last()
+            if (lastExpr.hasReturnValue && oldExpr.parentNode !is VariableDeclarator) {
+                val expr = lastExpr.provides!!
+                replaceNode(expr, oldExpr)
             } else {
-                replacement.pendingExpressions.last().expression
-            }
-            if (replacement.removeOldNode) {
                 removedStmts += statement
-//                statements.remove(statement)
-            } else {
-                replaceNode(newExpr, oldExpr)
             }
         } else if (replacement.oldNode.parentNode is ExpressionStmt || replacement.oldNode.parentNode is VariableDeclarator) {
             println("Remove $statement")
-            statements.remove(statement)
+            removedStmts += statement
         }
 
         makeFinalizers(statements, replacement)
@@ -279,20 +290,8 @@ class ReplacementPerformer(val replacements: List<Replacement>,
     }
 
     private fun replaceNode(newExpr: Expression, oldExpr: Node) {
-        val (statement, blockStmt) = getBlockStmt(oldExpr)
-        val statements = blockStmt.stmts
         val parent = oldExpr.parentNode
         when (parent) {
-            is VariableDeclarator -> {
-                if (newExpr is NameExpr) {
-                    statements.remove(statement)
-                    statement.parentNode = null
-                } else {
-                    val pos = statements.indexOf(statement)
-                    statements[pos] = ExpressionStmt(newExpr)
-                    statement.parentNode = null
-                }
-            }
             is AssignExpr -> parent.value = newExpr
             is BinaryExpr -> parent.left = newExpr
             is ObjectCreationExpr -> {
@@ -324,14 +323,14 @@ class ReplacementPerformer(val replacements: List<Replacement>,
         return Pair(node as Statement, node.parentNode as BlockStmt)
     }
 
-    private fun getNewVarName(pendingStmts: List<PendingExpression>): String = pendingStmts.map { stmt -> stmt.provides }.lastOrNull() ?: error("New statement should provide a variable")
+    // private fun getNewVarName(pendingStmts: List<PendingExpression>): String = pendingStmts.map { stmt -> stmt.provides }.lastOrNull() ?: error("New statement should provide a variable")
 
     private fun makeNewStatement(pendingExpression: PendingExpression): Statement {
-        if (pendingExpression.provides != null) {
+        if (pendingExpression.hasReturnValue) {
             val machine = pendingExpression.edge.dst.machine
             return makeNewVariable(
                     type = checkNotNull(machine.library.getType(machine, routeMaker.props[machine])),
-                    name = pendingExpression.provides,
+                    name = checkNotNull(pendingExpression.name),
                     initExpr = pendingExpression.expression
             )
         } else {
@@ -481,6 +480,10 @@ class RouteMaker(val globalRoute: MutableList<Route>,
                 if (action != null && action.withSideEffects == false) {
                     actionsQueue += action
                 }
+                if (globalRoute.any { route -> route.oldNode == usage.node }) {
+                    continue
+                }
+                globalRoute += Route(oldNode = usage.node, route = listOf(), edge = AutoEdge(edge.machine)) // TODO
                 continue
             }
             var dst: State? = edge.dst

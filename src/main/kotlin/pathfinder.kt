@@ -169,7 +169,7 @@ class PropsContext {
         val edge = locatedEdge.edge
         val props = makeProps(edge.dst)
         val isAllowed = edge.allowTransition(props)
-        if (!isAllowed) error("Not allowed")
+        // if (!isAllowed) error("Not allowed")
         stateProps += Pair(edge.dst.machine, props)
         val action = edge.action
         if (action != null) {

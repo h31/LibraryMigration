@@ -15,6 +15,7 @@ object HttpModels {
 object Actions {
     val setHeader = Action("setHeader")
     val setPayload = Action("setPayload")
+    val usePost = Action("usePost")
 }
 
 fun makeJava(): Library {
@@ -254,6 +255,9 @@ fun makeApache(): Library {
     val payload = StateMachine(name = "Payload")
     val byteArrayEntity = StateMachine(name = "ByteArrayEntity")
 
+    val requestParamName = StateMachine(name = "RequestParamName")
+    val requestParamValue = StateMachine(name = "RequestParamValue")
+
 //    client.edges.clear()
     client.states += makeFinalState(client)
     request.states += makeInitState(request)
@@ -261,6 +265,7 @@ fun makeApache(): Library {
     byteArrayEntity.states += makeInitState(byteArrayEntity)
     entityUtils.states += makeInitState(entityUtils)
     httpClientFactory.states += makeInitState(httpClientFactory)
+    payload.states += makeInitState(payload)
     request.migrateProperties = { oldProps -> oldProps[StateMachine(name = "JavaRequest")] ?: oldProps[StateMachine(name = "Builder")] ?: mapOf() }
     postRequest.migrateProperties = { oldProps -> oldProps[StateMachine(name = "JavaRequest")] ?: oldProps[StateMachine(name = "Builder")] ?: mapOf() }
 
@@ -301,13 +306,31 @@ fun makeApache(): Library {
                     state = encodedURL
             )
             ),
-            allowTransition = {props -> props["method"] == "POST"}
+            allowTransition = {props -> val post = props["method"] == "POST"; props["method"] = "POST"; post}
     )
 
     CallEdge(
             machine = request,
             methodName = "addHeader",
             action = Actions.setHeader,
+            callActionParams = {node ->
+                val name = node.args[0].toString()
+                val value = node.args[1].toString()
+                mapOf("headerName" to name, "headerValue" to value)
+            },
+            param = listOf(ActionParam("headerName"), ActionParam("headerValue")),
+            hasReturnValue = false
+    )
+
+    CallEdge(
+            machine = postRequest,
+            methodName = "addHeader",
+            action = Actions.setHeader,
+            callActionParams = {node ->
+                val name = node.args[0].toString()
+                val value = node.args[1].toString()
+                mapOf("headerName" to name, "headerValue" to value)
+            },
             param = listOf(ActionParam("headerName"), ActionParam("headerValue")),
             hasReturnValue = false
     )
@@ -348,6 +371,14 @@ fun makeApache(): Library {
             src = client.getDefaultState(),
             dst = client.getFinalState(),
             methodName = "close"
+    )
+
+    TemplateEdge(
+            machine = payload,
+            src = payload.getInitState(),
+            dst = payload.getConstructedState(),
+            template = "({{ name }} + \"=\" + {{ value }}).getBytes()",
+            templateParams = mapOf("name" to requestParamName.getDefaultState(), "value" to requestParamValue.getDefaultState())
     )
 
     ConstructorEdge(
@@ -438,7 +469,8 @@ fun makeApache(): Library {
     return Library(
             name = "apache",
             stateMachines = listOf(url, request, client, response, body, httpClientFactory,
-                    inputStream, contentLength, entity, entityUtils, statusCode, byteArrayEntity, payload, postRequest),
+                    inputStream, contentLength, entity, entityUtils, statusCode, byteArrayEntity, payload, postRequest,
+                    requestParamName, requestParamValue),
             machineTypes = mapOf(
                     url to "String",
                     request to "org.apache.http.client.methods.HttpGet",
@@ -453,7 +485,9 @@ fun makeApache(): Library {
                     entityUtils to "org.apache.http.util.EntityUtils",
                     statusCode to "int",
                     byteArrayEntity to "org.apache.http.entity.ByteArrayEntity",
-                    payload to "String"
+                    payload to "String",
+                    requestParamName to "String",
+                    requestParamValue to "String"
             ),
             typeGenerator = { machine, props ->
                 when {
@@ -536,7 +570,8 @@ fun makeOkHttp(): Library {
             dst = mediaType.getConstructedState(),
             methodName = "parse",
             isStatic = true,
-            param = listOf(EntityParam(machine = contentType))
+            param = listOf(EntityParam(machine = contentType)),
+            hasReturnValue = true
     )
 
     CallEdge(
@@ -545,7 +580,8 @@ fun makeOkHttp(): Library {
             dst = requestBody.getConstructedState(),
             methodName = "create",
             isStatic = true,
-            param = listOf(EntityParam(mediaType), EntityParam(payload))
+            param = listOf(EntityParam(mediaType), EntityParam(payload)),
+            hasReturnValue = true
     )
 
     ConstructorEdge(

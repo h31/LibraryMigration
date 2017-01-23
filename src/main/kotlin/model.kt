@@ -154,7 +154,7 @@ data class CallEdge(override val machine: StateMachine,
                     val methodName: String,
                     override val param: List<Param> = listOf(),
                     override val isStatic: Boolean = false,
-                    val hasReturnValue: Boolean = true) : ExpressionEdge {
+                    val hasReturnValue: Boolean = false) : ExpressionEdge {
     override fun getStyle() = "bold"
 
     override var linkedEdge: LinkedEdge? = null
@@ -207,6 +207,7 @@ data class ConstructorEdge(override val machine: StateMachine,
     }
 
     override fun label() = "new %s(%s)".format(constructedMachine?.label(), param.map(Param::label).joinToString())
+    override fun toString() = label()
 }
 
 data class LinkedEdge(val edge: ExpressionEdge,

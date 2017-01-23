@@ -50,10 +50,6 @@ class MigrationTest {
 
     @Test
     fun migrateInstagramJava() {
-        if (System.getenv().containsKey("CI")) {
-            println("Skip test!")
-            return
-        }
         Assert.assertTrue(migrate(projectDir = examples.resolve("instagram-java-scraper"),
                 from = okhttp,
                 to = java,
@@ -63,10 +59,6 @@ class MigrationTest {
 
     @Test
     fun migrateJavaApache() {
-        if (System.getenv().containsKey("CI")) {
-            println("Skip test!")
-            return
-        }
         Assert.assertTrue(migrate(projectDir = examples.resolve("HTTP"),
                 from = java,
                 to = apache,
