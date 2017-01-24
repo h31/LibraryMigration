@@ -45,7 +45,7 @@ class Migration(val library1: Library,
                 val codeElements: CodeElements,
                 val functionName: String,
                 val sourceFile: File,
-                val traceFile: File) {
+                val invocations: List<RouteExtractor.Invocation>) {
     val dependencies: MutableMap<StateMachine, Expression> = mutableMapOf()
     // val pendingStmts = mutableListOf<Statement>()
     var nameGeneratorCounter = 0
@@ -54,7 +54,7 @@ class Migration(val library1: Library,
     val needToMakeVariable: MutableMap<Pair<Route, Edge>, Boolean> = mutableMapOf()
 
     val extractor = RouteExtractor(library1, codeElements, functionName, sourceFile)
-    val routeMaker = RouteMaker(globalRoute, extractor, traceFile, replacements, library1, library2, dependencies)
+    val routeMaker = RouteMaker(globalRoute, extractor, invocations, library1, library2, dependencies)
     val replacementPerformer = ReplacementPerformer(replacements, routeMaker)
 
     fun doMigration() {
@@ -75,19 +75,19 @@ class Migration(val library1: Library,
         replacementPerformer.apply()
     }
 
-    private fun calcIfNeedToMakeVariable() {
-        val allSteps: MutableList<Pair<Route, Edge>> = mutableListOf()
-        for (route in globalRoute) {
-            for (step in route.route) {
-                allSteps += Pair(route, step)
-            }
-        }
-        for (step in allSteps) {
-            val count = allSteps.count { pair -> pair.second.src.machine == step.second.machine || pair.second is CallEdge && (pair.second as CallEdge).param.filterIsInstance<EntityParam>().any { it.machine == step.second.machine } }
-            needToMakeVariable.put(step, count > 1)
-//            if (allSteps.drop(stepIndexed.index+1).any { furtherStep -> furtherStep.second.src == step.second.dst })
-        }
-    }
+//    private fun calcIfNeedToMakeVariable() {
+//        val allSteps: MutableList<Pair<Route, Edge>> = mutableListOf()
+//        for (route in globalRoute) {
+//            for (step in route.route) {
+//                allSteps += Pair(route, step)
+//            }
+//        }
+//        for (step in allSteps) {
+//            val count = allSteps.count { pair -> pair.second.src.machine == step.second.machine || pair.second is CallEdge && (pair.second as CallEdge).param.filterIsInstance<EntityParam>().any { it.machine == step.second.machine } }
+//            needToMakeVariable.put(step, count > 1)
+////            if (allSteps.drop(stepIndexed.index+1).any { furtherStep -> furtherStep.second.src == step.second.dst })
+//        }
+//    }
 
     private fun makeInsertRules() {
         val steps = mutableListOf<Triple<Int, Int, Edge>>()
@@ -98,7 +98,7 @@ class Migration(val library1: Library,
         }
         for ((routeIndex, edgeIndex, step) in steps) {
             val nextSteps = steps.filter { it.first > routeIndex || (it.first == routeIndex && it.second > edgeIndex) }.map { it.third }
-            val usageCount = nextSteps.count { it.src.machine == step.dst.machine || if (it is ExpressionEdge) it.param.any { it is EntityParam && it.machine == step.dst.machine } else false }
+            val usageCount = nextSteps.count { usesEdge(it, step) }
             val hasReturnValue = edgeHasReturnValue(step)
             globalRoute[routeIndex].edgeInsertRules += EdgeInsertRules(edge = step, hasReturnValue = hasReturnValue, makeStatement = !hasReturnValue || (usageCount > 1))
         }
@@ -113,6 +113,13 @@ class Migration(val library1: Library,
     }
 
     private fun associateEdges(edges: Collection<Edge>, node: Node) = edges.map { edge -> edge to node }
+
+    private fun usesEdge(current: Edge, step: Edge): Boolean {
+        val usesAsThis = (current.src.machine == step.dst.machine)
+        val usesAsParam = if (current is ExpressionEdge) current.param.any { it is EntityParam && it.machine == step.dst.machine } else false
+        val usesAsLinkedEdge = if (current is LinkedEdge) usesEdge(current.edge, step) else false
+        return usesAsThis || usesAsParam || usesAsLinkedEdge // current.src.machine == step.dst.machine || if (current is ExpressionEdge) current.param.any { it is EntityParam && it.machine == step.dst.machine } else false
+    }
 
     private fun migrateLinkedEdge(route: Route): Replacement {
         val oldVarName = getVariableNameFromExpression(route.oldNode)
@@ -351,8 +358,7 @@ class RouteExtractor(val library1: Library,
                      val codeElements: CodeElements,
                      val functionName: String,
                      val sourceFile: File) {
-    fun extractFromJSON(traceFile: File): List<LocatedEdge> {
-        val invocations = ObjectMapper().registerKotlinModule().readValue<List<Invocation>>(traceFile)
+    fun extractFromJSON(invocations: List<Invocation>): List<LocatedEdge> {
         val localInvocations = invocations.filter { inv -> inv.callerName == functionName && inv.filename == this.sourceFile.name }
 
         val usedEdges: MutableList<LocatedEdge> = mutableListOf()
@@ -453,8 +459,7 @@ class RouteExtractor(val library1: Library,
 
 class RouteMaker(val globalRoute: MutableList<Route>,
                  val extractor: RouteExtractor,
-                 val traceFile: File,
-                 val replacements: MutableList<Replacement>,
+                 val invocations: List<RouteExtractor.Invocation>,
                  val library1: Library,
                  val library2: Library,
                  val dependencies: MutableMap<StateMachine, Expression>) {
@@ -464,7 +469,7 @@ class RouteMaker(val globalRoute: MutableList<Route>,
     lateinit var srcProps: PropsContext
 
     fun makeRoutes() {
-        val path = extractor.extractFromJSON(traceFile)
+        val path = extractor.extractFromJSON(invocations)
         srcProps = extractor.makeProps(path)
         props += library2.stateMachines.map { machine -> machine to machine.migrateProperties(srcProps.stateProps) }
 //        checkRoute(path)
@@ -495,23 +500,16 @@ class RouteMaker(val globalRoute: MutableList<Route>,
                         continue
                     }
                     globalRoute += Route(oldNode = usage.node, route = listOf(), edge = AutoEdge(edge.machine)) // TODO
-//                    replacements += Replacement(usage.node, listOf())
                     continue
                 }
             }
             val route = findRoute(context, dst, actionsQueue + listOfNotNull(action))
             actionsQueue.clear()
             props += route.stateProps
-            var extendedRoute = route.path
             for (step in route.path) {
                 addToContext(step.dst)
             }
-//            do {
-//                val newRoute = extendRoute(extendedRoute)
-//                val sameRoute = (newRoute == extendedRoute)
-//                extendedRoute = newRoute
-//            } while (sameRoute == false)
-            globalRoute += Route(oldNode = usage.node, route = extendedRoute, edge = edge)
+            globalRoute += Route(oldNode = usage.node, route = route.path, edge = edge)
         }
         // addFinalizers() // TODO
     }

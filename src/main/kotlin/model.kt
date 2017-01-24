@@ -49,9 +49,9 @@ data class StateMachine(val name: String,
     lateinit var library: Library
 
     init {
-        states += makeInitState(this)
-        states += makeConstructedState(this)
-        states += makeFinalState(this)
+        states += makeInitState()
+        states += makeConstructedState()
+        states += makeFinalState()
     }
 
     fun getInitState() = states.first { state -> state.name == "Init" }
@@ -69,6 +69,10 @@ data class StateMachine(val name: String,
     }
 
     fun type() = checkNotNull(library.machineSimpleTypes[this])
+
+    fun makeInitState() = State("Init", this)
+    fun makeConstructedState() = State("Constructed", this)
+    fun makeFinalState() = State("Final", this)
 }
 
 data class State(val name: String,
@@ -95,10 +99,6 @@ data class State(val name: String,
     fun isInit() = name == "Init"
     fun isFinal() = name == "Final"
 }
-
-fun makeInitState(machine: StateMachine) = State("Init", machine)
-fun makeConstructedState(machine: StateMachine) = State("Constructed", machine)
-fun makeFinalState(machine: StateMachine) = State("Final", machine)
 
 interface Edge : Labelable {
     override fun label(): String
@@ -142,7 +142,7 @@ interface ExpressionEdge : Edge {
 }
 
 data class CallEdge(override val machine: StateMachine,
-                    override val src: State = makeConstructedState(machine),
+                    override val src: State = machine.makeConstructedState(),
                     override val dst: State = src,
                     override val action: Action? = null,
                     override var allowTransition: (MutableMap<String, Any>) -> Boolean = {true},
@@ -168,7 +168,7 @@ data class CallEdge(override val machine: StateMachine,
 }
 
 data class AutoEdge(override val machine: StateMachine,
-                    override val src: State = makeConstructedState(machine),
+                    override val src: State = machine.makeConstructedState(),
                     override val dst: State = src,
                     override val action: Action? = null,
                     override var allowTransition: (MutableMap<String, Any>) -> Boolean = {true},
@@ -183,7 +183,7 @@ data class AutoEdge(override val machine: StateMachine,
 }
 
 data class ConstructorEdge(override val machine: StateMachine,
-                           override val src: State = makeConstructedState(machine),
+                           override val src: State = machine.makeConstructedState(),
                            override val dst: State = src,
                            override val action: Action? = null,
                            override var allowTransition: (MutableMap<String, Any>) -> Boolean = {true},
@@ -232,7 +232,7 @@ data class LinkedEdge(val edge: ExpressionEdge,
 }
 
 data class MakeArrayEdge(override val machine: StateMachine,
-                         override val src: State = makeConstructedState(machine),
+                         override val src: State = machine.makeConstructedState(),
                          override val dst: State = src,
                          override val action: Action? = null,
                          override var allowTransition: (MutableMap<String, Any>) -> Boolean = {true},
@@ -250,7 +250,7 @@ data class MakeArrayEdge(override val machine: StateMachine,
 }
 
 data class TemplateEdge(override val machine: StateMachine,
-                        override val src: State = makeConstructedState(machine),
+                        override val src: State = machine.makeConstructedState(),
                         override val dst: State = src,
                         override val action: Action? = null,
                         override var allowTransition: (MutableMap<String, Any>) -> Boolean = {true},
@@ -285,7 +285,7 @@ data class TemplateEdge(override val machine: StateMachine,
 }
 
 data class UsageEdge(override val machine: StateMachine,
-                     override val src: State = makeConstructedState(machine),
+                     override val src: State = machine.makeConstructedState(),
                      override val dst: State = src,
                      override val action: Action? = null,
                      override var allowTransition: (MutableMap<String, Any>) -> Boolean = {true},
@@ -303,7 +303,7 @@ data class UsageEdge(override val machine: StateMachine,
 }
 
 fun makeLinkedEdge(machine: StateMachine,
-                   src: State = makeConstructedState(machine),
+                   src: State = machine.makeConstructedState(),
                    dst: State,
 
                    methodName: String,

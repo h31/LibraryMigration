@@ -1,3 +1,6 @@
+import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.module.kotlin.readValue
+import com.fasterxml.jackson.module.kotlin.registerKotlinModule
 import com.github.javaparser.JavaParser
 import com.github.javaparser.ast.CompilationUnit
 import com.github.javaparser.ast.ImportDeclaration
@@ -50,6 +53,8 @@ fun migrate(projectDir: Path,
         error("Nothing to migrate")
     }
 
+    val invocations = parseInvocations(traceFile.toFile())
+
     val testDir = projectDir.resolveSibling("${projectDir.fileName}_test_${from.name}_${to.name}")
     prepareTestDir(projectDir, testDir)
 
@@ -58,7 +63,7 @@ fun migrate(projectDir: Path,
         val codeElements = CodeElements();
         CodeElementsVisitor().visit(cu, codeElements);
 
-        migrateFile(from, to, codeElements, source, traceFile.toFile())
+        migrateFile(from, to, codeElements, source, invocations)
         addImports(cu, to)
 
         val migratedCode = cu.toString()
@@ -70,6 +75,8 @@ fun migrate(projectDir: Path,
     testPatcher(testDir)
     return checkMigrationCorrectness(testDir, testClassName)
 }
+
+private fun parseInvocations(traceFile: File) = ObjectMapper().registerKotlinModule().readValue<List<RouteExtractor.Invocation>>(traceFile)
 
 private fun prepareTestDir(projectDir: Path, testDir: Path) {
     testDir.toFile().deleteRecursively()
@@ -154,7 +161,7 @@ fun migrateFile(library1: Library,
                 library2: Library,
                 codeElements: CodeElements,
                 file: File,
-                traceFile: File) {
+                invocations: List<RouteExtractor.Invocation>) {
     for (methodDecl in codeElements.methodDecls) {
         val methodLocalCodeElements = methodDecl.getCodeElements()
 
@@ -164,7 +171,7 @@ fun migrateFile(library1: Library,
                 codeElements = methodLocalCodeElements,
                 functionName = methodDecl.name(),
                 sourceFile = file,
-                traceFile = traceFile)
+                invocations = invocations)
 
         migration.doMigration()
         migrateClassMembers(library1, library2, codeElements)
@@ -227,7 +234,7 @@ private fun fixEntityTypes(codeElements: CodeElements, graph1: Library, graph2: 
     }
 }
 
-private fun checkNodePosition(node: Node, beginLine: Int, endLine: Int) = node.beginLine >= beginLine && node.endLine <= endLine
+private fun checkNodePosition(node: Node, beginLine: Int, endLine: Int) = node.begin.line >= beginLine && node.end.line <= endLine
 
 fun parseFile(file: File): CompilationUnit {
     val fis = FileInputStream(file)

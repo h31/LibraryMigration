@@ -440,14 +440,7 @@ fun makeApache(): Library {
                     payload to "String",
                     requestParamName to "String",
                     requestParamValue to "String"
-            ),
-            typeGenerator = { machine, props ->
-                when {
-                    machine.name == "Request" && props["method"] == "POST" -> "HttpPost"
-                    machine.name == "Request" && props["method"] == "GET" -> "HttpGet"
-                    else -> null
-                }
-            }
+            )
     )
 }
 
