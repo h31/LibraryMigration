@@ -35,9 +35,6 @@ fun makeJava(): Library {
     val requestParamName = StateMachine(name = "RequestParamName")
     val requestParamValue = StateMachine(name = "RequestParamValue")
 
-    urlData.states += makeInitState(urlData)
-    payload.states += makeInitState(payload)
-
     val connected = State(name = "Connected", machine = request)
 
     AutoEdge(
@@ -57,23 +54,14 @@ fun makeJava(): Library {
             )
     )
 
-    makeLinkedEdge(
-            machine = urlData,
-            src = hasURL,
+    LinkedEdge(
             dst = request.getDefaultState(),
-            methodName = "openConnection"
+            edge = CallEdge(
+                    machine = urlData,
+                    src = hasURL,
+                    methodName = "openConnection"
+            )
     )
-
-//    val inputStream = StateMachine(entity = HTTPEntities.inputStream)
-
-//    makeLinkedEdge(
-//            machine = connection,
-//            dst = inputStream.getDefaultState(),
-//            action = CallAction(
-//                    methodName = "getInputStream",
-//                    param = null
-//            )
-//    )
 
     val body = StateMachine(name = "Body")
 
@@ -99,8 +87,6 @@ fun makeJava(): Library {
     )
 
     LinkedEdge(
-            machine = request,
-            src = connected,
             dst = inputStream.getDefaultState(),
             edge = CallEdge(
                     machine = request,
@@ -113,7 +99,7 @@ fun makeJava(): Library {
             machine = request,
             methodName = "setRequestProperty",
             action = Actions.setHeader,
-            callActionParams = {node ->
+            callActionParams = { node ->
                 val name = node.args[0].toString()
                 val value = node.args[1].toString()
                 mapOf("headerName" to name, "headerValue" to value)
@@ -131,8 +117,6 @@ fun makeJava(): Library {
     )
 
     LinkedEdge(
-            machine = request,
-            src = connected,
             dst = contentLength.getDefaultState(),
             edge = CallEdge(
                     machine = request,
@@ -142,14 +126,12 @@ fun makeJava(): Library {
     )
 
     LinkedEdge(
-            machine = request,
-            src = connected,
             dst = outputStream.getDefaultState(),
             edge = CallEdge(
                     machine = request,
                     src = connected,
                     methodName = "getOutputStream",
-                    allowTransition = { map -> map["method"] == "POST"}
+                    allowTransition = { map -> map["method"] == "POST" }
             )
     )
 
@@ -181,8 +163,6 @@ fun makeJava(): Library {
     ) //             allowTransition = { map -> val written = map.contains("Written"); map.put("Written", true); !written },
 
     LinkedEdge(
-            machine = request,
-            src = connected,
             dst = httpConnection.getConstructedState(),
             edge = TemplateEdge(
                     machine = request,
@@ -198,7 +178,6 @@ fun makeJava(): Library {
     )
 
     LinkedEdge(
-            machine = httpConnection,
             dst = statusCode.getConstructedState(),
             edge = CallEdge(
                     machine = httpConnection,
@@ -258,23 +237,17 @@ fun makeApache(): Library {
     val requestParamName = StateMachine(name = "RequestParamName")
     val requestParamValue = StateMachine(name = "RequestParamValue")
 
-//    client.edges.clear()
-    client.states += makeFinalState(client)
-    request.states += makeInitState(request)
-    postRequest.states += makeInitState(postRequest)
-    byteArrayEntity.states += makeInitState(byteArrayEntity)
-    entityUtils.states += makeInitState(entityUtils)
-    httpClientFactory.states += makeInitState(httpClientFactory)
-    payload.states += makeInitState(payload)
     request.migrateProperties = { oldProps -> oldProps[StateMachine(name = "JavaRequest")] ?: oldProps[StateMachine(name = "Builder")] ?: mapOf() }
     postRequest.migrateProperties = { oldProps -> oldProps[StateMachine(name = "JavaRequest")] ?: oldProps[StateMachine(name = "Builder")] ?: mapOf() }
 
-    makeLinkedEdge(
-            machine = httpClientFactory,
-            src = httpClientFactory.getInitState(),
+    LinkedEdge(
             dst = client.getConstructedState(),
-            methodName = "createDefault",
-            isStatic = true
+            edge = CallEdge(
+                    machine = httpClientFactory,
+                    src = httpClientFactory.getInitState(),
+                    methodName = "createDefault",
+                    isStatic = true
+            )
     )
 
     TemplateEdge(
@@ -306,14 +279,14 @@ fun makeApache(): Library {
                     state = encodedURL
             )
             ),
-            allowTransition = {props -> val post = props["method"] == "POST"; props["method"] = "POST"; post}
+            allowTransition = { props -> val post = props["method"] == "POST"; props["method"] = "POST"; post }
     )
 
     CallEdge(
             machine = request,
             methodName = "addHeader",
             action = Actions.setHeader,
-            callActionParams = {node ->
+            callActionParams = { node ->
                 val name = node.args[0].toString()
                 val value = node.args[1].toString()
                 mapOf("headerName" to name, "headerValue" to value)
@@ -326,7 +299,7 @@ fun makeApache(): Library {
             machine = postRequest,
             methodName = "addHeader",
             action = Actions.setHeader,
-            callActionParams = {node ->
+            callActionParams = { node ->
                 val name = node.args[0].toString()
                 val value = node.args[1].toString()
                 mapOf("headerName" to name, "headerValue" to value)
@@ -346,23 +319,27 @@ fun makeApache(): Library {
 //            )
 //    )
 
-    makeLinkedEdge(
-            machine = client,
+    LinkedEdge(
             dst = response.getDefaultState(),
-            methodName = "execute",
-            param = listOf(EntityParam(
-                    machine = request
-            )
+            edge = CallEdge(
+                    machine = client,
+                    methodName = "execute",
+                    param = listOf(EntityParam(
+                            machine = request
+                    )
+                    )
             )
     )
 
-    makeLinkedEdge(
-            machine = client,
+    LinkedEdge(
             dst = response.getDefaultState(),
-            methodName = "execute",
-            param = listOf(EntityParam(
-                    machine = postRequest
-            )
+            edge = CallEdge(
+                    machine = client,
+                    methodName = "execute",
+                    param = listOf(EntityParam(
+                            machine = postRequest
+                    )
+                    )
             )
     )
 
@@ -396,54 +373,39 @@ fun makeApache(): Library {
             hasReturnValue = false
     )
 
-    makeLinkedEdge(
-            machine = response,
+    LinkedEdge(
             dst = entity.getDefaultState(),
-            methodName = "getEntity"
+            edge = CallEdge(
+                    machine = response,
+                    methodName = "getEntity"
+            )
     )
 
-    makeLinkedEdge(
-            machine = entityUtils,
-            src = entityUtils.getInitState(),
+    LinkedEdge(
             dst = body.getDefaultState(),
-            methodName = "toString",
-            param = listOf(EntityParam(machine = entity)),
-            isStatic = true
+            edge = CallEdge(
+                    machine = entityUtils,
+                    src = entityUtils.getInitState(),
+                    methodName = "toString",
+                    param = listOf(EntityParam(machine = entity)),
+                    isStatic = true
+            )
     )
 
-//    val toStringTemplate = TemplateEdge(
-//            machine = main,
-//            template = "EntityUtils.toString({{ httpResponse }}.getEntity())",
-//            templateParams = mapOf("httpResponse" to connection.getConstructedState()),
-//            isStatic = true
-//    )
-
-//    LinkedEdge(
-//            machine = main,
-//            dst = body.getDefaultState(),
-//            edge = toStringTemplate
-//    )
-
-    makeLinkedEdge(
-            machine = entity,
+    LinkedEdge(
             dst = inputStream.getDefaultState(),
-            methodName = "getContent"
+            edge = CallEdge(
+                    machine = entity,
+                    methodName = "getContent"
+            )
     )
 
-//    LinkedEdge(
-//            machine = connection,
-//            dst = inputStream.getDefaultState(),
-//            edge = TemplateEdge(
-//                    machine = connection,
-//                    template = "{{ httpResponse }}.getEntity().getContent()",
-//                    templateParams = mapOf("httpResponse" to connection.getConstructedState())
-//            )
-//    )
-
-    makeLinkedEdge(
-            machine = entity,
+    LinkedEdge(
             dst = contentLength.getDefaultState(),
-            methodName = "getContentLength"
+            edge = CallEdge(
+                    machine = entity,
+                    methodName = "getContentLength"
+            )
     )
 
     LinkedEdge(
@@ -455,16 +417,6 @@ fun makeApache(): Library {
                     templateParams = mapOf("conn" to response.getDefaultState())
             )
     )
-
-//    LinkedEdge(
-//            machine = connection,
-//            dst = contentLength.getDefaultState(),
-//            edge = TemplateEdge(
-//                    machine = connection,
-//                    template = "{{ httpResponse }}.getEntity().getContentLength()",
-//                    templateParams = mapOf("httpResponse" to connection.getConstructedState())
-//            )
-//    )
 
     return Library(
             name = "apache",
@@ -520,14 +472,6 @@ fun makeOkHttp(): Library {
     val mediaType = StateMachine(name = "MediaType")
     val payload = StateMachine(name = "Payload")
 
-    client.states += makeInitState(client)
-    builder.states += makeInitState(builder)
-    requestBody.states += makeInitState(requestBody)
-    contentType.states += makeInitState(contentType)
-    mediaType.states += makeInitState(mediaType)
-    client.states += makeFinalState(client)
-    formBodyBuilder.states += makeInitState(formBodyBuilder)
-
     val encodedURL = State(name = "encodedURL", machine = url)
     val builderHasURL = State(name = "hasURL", machine = builder)
     val formMade = State(name = "FormMade", machine = formBodyBuilder)
@@ -553,7 +497,8 @@ fun makeOkHttp(): Library {
             machine = builder,
             dst = builderHasURL,
             methodName = "url",
-            param = listOf(EntityParam(machine = url, state = encodedURL))
+            param = listOf(EntityParam(machine = url, state = encodedURL)),
+            hasReturnValue = true
     )
 
     TemplateEdge(
@@ -597,11 +542,13 @@ fun makeOkHttp(): Library {
             param = listOf(EntityParam(requestParamName), EntityParam(requestParamValue))
     )
 
-    makeLinkedEdge(
-            machine = formBodyBuilder,
-            src = formMade,
+    LinkedEdge(
             dst = requestBody.getConstructedState(),
-            methodName = "build"
+            edge = CallEdge(
+                    machine = formBodyBuilder,
+                    src = formMade,
+                    methodName = "build"
+            )
     )
 
     CallEdge(
@@ -619,7 +566,7 @@ fun makeOkHttp(): Library {
             src = builderHasURL,
             methodName = "header",
             action = Actions.setHeader,
-            callActionParams = {node ->
+            callActionParams = { node ->
                 val name = node.args[0].toString()
                 val value = node.args[1].toString()
                 mapOf("headerName" to name, "headerValue" to value)
@@ -627,18 +574,22 @@ fun makeOkHttp(): Library {
             param = listOf(ActionParam("headerName"), ActionParam("headerValue"))
     )
 
-    makeLinkedEdge(
-            machine = builder,
-            src = builderHasURL,
+    LinkedEdge(
             dst = request.getConstructedState(),
-            methodName = "build"
+            edge = CallEdge(
+                    machine = builder,
+                    src = builderHasURL,
+                    methodName = "build"
+            )
     )
 
-    makeLinkedEdge(
-            machine = client,
+    LinkedEdge(
             dst = call.getDefaultState(),
-            methodName = "newCall",
-            param = listOf(EntityParam(machine = request))
+            edge = CallEdge(
+                    machine = client,
+                    methodName = "newCall",
+                    param = listOf(EntityParam(machine = request))
+            )
     )
 
     AutoEdge(
@@ -646,40 +597,52 @@ fun makeOkHttp(): Library {
             dst = client.getFinalState()
     )
 
-    val execute = makeLinkedEdge(
-            machine = call,
+    LinkedEdge(
             dst = response.getDefaultState(),
-            methodName = "execute"
+            edge = CallEdge(
+                    machine = call,
+                    methodName = "execute"
+            )
     )
 
-    makeLinkedEdge(
-            machine = response,
+    LinkedEdge(
             dst = entity.getDefaultState(),
-            methodName = "body"
+            edge = CallEdge(
+                    machine = response,
+                    methodName = "body"
+            )
     )
 
-    makeLinkedEdge(
-            machine = entity,
+    LinkedEdge(
             dst = body.getDefaultState(),
-            methodName = "string"
+            edge = CallEdge(
+                    machine = entity,
+                    methodName = "string"
+            )
     )
 
-    makeLinkedEdge(
-            machine = entity,
+    LinkedEdge(
             dst = inputStream.getDefaultState(),
-            methodName = "byteStream"
+            edge = CallEdge(
+                    machine = entity,
+                    methodName = "byteStream"
+            )
     )
 
-    makeLinkedEdge(
-            machine = entity,
+    LinkedEdge(
             dst = contentLength.getDefaultState(),
-            methodName = "contentLength"
+            edge = CallEdge(
+                    machine = entity,
+                    methodName = "contentLength"
+            )
     )
 
-    makeLinkedEdge(
-            machine = response,
+    LinkedEdge(
             dst = statusCode.getConstructedState(),
-            methodName = "code"
+            edge = CallEdge(
+                    machine = response,
+                    methodName = "code"
+            )
     )
 
     return Library(

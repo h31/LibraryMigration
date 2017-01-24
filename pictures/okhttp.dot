@@ -11,8 +11,8 @@ digraph G {
     }
     subgraph cluster2 {
     label = <<B>Client: OkHttpClient</B>>;
-        Constructed_Client [ label="Constructed" ];
         Init_Client [ label="Init" ];
+        Constructed_Client [ label="Constructed" ];
         Final_Client [ label="Final" ];
         virtual0 [ shape = point ];
     }
@@ -43,8 +43,8 @@ digraph G {
     }
     subgraph cluster8 {
     label = <<B>Builder: Request.Builder</B>>;
-        Constructed_Builder [ label="Constructed" ];
         Init_Builder [ label="Init" ];
+        Constructed_Builder [ label="Constructed" ];
         hasURL_Builder [ label="hasURL" ];
         virtual6 [ shape = point ];
     }
@@ -59,13 +59,13 @@ digraph G {
     }
     subgraph cluster11 {
     label = <<B>RequestBody: RequestBody</B>>;
-        Constructed_RequestBody [ label="Constructed" ];
         Init_RequestBody [ label="Init" ];
+        Constructed_RequestBody [ label="Constructed" ];
     }
     subgraph cluster12 {
     label = <<B>ContentType: String</B>>;
-        Constructed_ContentType [ label="Constructed" ];
         Init_ContentType [ label="Init" ];
+        Constructed_ContentType [ label="Constructed" ];
     }
     subgraph cluster13 {
     label = <<B>Payload: String</B>>;
@@ -73,13 +73,13 @@ digraph G {
     }
     subgraph cluster14 {
     label = <<B>MediaType: MediaType</B>>;
-        Constructed_MediaType [ label="Constructed" ];
         Init_MediaType [ label="Init" ];
+        Constructed_MediaType [ label="Constructed" ];
     }
     subgraph cluster15 {
     label = <<B>FormBodyBuilder: FormBody.Builder</B>>;
-        Constructed_FormBodyBuilder [ label="Constructed" ];
         Init_FormBodyBuilder [ label="Init" ];
+        Constructed_FormBodyBuilder [ label="Constructed" ];
         FormMade_FormBodyBuilder [ label="FormMade" ];
         virtual8 [ shape = point ];
     }
@@ -91,22 +91,20 @@ digraph G {
     label = <<B>RequestParamValue: String</B>>;
         Constructed_RequestParamValue [ label="Constructed" ];
     }
-        Constructed_URL -> encodedURL_URL [ label="", style = "solid"  ];
+        Constructed_URL -> encodedURL_URL [ label="Auto", style = "solid"  ];
         encodedURL_URL -> hasURL_Builder [ label="Usage in url(URL: String)", style = "dashed"  ];
         Constructed_Request -> Constructed_Client [ label="Usage in newCall(Request: Request)", style = "dashed"  ];
         Init_Client -> Constructed_Client [ label="new Client: OkHttpClient()", style = "bold"  ];
         Constructed_Client -> virtual0 [ style = "bold" label="newCall(Request: Request)"  ];
         virtual0 -> Constructed_Client [ style = "bold"  ];
         virtual0 -> Constructed_Call [ label="return Call()"  ];
-        Constructed_Client -> Final_Client [ label="", style = "solid"  ];
-        Constructed_Client -> Constructed_Client [ label="", style = "solid"  ];
+        Constructed_Client -> Final_Client [ label="Auto", style = "solid"  ];
         Constructed_Response -> virtual1 [ style = "bold" label="body()"  ];
         virtual1 -> Constructed_Response [ style = "bold"  ];
         virtual1 -> Constructed_Entity [ label="return ResponseBody()"  ];
         Constructed_Response -> virtual2 [ style = "bold" label="code()"  ];
         virtual2 -> Constructed_Response [ style = "bold"  ];
         virtual2 -> Constructed_StatusCode [ label="return int()"  ];
-        Constructed_Response -> Constructed_Response [ label="", style = "solid"  ];
         Constructed_Entity -> virtual3 [ style = "bold" label="string()"  ];
         virtual3 -> Constructed_Entity [ style = "bold"  ];
         virtual3 -> Constructed_Body [ label="return String()"  ];
@@ -116,34 +114,28 @@ digraph G {
         Constructed_Entity -> virtual5 [ style = "bold" label="contentLength()"  ];
         virtual5 -> Constructed_Entity [ style = "bold"  ];
         virtual5 -> Constructed_ContentLength [ label="return long()"  ];
-        Constructed_Entity -> Constructed_Entity [ label="", style = "solid"  ];
         Init_Builder -> Constructed_Builder [ label="new Builder: Request.Builder()", style = "bold"  ];
         Constructed_Builder -> hasURL_Builder [ label="url(URL: String)", style = "bold"  ];
         hasURL_Builder -> hasURL_Builder [ label="post(RequestBody: RequestBody)", style = "bold"  ];
-        hasURL_Builder -> hasURL_Builder [ label="header(ActionParam(propertyName&#x3D;headerName), ActionParam(propertyName&#x3D;headerValue))", style = "bold"  ];
+        hasURL_Builder -> hasURL_Builder [ label="header(headerName, headerValue)", style = "bold"  ];
         hasURL_Builder -> virtual6 [ style = "bold" label="build()"  ];
         virtual6 -> hasURL_Builder [ style = "bold"  ];
         virtual6 -> Constructed_Request [ label="return Request()"  ];
-        Constructed_Builder -> Constructed_Builder [ label="", style = "solid"  ];
         Constructed_Call -> virtual7 [ style = "bold" label="execute()"  ];
         virtual7 -> Constructed_Call [ style = "bold"  ];
         virtual7 -> Constructed_Response [ label="return Response()"  ];
-        Constructed_Call -> Constructed_Call [ label="", style = "solid"  ];
         Init_RequestBody -> Constructed_RequestBody [ label="create(MediaType: MediaType, Payload: String)", style = "bold"  ];
         Constructed_RequestBody -> hasURL_Builder [ label="Usage in post(RequestBody: RequestBody)", style = "dashed"  ];
-        Constructed_RequestBody -> Constructed_RequestBody [ label="", style = "solid"  ];
         Init_ContentType -> Constructed_ContentType [ label="Template", style = "bold"  ];
         Constructed_ContentType -> Constructed_MediaType [ label="Usage in parse(ContentType: String)", style = "dashed"  ];
         Constructed_Payload -> Constructed_RequestBody [ label="Usage in create(MediaType: MediaType, Payload: String)", style = "dashed"  ];
         Init_MediaType -> Constructed_MediaType [ label="parse(ContentType: String)", style = "bold"  ];
         Constructed_MediaType -> Constructed_RequestBody [ label="Usage in create(MediaType: MediaType, Payload: String)", style = "dashed"  ];
-        Constructed_MediaType -> Constructed_MediaType [ label="", style = "solid"  ];
         Init_FormBodyBuilder -> Constructed_FormBodyBuilder [ label="new FormBodyBuilder: FormBody.Builder()", style = "bold"  ];
         Constructed_FormBodyBuilder -> FormMade_FormBodyBuilder [ label="add(RequestParamName: String, RequestParamValue: String)", style = "bold"  ];
         FormMade_FormBodyBuilder -> virtual8 [ style = "bold" label="build()"  ];
         virtual8 -> FormMade_FormBodyBuilder [ style = "bold"  ];
         virtual8 -> Constructed_RequestBody [ label="return RequestBody()"  ];
-        Constructed_FormBodyBuilder -> Constructed_FormBodyBuilder [ label="", style = "solid"  ];
         Constructed_RequestParamName -> FormMade_FormBodyBuilder [ label="Usage in add(RequestParamName: String, RequestParamValue: String)", style = "dashed"  ];
         Constructed_RequestParamValue -> FormMade_FormBodyBuilder [ label="Usage in add(RequestParamName: String, RequestParamValue: String)", style = "dashed"  ];
 }

@@ -24,6 +24,7 @@ data class Library(val name: String,
     init {
         for (machine in stateMachines) {
             machine.library = this
+            machine.states.removeAll { state -> edges.none { it.dst == state || it.src == state } }
         }
         if (machineTypes.size != stateMachines.size) error("Types: ${machineTypes.size}, machines: ${stateMachines.size}")
     }
@@ -48,13 +49,9 @@ data class StateMachine(val name: String,
     lateinit var library: Library
 
     init {
-//        states += makeInitState(this)
+        states += makeInitState(this)
         states += makeConstructedState(this)
-//        edges += AutoEdge(
-//                machine = this,
-//                src = getInitState(),
-//                dst = getConstructedState()
-//        )
+        states += makeFinalState(this)
     }
 
     fun getInitState() = states.first { state -> state.name == "Init" }
@@ -182,7 +179,7 @@ data class AutoEdge(override val machine: StateMachine,
         machine.edges += this
     }
 
-    override fun label() = ""
+    override fun label() = "Auto"
 }
 
 data class ConstructorEdge(override val machine: StateMachine,
@@ -347,11 +344,13 @@ data class PropertyParam(val propertyName: String) : Param {
 }
 
 data class ActionParam(val propertyName: String) : Param {
-    override fun label() = toString()
+    override fun label() = propertyName
+    override fun toString() = label()
 }
 
 data class ConstParam(val value: String) : Param {
     override fun label() = value
+    override fun toString() = label()
 }
 
 data class Action(val name: String,

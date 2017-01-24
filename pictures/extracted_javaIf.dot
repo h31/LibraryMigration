@@ -7,9 +7,9 @@ digraph G {
     }
     subgraph cluster1 {
     label = <<B>URLData: URL</B>>;
-        Constructed_URLData [ label="Constructed" ];
-        hasURL_URLData [ label="hasURL" ];
         Init_URLData [ label="Init" ];
+        hasURL_URLData [ label="hasURL" ];
+        Constructed_URLData [ label="Constructed" ];
         virtual0 [ shape = point ];
     }
     subgraph cluster2 {
@@ -49,8 +49,8 @@ digraph G {
     }
     subgraph cluster9 {
     label = <<B>Payload: byte[]</B>>;
-        Constructed_Payload [ label="Constructed" ];
         Init_Payload [ label="Init" ];
+        Constructed_Payload [ label="Constructed" ];
     }
     subgraph cluster10 {
     label = <<B>RequestParamName: String</B>>;
