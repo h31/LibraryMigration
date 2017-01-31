@@ -1,3 +1,5 @@
+import com.github.javaparser.ast.expr.Expression
+import com.github.javaparser.ast.expr.MethodCallExpr
 import java.util.*
 
 /**
@@ -9,7 +11,7 @@ class PathFinder(val edges: Set<Edge>, val src: Set<State>, val initProps: Map<S
 
     fun findPath(goal: State?) {
         for (state in src) {
-            pending += Model(state = state, props = makeProps(state, null)).setContext(src)
+            pending += Model(state = state, props = getProps(state.machine, null)).setContext(src)
         }
         while (true) {
             if (haveMissingRequirements.isNotEmpty()) {
@@ -78,15 +80,20 @@ class PathFinder(val edges: Set<Edge>, val src: Set<State>, val initProps: Map<S
         }
     }
 
-    fun makeProps(state: State, currentProps: Map<String, Any>?): MutableMap<String, Any> {
-        if (currentProps != null) {
-            return LinkedHashMap(currentProps)
+    fun getProps(machine: StateMachine, currentProps: Map<String, Any>?): Map<String, Any> {
+        val existingProps = initProps[machine]
+        return when {
+            currentProps != null -> currentProps
+            existingProps != null -> existingProps
+            else -> mapOf()
         }
-        val existingProps = initProps[state.machine]
-        return if (existingProps != null) LinkedHashMap(existingProps) else mutableMapOf()
     }
 
-    fun makeActions(oldActions: List<Action>, newAction: Action?) = if (newAction != null) (oldActions + newAction).sorted() else oldActions
+    fun makeProps(edge: Edge, currentProps: Map<String, Any>?): Map<String, Any> {
+        return edge.propertyModifier(getProps(edge.dst.machine, currentProps))
+    }
+
+    fun makeActions(oldActions: List<Action>, newAction: List<Action>) = if (newAction.isNotEmpty()) (oldActions + newAction).sorted() else oldActions
 
     fun calcRequirements(edge: Edge, context: Set<State>): List<State> = when (edge) {
         is ExpressionEdge -> {
@@ -115,7 +122,7 @@ class PathFinder(val edges: Set<Edge>, val src: Set<State>, val initProps: Map<S
         if (submittedModels == 0) {
             print("")
             for (state in current.context) {
-                val newModel = Model(state = state, props = makeProps(state, current.stateProps[state.machine]), actions = current.actions)
+                val newModel = Model(state = state, props = getProps(state.machine, current.stateProps[state.machine]), actions = current.actions)
                 if (visited.contains(newModel)) {
                     continue
                 }
@@ -134,11 +141,11 @@ class PathFinder(val edges: Set<Edge>, val src: Set<State>, val initProps: Map<S
             if (edge is UsageEdge) {
                 continue
             }
-            val action = edge.action
+            val actions = edge.actions
             val requirements = calcRequirements(edge, current.context)
-            val newProps = makeProps(edge.dst, current.stateProps[edge.dst.machine])
+            val newProps = makeProps(edge, current.stateProps[edge.dst.machine])
             val isAllowed = edge.allowTransition(newProps) && (if (edge is LinkedEdge) edge.edge.allowTransition(LinkedHashMap(current.props)) else true)
-            val newModel = Model(state = edge.dst, props = newProps, actions = makeActions(current.actions, action))
+            val newModel = Model(state = edge.dst, props = newProps, actions = makeActions(current.actions, actions))
             if (visited.contains(newModel)) {
                 continue
             }
@@ -150,7 +157,7 @@ class PathFinder(val edges: Set<Edge>, val src: Set<State>, val initProps: Map<S
                 haveMissingRequirements += Pair(newModel, requirements)
                 continue
             }
-            val isProperAction = if (action != null) requiredActions.contains(action) && newModel.actions.size <= requiredActions.size else true
+            val isProperAction = if (actions.isNotEmpty()) requiredActions.containsAll(actions) && newModel.actions.size <= requiredActions.size else true
             if (isAllowed && isProperAction) {
                 pending.add(newModel)
                 submittedModels++
@@ -162,19 +169,26 @@ class PathFinder(val edges: Set<Edge>, val src: Set<State>, val initProps: Map<S
 
 class PropsContext {
     var stateProps: Map<StateMachine, Map<String, Any>> = mapOf()
-    var actionParams: List<Pair<Action, Map<String, Any>>> = listOf()
+    var actionParams: List<Pair<String, Expression>> = listOf()
     var actions: List<Action> = listOf()
 
     fun addEdgeFromTrace(locatedEdge: RouteExtractor.LocatedEdge) {
         val edge = locatedEdge.edge
         val props = makeProps(edge.dst)
         val isAllowed = edge.allowTransition(props)
-        // if (!isAllowed) error("Not allowed")
-        stateProps += Pair(edge.dst.machine, props)
-        val action = edge.action
-        if (action != null) {
+        if (!isAllowed) error("Not allowed")
+        val newProps = edge.propertyModifier(props)
+        stateProps += Pair(edge.dst.machine, newProps)
+        for (action in edge.actions) {
             actions += action
-            actionParams += Pair(action, edge.actionParams(locatedEdge.node))
+            if (edge is ExpressionEdge) {
+                for ((index, param) in edge.param.withIndex()) {
+                    if (param is ActionParam) {
+                        val expr = (locatedEdge.node as MethodCallExpr).args[index]
+                        actionParams += Pair(param.propertyName, expr)
+                    }
+                }
+            }
         }
     }
 

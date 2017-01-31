@@ -98,12 +98,7 @@ fun makeJava(): Library {
     CallEdge(
             machine = request,
             methodName = "setRequestProperty",
-            action = Actions.setHeader,
-            callActionParams = { node ->
-                val name = node.args[0].toString()
-                val value = node.args[1].toString()
-                mapOf("headerName" to name, "headerValue" to value)
-            },
+            actions = listOf(Actions.setHeader),
             param = listOf(ActionParam("headerName"), ActionParam("headerValue")),
             hasReturnValue = false
     )
@@ -111,7 +106,8 @@ fun makeJava(): Library {
     CallEdge(
             machine = request,
             methodName = "setDoOutput",
-            allowTransition = { map -> map.put("method", "POST"); true },
+            actions = listOf(Actions.usePost),
+            propertyModifier = { map -> map + Pair("method", "POST") },
             hasReturnValue = false,
             param = listOf(ConstParam("true"))
     )
@@ -158,7 +154,7 @@ fun makeJava(): Library {
             machine = outputStream,
             methodName = "write",
             param = listOf(EntityParam(payload)),
-            action = Actions.setPayload,
+            actions = listOf(Actions.setPayload),
             hasReturnValue = false
     ) //             allowTransition = { map -> val written = map.contains("Written"); map.put("Written", true); !written },
 
@@ -237,9 +233,6 @@ fun makeApache(): Library {
     val requestParamName = StateMachine(name = "RequestParamName")
     val requestParamValue = StateMachine(name = "RequestParamValue")
 
-    request.migrateProperties = { oldProps -> oldProps[StateMachine(name = "JavaRequest")] ?: oldProps[StateMachine(name = "Builder")] ?: mapOf() }
-    postRequest.migrateProperties = { oldProps -> oldProps[StateMachine(name = "JavaRequest")] ?: oldProps[StateMachine(name = "Builder")] ?: mapOf() }
-
     LinkedEdge(
             dst = client.getConstructedState(),
             edge = CallEdge(
@@ -279,18 +272,14 @@ fun makeApache(): Library {
                     state = encodedURL
             )
             ),
-            allowTransition = { props -> val post = props["method"] == "POST"; props["method"] = "POST"; post }
+            actions = listOf(Actions.usePost),
+            propertyModifier = { props -> props + Pair("method", "POST")}
     )
 
     CallEdge(
             machine = request,
             methodName = "addHeader",
-            action = Actions.setHeader,
-            callActionParams = { node ->
-                val name = node.args[0].toString()
-                val value = node.args[1].toString()
-                mapOf("headerName" to name, "headerValue" to value)
-            },
+            actions = listOf(Actions.setHeader),
             param = listOf(ActionParam("headerName"), ActionParam("headerValue")),
             hasReturnValue = false
     )
@@ -298,12 +287,7 @@ fun makeApache(): Library {
     CallEdge(
             machine = postRequest,
             methodName = "addHeader",
-            action = Actions.setHeader,
-            callActionParams = { node ->
-                val name = node.args[0].toString()
-                val value = node.args[1].toString()
-                mapOf("headerName" to name, "headerValue" to value)
-            },
+            actions = listOf(Actions.setHeader),
             param = listOf(ActionParam("headerName"), ActionParam("headerValue")),
             hasReturnValue = false
     )
@@ -369,7 +353,7 @@ fun makeApache(): Library {
             machine = postRequest,
             methodName = "setEntity",
             param = listOf(EntityParam(byteArrayEntity)),
-            action = Actions.setPayload,
+            actions = listOf(Actions.setPayload),
             hasReturnValue = false
     )
 
@@ -549,21 +533,16 @@ fun makeOkHttp(): Library {
             src = builderHasURL,
             methodName = "post",
             param = listOf(EntityParam(machine = requestBody)),
-            action = Actions.setPayload,
-            allowTransition = { map -> map.put("method", "POST"); true },
-            hasReturnValue = true
+            actions = listOf(Actions.usePost, Actions.setPayload),
+            hasReturnValue = true,
+            propertyModifier = { map -> map + Pair("method", "POST") }
     )
 
     CallEdge(
             machine = builder,
             src = builderHasURL,
             methodName = "header",
-            action = Actions.setHeader,
-            callActionParams = { node ->
-                val name = node.args[0].toString()
-                val value = node.args[1].toString()
-                mapOf("headerName" to name, "headerValue" to value)
-            },
+            actions = listOf(Actions.setHeader),
             param = listOf(ActionParam("headerName"), ActionParam("headerValue"))
     )
 

@@ -208,18 +208,20 @@ class Migration(val library1: Library,
             checkNotNull(dependencies[edge.machine])
         }
 
+        val fetched = mutableListOf<Pair<String, Expression>>()
+
         val args = edge.param.map { param -> when (param) {
             is EntityParam -> checkNotNull(dependencies[param.machine])
             is ActionParam -> {
-                val pair = routeMaker.srcProps.actionParams.first { it.first == edge.action }
-                NameExpr(pair.second[param.propertyName].toString())
+                val pair = routeMaker.srcProps.actionParams.first { param.propertyName == it.first }
+                fetched += pair
+                NameExpr(pair.second.toString())
             }
             is ConstParam -> NameExpr(param.value)
             else -> TODO()
         } }
 
-        if (edge.param.filterIsInstance<ActionParam>().isNotEmpty()) {
-            val pair = routeMaker.srcProps.actionParams.first { it.first == edge.action }
+        for (pair in fetched) {
             routeMaker.srcProps.actionParams -= pair
         }
 
@@ -479,10 +481,10 @@ class RouteMaker(val globalRoute: MutableList<Route>,
             val edge = usage.edge
             println("Processing " + edge.label() + "... ")
             extractDependenciesFromNode(edge, usage.node)
-            val action = edge.action
+            val actions = edge.actions
             if (edge.canBeSkipped()) {
                 println("  Makes a loop, skipping")
-                if (action != null && action.withSideEffects == false) {
+                for (action in actions.filter { it.withSideEffects == false }) {
                     actionsQueue += action
                 }
                 if (globalRoute.any { route -> route.oldNode == usage.node }) {
@@ -493,7 +495,7 @@ class RouteMaker(val globalRoute: MutableList<Route>,
             }
             var dst: State? = edge.dst
             if (edge.dst.machine in library2.stateMachines == false) {
-                if (action != null) {
+                if (actions.isNotEmpty()) {
                     dst = null
                 } else {
                     if (globalRoute.any { route -> route.oldNode == usage.node }) {
@@ -503,7 +505,7 @@ class RouteMaker(val globalRoute: MutableList<Route>,
                     continue
                 }
             }
-            val route = findRoute(context, dst, actionsQueue + listOfNotNull(action))
+            val route = findRoute(context, dst, actionsQueue + actions)
             actionsQueue.clear()
             props += route.stateProps
             for (step in route.path) {
