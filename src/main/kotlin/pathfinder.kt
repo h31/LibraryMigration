@@ -83,17 +83,14 @@ class PathFinder(val edges: Set<Edge>, val src: Set<State>, val initProps: Map<S
         }
     }
 
-    fun getProps(machine: StateMachine, currentProps: Map<String, Any>?): Map<String, Any> {
+    fun getProps(machine: StateMachine, model: Model?): Map<String, Any> {
+        val currentProps = model?.stateProps?.get(machine)
         val existingProps = initProps[machine]
         return when {
             currentProps != null -> currentProps
             existingProps != null -> existingProps
             else -> mapOf()
         }
-    }
-
-    fun makeProps(edge: Edge, currentProps: Map<String, Any>?): Map<String, Any> {
-        return edge.propertyModifier(getProps(edge.dst.machine, currentProps))
     }
 
     fun makeActions(oldActions: List<Action>, newAction: List<Action>) = if (newAction.isNotEmpty()) (oldActions + newAction).sorted() else oldActions
@@ -125,7 +122,7 @@ class PathFinder(val edges: Set<Edge>, val src: Set<State>, val initProps: Map<S
         if (submittedModels == 0) {
             print("")
             for (state in current.context) {
-                val newModel = Model(state = state, props = getProps(state.machine, current.stateProps[state.machine]), actions = current.actions)
+                val newModel = Model(state = state, props = getProps(state.machine, current), actions = current.actions)
                 if (visited.contains(newModel)) {
                     continue
                 }
@@ -146,8 +143,9 @@ class PathFinder(val edges: Set<Edge>, val src: Set<State>, val initProps: Map<S
             }
             val actions = edge.actions
             val requirements = calcRequirements(edge, current.context)
-            val newProps = makeProps(edge, current.stateProps[edge.dst.machine])
-            val isAllowed = edge.allowTransition(newProps) && (if (edge is LinkedEdge) edge.edge.allowTransition(LinkedHashMap(current.props)) else true)
+            val props = getProps(edge.dst.machine, current)
+            val isAllowed = edge.allowTransition(props) && (if (edge is LinkedEdge) edge.edge.allowTransition(current.props) else true)
+            val newProps = edge.propertyModifier(props)
             val newModel = Model(state = edge.dst, props = newProps, actions = makeActions(current.actions, actions))
             if (visited.contains(newModel)) {
                 continue
