@@ -11,6 +11,7 @@ import com.github.javaparser.ast.stmt.ExpressionStmt
 import com.github.javaparser.ast.stmt.ReturnStmt
 import com.github.javaparser.ast.stmt.Statement
 import com.github.javaparser.ast.type.ClassOrInterfaceType
+import mu.KotlinLogging
 import java.io.File
 
 /**
@@ -53,12 +54,14 @@ class Migration(val library1: Library,
     val globalRoute: MutableList<Route> = mutableListOf()
     val needToMakeVariable: MutableMap<Pair<Route, Edge>, Boolean> = mutableMapOf()
 
+    private val logger = KotlinLogging.logger {}
+
     val extractor = RouteExtractor(library1, codeElements, functionName, sourceFile)
     val routeMaker = RouteMaker(globalRoute, extractor, invocations, library1, library2, dependencies)
     val replacementPerformer = ReplacementPerformer(replacements, routeMaker)
 
     fun doMigration() {
-        println("Function: $functionName")
+        logger.info("Function: $functionName")
         routeMaker.makeRoutes()
         makeInsertRules()
 //        calcIfNeedToMakeVariable()
@@ -149,7 +152,7 @@ class Migration(val library1: Library,
     private fun applySteps(steps: List<Edge>, rules: List<EdgeInsertRules>, oldVarName: String?): List<PendingExpression> {
         val pendingExpr = mutableListOf<PendingExpression>()
         for ((index, step) in steps.withIndex()) {
-            println("    Step: " + step.label())
+            logger.info("    Step: " + step.label())
             val newExpressions: List<PendingExpression> = makeStep(step)
             val variableDeclarationReplacement = (step == steps.last()) && (oldVarName != null)
             val name = if (variableDeclarationReplacement) oldVarName else generateVariableName(step)
@@ -159,7 +162,7 @@ class Migration(val library1: Library,
                 rule.hasReturnValue -> it.copy(provides = it.expression, hasReturnValue = true)
                 else -> it
             } }
-            println("Received expressions: " + namedExpressions.toString())
+            logger.info("Received expressions: " + namedExpressions.toString())
             for (expr in namedExpressions) {
                 addToContext(expr)
             }
@@ -250,6 +253,8 @@ class ReplacementPerformer(val replacements: List<Replacement>,
                            val routeMaker: RouteMaker) {
     val removedStmts = mutableListOf<Statement>()
 
+    private val logger = KotlinLogging.logger {}
+
     fun apply() {
         for (replacement in replacements) {
             applyReplacement(replacement)
@@ -283,7 +288,7 @@ class ReplacementPerformer(val replacements: List<Replacement>,
                 removedStmts += statement
             }
         } else if (replacement.oldNode.parentNode is ExpressionStmt || replacement.oldNode.parentNode is VariableDeclarator) {
-            println("Remove $statement")
+            logger.info("Remove $statement")
             removedStmts += statement
         }
 
@@ -360,6 +365,8 @@ class RouteExtractor(val library1: Library,
                      val codeElements: CodeElements,
                      val functionName: String,
                      val sourceFile: File) {
+    private val logger = KotlinLogging.logger {}
+
     fun extractFromJSON(invocations: List<Invocation>): List<LocatedEdge> {
         val localInvocations = invocations.filter { inv -> inv.callerName == functionName && inv.filename == this.sourceFile.name }
 
@@ -383,7 +390,7 @@ class RouteExtractor(val library1: Library,
                         usedEdges += LocatedEdge(linkedEdge, methodCall)
 //                        usedEdges += associateEdges(linkedEdge.getSubsequentAutoEdges(), methodCall)
                     } else {
-                        println("Missing linked node")
+                        logger.error("Missing linked node")
                     }
                 }
             } else if (invocation.kind == "constructor-call") {
@@ -401,11 +408,11 @@ class RouteExtractor(val library1: Library,
         }
         val usedEdgesCleanedUp = usedEdges.distinct()
         if (usedEdgesCleanedUp.isNotEmpty()) {
-            println("--- Used edges:")
+            logger.info("--- Used edges:")
             for (edge in usedEdgesCleanedUp) {
-                println(edge.edge.label())
+                logger.info(edge.edge.label())
             }
-            println("---")
+            logger.info("---")
             graphvizRender(toDOT(library1, usedEdgesCleanedUp.map { usage -> usage.edge }), "extracted_" + functionName)
         }
         return usedEdgesCleanedUp.distinct()
@@ -430,10 +437,10 @@ class RouteExtractor(val library1: Library,
     }
 
     private fun printRoute(route: List<Edge>) {
-//        println("Route from %s to %s: ".format(src.stateAndMachineName(),
+//        logger.info("Route from %s to %s: ".format(src.stateAndMachineName(),
 //                dst.stateAndMachineName()))
         for (state in route.withIndex()) {
-            println("%d: %s".format(state.index, state.value.label()))
+            logger.info("%d: %s".format(state.index, state.value.label()))
         }
     }
 
@@ -470,6 +477,8 @@ class RouteMaker(val globalRoute: MutableList<Route>,
     val actionsQueue = mutableListOf<Action>()
     lateinit var srcProps: PropsContext
 
+    private val logger = KotlinLogging.logger {}
+
     fun makeRoutes() {
         val path = extractor.extractFromJSON(invocations)
         srcProps = extractor.makeProps(path)
@@ -479,11 +488,11 @@ class RouteMaker(val globalRoute: MutableList<Route>,
         fillContextWithInit()
         for (usage in path) {
             val edge = usage.edge
-            println("Processing " + edge.label() + "... ")
+            logger.info("Processing " + edge.label() + "... ")
             extractDependenciesFromNode(edge, usage.node)
             val actions = edge.actions
             if (edge.canBeSkipped()) {
-                println("  Makes a loop, skipping")
+                logger.info("  Makes a loop, skipping")
                 for (action in actions.filter { it.withSideEffects == false }) {
                     actionsQueue += action
                 }
@@ -589,7 +598,7 @@ class RouteMaker(val globalRoute: MutableList<Route>,
     }
 
     private fun findRoute(src: Set<State>, dst: State?, actions: List<Action>): PathFinder.Model {
-        println("  Searching route from ${src.joinToString(transform = State::stateAndMachineName)} to ${dst?.stateAndMachineName()} with ${actions.joinToString(transform = Action::name)}")
+        logger.info("  Searching route from ${src.joinToString(transform = State::stateAndMachineName)} to ${dst?.stateAndMachineName()} with ${actions.joinToString(transform = Action::name)}")
         val edges = library2.stateMachines.flatMap(StateMachine::edges).toSet()
         val pathFinder = PathFinder(edges, src, props, actions.sorted())
         pathFinder.findPath(dst)
@@ -622,20 +631,20 @@ class RouteMaker(val globalRoute: MutableList<Route>,
 
     private fun addDependenciesToContext(deps: Map<State, Expression?>) {
         for ((dep, expr) in deps) {
-            println("Machine ${dep.machine.label()} is now in state ${dep.label()}")
+            logger.info("Machine ${dep.machine.label()} is now in state ${dep.label()}")
             if (context.contains(dep)) {
                 continue
             }
             addToContext(dep)
 
             if (expr != null) {
-                println("Machine ${dep.machine.label()} can be accessed by expr \"$expr\"")
+                logger.info("Machine ${dep.machine.label()} can be accessed by expr \"$expr\"")
                 dependencies[dep.machine] = expr
 
                 val autoDeps = library1.edges.filterIsInstance<AutoEdge>().filter { edge -> edge.src == dep }
                 for (autoDep in autoDeps) {
                     val dstMachine = autoDep.dst.machine
-                    println("Additionally machine ${dstMachine.label()} can be accessed by expr \"$expr\"")
+                    logger.info("Additionally machine ${dstMachine.label()} can be accessed by expr \"$expr\"")
                     addToContext(autoDep.dst)
                     dependencies[dstMachine] = expr
                 }

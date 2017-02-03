@@ -11,14 +11,12 @@ import com.github.javaparser.ast.stmt.BlockStmt
 import com.github.javaparser.ast.stmt.ExpressionStmt
 import com.github.javaparser.ast.type.ClassOrInterfaceType
 import com.github.javaparser.ast.visitor.VoidVisitorAdapter
-import org.gradle.tooling.GradleConnectionException
+import mu.KotlinLogging
 import org.gradle.tooling.GradleConnector
 import org.gradle.tooling.ProjectConnection
-import org.gradle.tooling.ResultHandler
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.FileInputStream
-import java.io.OutputStream
 import java.nio.charset.Charset
 import java.nio.file.Files
 import java.nio.file.Path
@@ -59,7 +57,7 @@ fun migrate(projectDir: Path,
     prepareTestDir(projectDir, testDir)
 
     for ((source, cu) in pending) {
-        println("Migrating $source")
+        logger.info("Migrating $source")
         val codeElements = CodeElements();
         CodeElementsVisitor().visit(cu, codeElements);
 
@@ -315,19 +313,21 @@ class MethodOrConstructorDeclaration(val node: BodyDeclaration) {
     }
 }
 
+private val logger = KotlinLogging.logger {}
+
 data class ClassDiff(val name: String,
                      val methodsChanged: Map<MethodDeclaration, MethodDiff>)
 
 fun checkMigrationCorrectness(testDir: Path, testClassName: String?): Boolean {
-    println("Running migrated code")
+    logger.info("Running migrated code")
 
     val connector = GradleConnector.newConnector()
     val connection = connector.forProjectDirectory(testDir.toFile()).connect()
 
     val (buildResult, buildOutput) = runGradleTask(connection, "assemble")
     if (buildResult == false) {
-        println("Compilation failed!")
-        println(buildOutput)
+        logger.error("Compilation failed!")
+        logger.error(buildOutput)
         return false
     }
 
@@ -339,12 +339,12 @@ fun checkMigrationCorrectness(testDir: Path, testClassName: String?): Boolean {
     }
     connection.close()
     if (testResult) {
-        println("Migration OK")
+        logger.info("Migration OK")
         return true
     } else {
-        println("Migrated code doesn't work properly")
-        println("Migrated:")
-        println(testOutput)
+        logger.error("Migrated code doesn't work properly")
+        logger.error("Migrated:")
+        logger.error(testOutput)
         return false
     }
 }

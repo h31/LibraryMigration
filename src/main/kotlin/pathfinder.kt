@@ -1,5 +1,6 @@
 import com.github.javaparser.ast.expr.Expression
 import com.github.javaparser.ast.expr.MethodCallExpr
+import mu.KotlinLogging
 import java.util.*
 
 /**
@@ -8,6 +9,8 @@ import java.util.*
 class PathFinder(val edges: Set<Edge>, val src: Set<State>, val initProps: Map<StateMachine, Map<String, Any>>,
                  val requiredActions: List<Action>) {
     lateinit var resultModel: Model
+
+    private val logger = KotlinLogging.logger {}
 
     fun findPath(goal: State?) {
         for (state in src) {
@@ -19,7 +22,7 @@ class PathFinder(val edges: Set<Edge>, val src: Set<State>, val initProps: Map<S
                 for ((model, requirements) in haveMissingRequirements) {
                     val requiredModels = visited.filter { requirements.contains(it.state) }.filter { it.actions.isEmpty() } // TODO
                     if (requiredModels.size == requirements.size) {
-                        println("Model ${model.state} received all dependencies ($requirements)")
+                        logger.info("Model ${model.state} received all dependencies ($requirements)")
                         val newModel = model.copy(actions = model.actions + requiredModels.flatMap { it.actions })
                         val newPath = model.path.toMutableList()
                         newPath.addAll(Math.max(newPath.size - 1, 0), requiredModels.flatMap { it.path })
@@ -35,7 +38,7 @@ class PathFinder(val edges: Set<Edge>, val src: Set<State>, val initProps: Map<S
                 processedModels.forEach { model -> haveMissingRequirements.removeAll { it.first == model } }
             }
             if (pending.isEmpty()) {
-                println("Not found!")
+                logger.error("Not found!")
 //                visited.add(Model(State(name = "Constructed", machine = StateMachine("Payload"))))
 //                haveMissingRequirements.mapValues { model -> model.value.filterNot { state -> state.machine.name == "Payload" } }
 //                for (entry in haveMissingRequirements) {
@@ -49,9 +52,9 @@ class PathFinder(val edges: Set<Edge>, val src: Set<State>, val initProps: Map<S
             }
             val model = pending.poll()
             if (aStar(model, goal, edges)) {
-                println("Solution found, route:")
+                logger.info("Solution found, route:")
                 for (link in model.path.withIndex()) {
-                    println(link.index.toString() + ". " + link.value.label())
+                    logger.info(link.index.toString() + ". " + link.value.label())
                 }
                 resultModel = model
                 return
@@ -153,7 +156,7 @@ class PathFinder(val edges: Set<Edge>, val src: Set<State>, val initProps: Map<S
             newModel.stateProps = current.stateProps + Pair(newModel.state.machine, newModel.props)
             newModel.context = current.context.filterNot { it.machine == edge.dst.machine }.toSet() + edge.dst
             if (requirements.isNotEmpty()) {
-                println("Model ${newModel.state} + edge $edge have requirements: $requirements")
+                logger.info("Model ${newModel.state} + edge $edge have requirements: $requirements")
                 haveMissingRequirements += Pair(newModel, requirements)
                 continue
             }
