@@ -9,6 +9,7 @@ import java.util.*
 class PathFinder(val edges: Set<Edge>, val src: Set<State>, val initProps: Map<StateMachine, Map<String, Any>>,
                  val requiredActions: List<Action>) {
     lateinit var resultModel: Model
+    val requiredActionsMultiset = requiredActions.fold(mapOf<Action, Int>(), {map, action -> map + Pair(action, map[action]?.inc() ?: 1)})
 
     private val logger = KotlinLogging.logger {}
 
@@ -158,13 +159,21 @@ class PathFinder(val edges: Set<Edge>, val src: Set<State>, val initProps: Map<S
                 haveMissingRequirements += Pair(newModel, requirements)
                 continue
             }
-            val isProperAction = if (actions.isNotEmpty()) requiredActions.containsAll(actions) && newModel.actions.size <= requiredActions.size else true
+            val isProperAction = checkIsProperAction(actions, newModel)
             if (isAllowed && isProperAction) {
                 pending.add(newModel)
                 submittedModels++
             }
         }
         return submittedModels
+    }
+
+    private fun checkIsProperAction(actions: List<Action>, newModel: Model) = if (actions.isEmpty()) {
+        true
+    } else {
+        requiredActions.containsAll(actions) && requiredActionsMultiset.all {
+            pair -> newModel.actions.count { it == pair.key } <= pair.value
+        }
     }
 }
 
