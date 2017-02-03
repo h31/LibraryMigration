@@ -1,16 +1,7 @@
 import com.samskivert.mustache.Mustache
-import org.jgrapht.EdgeFactory
-import org.jgrapht.ext.DOTExporter
-import org.jgrapht.ext.EdgeNameProvider
-import org.jgrapht.ext.VertexNameProvider
-import org.jgrapht.graph.DirectedPseudograph
-import java.io.File
 import java.io.FileReader
-import java.io.FileWriter
 import java.nio.file.Files
-import java.nio.file.Path
 import java.nio.file.Paths
-import java.io.StringReader
 
 
 /**
@@ -75,34 +66,4 @@ fun DOTtoPDF(prefix: String) {
     val rt = Runtime.getRuntime();
     val command = "dot -Tpdf %s -o %s".format(dotPath, pdfPath)
     rt.exec(command)
-}
-
-fun toJGrapht(library: Library): DirectedPseudograph<State, Edge> {
-    System.out.println("Start")
-    val graph = DirectedPseudograph<State, Edge>(
-            EdgeFactory { source, target -> source.machine.edges.first { edge -> edge.src == source && edge.dst == target } }
-    )
-
-    val exporter = DOTExporter<State, Edge>(VertexNameProvider { it.id() },
-            VertexNameProvider { it -> it.machine.name + " " + it.label() }, EdgeNameProvider { it.label() })
-
-    for (fsm in library.stateMachines) {
-//        System.out.println("FSM: " + fsm.toString())
-        for (state in fsm.states) {
-//            System.out.println("Vertex: " + state.toString())
-            graph.addVertex(state)
-        }
-//        val subgraph = DirectedSubgraph(graph, fsm.states.toSet(), null)
-    }
-    for (fsm in library.stateMachines) {
-        for (edge in fsm.edges) {
-//            System.out.println("Edge: " + edge.toString())
-            graph.addEdge(edge.src, edge.dst, edge)
-        }
-    }
-
-    exporter.export(FileWriter(File("graph_debug.dot"), false), graph)
-    DOTtoPDF("graph_debug")
-
-    return graph
 }
