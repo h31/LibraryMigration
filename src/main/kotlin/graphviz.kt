@@ -11,7 +11,6 @@ import java.nio.file.Paths
 fun toDOT(library: Library, visited: List<Edge> = listOf()): String {
     val edges = mutableListOf<Map<String, Any>>()
     val virtuals = library.stateMachines.map { it -> it to mutableListOf<Int>() }.toMap()
-    val displayerMachines = library.stateMachines.filter { it -> it.inherits == null }
 
     var counter = 0
     for (machine in library.stateMachines) {

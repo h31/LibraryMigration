@@ -95,6 +95,7 @@ digraph G {
         Constructed_OutputStream -> Constructed_OutputStream [ label="close()", style = "bold"  ];
         Constructed_OutputStream -> Constructed_OutputStream [ label="flush()", style = "bold"  ];
         Constructed_OutputStream -> Constructed_OutputStream [ label="write(Payload: byte[])", style = "bold"  ];
+        Constructed_OutputStream -> Constructed_OutputStream [ label="Auto", style = "solid"  ];
         Init_Payload -> Constructed_Payload [ label="Template", style = "bold"  ];
         Constructed_Payload -> Constructed_OutputStream [ label="Usage in write(Payload: byte[])", style = "dashed"  ];
         Constructed_RequestParamName -> Constructed_Payload [ label="Usage in Template", style = "dashed"  ];
