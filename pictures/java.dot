@@ -9,7 +9,6 @@ digraph G {
     label = <<B>URLData: URL</B>>;
         Init_URLData [ label="Init" ];
         hasURL_URLData [ label="hasURL" ];
-        Constructed_URLData [ label="Constructed" ];
         virtual0 [ shape = point ];
     }
     subgraph cluster2 {
@@ -20,7 +19,6 @@ digraph G {
         virtual2 [ shape = point ];
         virtual3 [ shape = point ];
         virtual4 [ shape = point ];
-        virtual5 [ shape = point ];
     }
     subgraph cluster3 {
     label = <<B>Body: String</B>>;
@@ -41,7 +39,7 @@ digraph G {
     subgraph cluster7 {
     label = <<B>HttpConnection: HttpURLConnection</B>>;
         Constructed_HttpConnection [ label="Constructed" ];
-        virtual6 [ shape = point ];
+        virtual5 [ shape = point ];
     }
     subgraph cluster8 {
     label = <<B>OutputStream: OutputStream</B>>;
@@ -66,7 +64,6 @@ digraph G {
         hasURL_URLData -> virtual0 [ style = "bold" label="openConnection()"  ];
         virtual0 -> hasURL_URLData [ style = "bold"  ];
         virtual0 -> Constructed_JavaRequest [ label="return URLConnection()"  ];
-        Constructed_URLData -> Constructed_URLData [ label="Auto", style = "solid"  ];
         Constructed_JavaRequest -> Connected_JavaRequest [ label="Auto", style = "solid"  ];
         Connected_JavaRequest -> virtual1 [ style = "bold" label="Template"  ];
         virtual1 -> Connected_JavaRequest [ style = "bold"  ];
@@ -82,20 +79,16 @@ digraph G {
         Connected_JavaRequest -> virtual4 [ style = "bold" label="getOutputStream()"  ];
         virtual4 -> Connected_JavaRequest [ style = "bold"  ];
         virtual4 -> Constructed_OutputStream [ label="return OutputStream()"  ];
-        Connected_JavaRequest -> virtual5 [ style = "bold" label="Template"  ];
-        virtual5 -> Connected_JavaRequest [ style = "bold"  ];
-        virtual5 -> Constructed_HttpConnection [ label="return HttpURLConnection()"  ];
-        Constructed_JavaRequest -> Constructed_JavaRequest [ label="Auto", style = "solid"  ];
+        Connected_JavaRequest -> Constructed_HttpConnection [ label="(HttpConnection) JavaRequest", style = "bold"  ];
         Constructed_HttpConnection -> Connected_JavaRequest [ label="Auto", style = "solid"  ];
-        Constructed_HttpConnection -> virtual6 [ style = "bold" label="getResponseCode()"  ];
-        virtual6 -> Constructed_HttpConnection [ style = "bold"  ];
-        virtual6 -> Constructed_StatusCode [ label="return int()"  ];
+        Constructed_HttpConnection -> virtual5 [ style = "bold" label="getResponseCode()"  ];
+        virtual5 -> Constructed_HttpConnection [ style = "bold"  ];
+        virtual5 -> Constructed_StatusCode [ label="return int()"  ];
         Constructed_HttpConnection -> Constructed_HttpConnection [ label="setRequestProperty()", style = "bold"  ];
         Constructed_HttpConnection -> Constructed_HttpConnection [ label="setDoOutput()", style = "bold"  ];
         Constructed_OutputStream -> Constructed_OutputStream [ label="close()", style = "bold"  ];
         Constructed_OutputStream -> Constructed_OutputStream [ label="flush()", style = "bold"  ];
         Constructed_OutputStream -> Constructed_OutputStream [ label="write(Payload: byte[])", style = "bold"  ];
-        Constructed_OutputStream -> Constructed_OutputStream [ label="Auto", style = "solid"  ];
         Init_Payload -> Constructed_Payload [ label="Template", style = "bold"  ];
         Constructed_Payload -> Constructed_OutputStream [ label="Usage in write(Payload: byte[])", style = "dashed"  ];
         Constructed_RequestParamName -> Constructed_Payload [ label="Usage in Template", style = "dashed"  ];

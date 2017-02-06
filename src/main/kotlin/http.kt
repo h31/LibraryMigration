@@ -158,14 +158,10 @@ fun makeJava(): Library {
             hasReturnValue = false
     ) //             allowTransition = { map -> val written = map.contains("Written"); map.put("Written", true); !written },
 
-    LinkedEdge(
-            dst = httpConnection.getConstructedState(),
-            edge = TemplateEdge(
-                    machine = request,
-                    src = connected,
-                    template = "((HttpURLConnection) {{ response }})",
-                    templateParams = mapOf("response" to connected)
-            )
+    CastEdge(
+            machine = request,
+            src = connected,
+            dst = httpConnection.getConstructedState()
     )
 
     AutoEdge(

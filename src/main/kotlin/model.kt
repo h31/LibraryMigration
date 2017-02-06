@@ -17,10 +17,11 @@ interface Identifiable {
 data class Library(val name: String,
                    val stateMachines: List<StateMachine>,
                    val machineTypes: Map<StateMachine, String>,
-                   val typeGenerator: (StateMachine, Map<String, Any>) -> String? = {machine, props -> null}) {
+                   val typeGenerator: (StateMachine, Map<String, Any>) -> String? = { machine, props -> null }) {
     val machineSimpleTypes: Map<StateMachine, String> get() = machineTypes.mapValues { entry -> simpleType(entry.value) }
     val edges: List<Edge> = stateMachines.flatMap(StateMachine::edges)
     private val additionalTypes: List<String> = edges.filterIsInstance<TemplateEdge>().flatMap(TemplateEdge::additionalTypes)
+
     init {
         for (machine in stateMachines) {
             machine.library = this
@@ -118,12 +119,13 @@ interface Edge : Labelable {
         allowTransition(map)
         return loop && !withSideEffects // && map.isEmpty()
     }
+
     fun getNonSideEffectsActions() = actions.filter { it.withSideEffects == false }
 }
 
-data class Requirements(val allowTransition: (Map<String, Any>) -> Boolean = {true},
-                        val migrateProperties: (Map<StateMachine, Map<String, Any>>) -> Map<String, Any> = {mapOf()},
-                        val actionParams: (Any) -> Map<String, Any> = {mapOf()}
+data class Requirements(val allowTransition: (Map<String, Any>) -> Boolean = { true },
+                        val migrateProperties: (Map<StateMachine, Map<String, Any>>) -> Map<String, Any> = { mapOf() },
+                        val actionParams: (Any) -> Map<String, Any> = { mapOf() }
 )
 
 interface ExpressionEdge : Edge {
@@ -145,8 +147,8 @@ data class CallEdge(override val machine: StateMachine,
                     override val src: State = machine.makeConstructedState(),
                     override val dst: State = src,
                     override val actions: List<Action> = listOf(),
-                    override var allowTransition: (Map<String, Any>) -> Boolean = {true},
-                    override var propertyModifier: (Map<String, Any>) -> Map<String, Any> = {it},
+                    override var allowTransition: (Map<String, Any>) -> Boolean = { true },
+                    override var propertyModifier: (Map<String, Any>) -> Map<String, Any> = { it },
 
                     val methodName: String,
                     override val param: List<Param> = listOf(),
@@ -170,8 +172,8 @@ data class AutoEdge(override val machine: StateMachine,
                     override val src: State = machine.makeConstructedState(),
                     override val dst: State = src,
                     override val actions: List<Action> = listOf(),
-                    override var allowTransition: (Map<String, Any>) -> Boolean = {true},
-                    override var propertyModifier: (Map<String, Any>) -> Map<String, Any> = {it}) : Edge {
+                    override var allowTransition: (Map<String, Any>) -> Boolean = { true },
+                    override var propertyModifier: (Map<String, Any>) -> Map<String, Any> = { it }) : Edge {
     override fun getStyle() = "solid"
 
     init {
@@ -185,8 +187,8 @@ data class ConstructorEdge(override val machine: StateMachine,
                            override val src: State = machine.makeConstructedState(),
                            override val dst: State = src,
                            override val actions: List<Action> = listOf(),
-                           override var allowTransition: (Map<String, Any>) -> Boolean = {true},
-                           override var propertyModifier: (Map<String, Any>) -> Map<String, Any> = {it},
+                           override var allowTransition: (Map<String, Any>) -> Boolean = { true },
+                           override var propertyModifier: (Map<String, Any>) -> Map<String, Any> = { it },
 
                            override val param: List<Param> = listOf()) : ExpressionEdge {
     override fun getStyle() = "bold"
@@ -211,8 +213,8 @@ data class LinkedEdge(val edge: ExpressionEdge,
                       override val src: State = edge.src,
                       override val dst: State,
                       override val actions: List<Action> = listOf(),
-                      override var allowTransition: (Map<String, Any>) -> Boolean = {true},
-                      override var propertyModifier: (Map<String, Any>) -> Map<String, Any> = {it}) : Edge {
+                      override var allowTransition: (Map<String, Any>) -> Boolean = { true },
+                      override var propertyModifier: (Map<String, Any>) -> Map<String, Any> = { it }) : Edge {
     override fun getStyle() = "dotted"
 
     init {
@@ -232,8 +234,8 @@ data class MakeArrayEdge(override val machine: StateMachine,
                          override val src: State = machine.makeConstructedState(),
                          override val dst: State = src,
                          override val actions: List<Action> = listOf(),
-                         override var allowTransition: (Map<String, Any>) -> Boolean = {true},
-                         override var propertyModifier: (Map<String, Any>) -> Map<String, Any> = {it},
+                         override var allowTransition: (Map<String, Any>) -> Boolean = { true },
+                         override var propertyModifier: (Map<String, Any>) -> Map<String, Any> = { it },
 
                          val getSize: CallEdge,
                          val getItem: CallEdge) : Edge {
@@ -250,8 +252,8 @@ data class TemplateEdge(override val machine: StateMachine,
                         override val src: State = machine.makeConstructedState(),
                         override val dst: State = src,
                         override val actions: List<Action> = listOf(),
-                        override var allowTransition: (Map<String, Any>) -> Boolean = {true},
-                        override var propertyModifier: (Map<String, Any>) -> Map<String, Any> = {it},
+                        override var allowTransition: (Map<String, Any>) -> Boolean = { true },
+                        override var propertyModifier: (Map<String, Any>) -> Map<String, Any> = { it },
 
                         val template: String,
                         val templateParams: Map<String, State>,
@@ -281,12 +283,28 @@ data class TemplateEdge(override val machine: StateMachine,
     override fun label() = "Template"
 }
 
+data class CastEdge(override val machine: StateMachine,
+                    override val src: State = machine.makeConstructedState(),
+                    override val dst: State = src,
+                    override val actions: List<Action> = listOf(),
+                    override var allowTransition: (Map<String, Any>) -> Boolean = { true },
+                    override var propertyModifier: (Map<String, Any>) -> Map<String, Any> = { it }) : Edge {
+    override fun getStyle() = "bold"
+
+    init {
+        machine.edges += this
+    }
+
+    override fun label() = "(${dst.machine.name}) ${machine.name}"
+    override fun toString() = label()
+}
+
 data class UsageEdge(override val machine: StateMachine,
                      override val src: State = machine.makeConstructedState(),
                      override val dst: State = src,
                      override val actions: List<Action> = listOf(),
-                     override var allowTransition: (Map<String, Any>) -> Boolean = {true},
-                     override var propertyModifier: (Map<String, Any>) -> Map<String, Any> = {it},
+                     override var allowTransition: (Map<String, Any>) -> Boolean = { true },
+                     override var propertyModifier: (Map<String, Any>) -> Map<String, Any> = { it },
 
                      val edge: ExpressionEdge) : Edge {
     override fun getStyle() = "dashed"
@@ -306,8 +324,8 @@ fun makeLinkedEdge(machine: StateMachine,
                    methodName: String,
                    param: List<Param> = listOf(),
                    isStatic: Boolean = false,
-                   allowTransition: (Map<String, Any>) -> Boolean = {true},
-                   propertyModifier: (Map<String, Any>) -> Map<String, Any> = {it}): CallEdge {
+                   allowTransition: (Map<String, Any>) -> Boolean = { true },
+                   propertyModifier: (Map<String, Any>) -> Map<String, Any> = { it }): CallEdge {
     val callEdge = CallEdge(
             machine = machine,
             src = src,
@@ -331,7 +349,7 @@ fun makeLinkedEdge(machine: StateMachine,
 interface Param : Labelable
 
 data class EntityParam(val machine: StateMachine,
-                 val state: State = machine.getConstructedState()) : Param {
+                       val state: State = machine.getConstructedState()) : Param {
     override fun toString() = machine.name
     override fun label() = machine.label()
 }
@@ -352,7 +370,7 @@ data class ConstParam(val value: String) : Param {
 
 data class Action(val name: String,
                   val feature: String = "Main",
-                  val withSideEffects: Boolean = false): Comparable<Action> {
+                  val withSideEffects: Boolean = false) : Comparable<Action> {
     override fun compareTo(other: Action) = name.compareTo(other.name)
     override fun toString() = name
 }

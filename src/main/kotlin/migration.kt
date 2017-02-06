@@ -107,12 +107,10 @@ class Migration(val library1: Library,
         }
     }
 
-    private fun edgeHasReturnValue(edge: Edge): Boolean {
-        return when (edge) {
-            is LinkedEdge, is ConstructorEdge, is TemplateEdge -> true
-            is CallEdge -> edge.hasReturnValue
-            else -> false
-        }
+    private fun edgeHasReturnValue(edge: Edge): Boolean = when (edge) {
+        is LinkedEdge, is ConstructorEdge, is TemplateEdge, is CastEdge -> true
+        is CallEdge -> edge.hasReturnValue
+        else -> false
     }
 
     private fun associateEdges(edges: Collection<Edge>, node: Node) = edges.map { edge -> edge to node }
@@ -172,7 +170,7 @@ class Migration(val library1: Library,
     }
 
     private fun makeStep(step: Edge) = when (step) {
-        is CallEdge, is LinkedEdge, is TemplateEdge, is ConstructorEdge -> makeSimpleEdge(step)
+        is CallEdge, is LinkedEdge, is TemplateEdge, is ConstructorEdge, is CastEdge -> makeSimpleEdge(step)
         is UsageEdge, is AutoEdge -> emptyList()
         is MakeArrayEdge -> TODO() // makeArray(step.action)
         else -> TODO("Unknown action!")
@@ -196,6 +194,7 @@ class Migration(val library1: Library,
         is ConstructorEdge -> makeConstructorExpression(step)
         is UsageEdge -> makeExpression(step.edge)
         is CallEdge -> makeCallExpression(step)
+        is CastEdge -> makeCastExpression(step)
         else -> TODO()
     }
 
@@ -240,6 +239,12 @@ class Migration(val library1: Library,
     private fun makeTemplateExpression(step: TemplateEdge): Expression {
         val stringParams = step.templateParams.mapValues { state -> checkNotNull(dependencies[state.value.machine].toString()) }
         return templateIntoAST(fillPlaceholders(step.template, stringParams))
+    }
+
+    private fun makeCastExpression(step: CastEdge): Expression {
+        val type = library2.getType(step.dst.machine, null)
+        val expr = CastExpr(ClassOrInterfaceType(type), dependencies[step.machine])
+        return EnclosedExpr(expr)
     }
 
     private fun makeConstructorExpression(step: ConstructorEdge): Expression {

@@ -20,7 +20,6 @@ digraph G {
         virtual2 [ shape = point ];
         virtual3 [ shape = point ];
         virtual4 [ shape = point ];
-        virtual5 [ shape = point ];
     }
     subgraph cluster3 {
     label = <<B>Body: String</B>>;
@@ -41,7 +40,7 @@ digraph G {
     subgraph cluster7 {
     label = <<B>HttpConnection: HttpURLConnection</B>>;
         Constructed_HttpConnection [ label="Constructed" ];
-        virtual6 [ shape = point ];
+        virtual5 [ shape = point ];
     }
     subgraph cluster8 {
     label = <<B>OutputStream: OutputStream</B>>;
@@ -82,14 +81,12 @@ digraph G {
         Connected_JavaRequest -> virtual4 [ style = "bold" label="getOutputStream()"  ];
         virtual4 -> Connected_JavaRequest [ style = "bold"  ];
         virtual4 -> Constructed_OutputStream [ label="return OutputStream()"  ];
-        Connected_JavaRequest -> virtual5 [ style = "bold" label="Template"  ];
-        virtual5 -> Connected_JavaRequest [ style = "bold"  ];
-        virtual5 -> Constructed_HttpConnection [ label="return HttpURLConnection()"  ];
+        Connected_JavaRequest -> Constructed_HttpConnection [ label="(HttpConnection) JavaRequest", style = "bold"  ];
         Constructed_JavaRequest -> Constructed_JavaRequest [ label="Auto", style = "solid"  ];
         Constructed_HttpConnection -> Connected_JavaRequest [ label="Auto", style = "solid"  ];
-        Constructed_HttpConnection -> virtual6 [ style = "bold" label="getResponseCode()"  ];
-        virtual6 -> Constructed_HttpConnection [ style = "bold"  ];
-        virtual6 -> Constructed_StatusCode [ label="return int()"  ];
+        Constructed_HttpConnection -> virtual5 [ style = "bold" label="getResponseCode()"  ];
+        virtual5 -> Constructed_HttpConnection [ style = "bold"  ];
+        virtual5 -> Constructed_StatusCode [ label="return int()"  ];
         Constructed_HttpConnection -> Constructed_HttpConnection [ label="setRequestProperty()", style = "bold"  ];
         Constructed_HttpConnection -> Constructed_HttpConnection [ label="setDoOutput()", style = "bold"  ];
         Constructed_OutputStream -> Constructed_OutputStream [ label="close()", style = "bold"  ];
