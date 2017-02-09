@@ -33,7 +33,8 @@ fun main(args: Array<String>) {
 //            from = models["okhttp"]!!,
 //            to = models["java"]!!
 //    )
-    migrate(projectDir = Paths.get("/home/artyom/Compile/acme4j/acme4j-client"),
+    migrate(projectDir = Paths.get("/home/artyom/Compile/acme4j"),
+            traceFile = Paths.get("/home/artyom/Compile/acme4j/acme4j-client/log.json"),
             from = HttpModels.java,
             to = HttpModels.apache
     )
@@ -51,7 +52,10 @@ fun migrate(projectDir: Path,
         error("Nothing to migrate")
     }
 
+    logger.info("Pre parse")
     val invocations = parseInvocations(traceFile.toFile())
+    val res1 = invocations.filterNotNull().filter { inv -> inv.callerName == "openConnection" && inv.filename == "HttpConnector.java" }
+    logger.info("Post parse")
 
     val testDir = projectDir.resolveSibling("${projectDir.fileName}_test_${from.name}_${to.name}")
     prepareTestDir(projectDir, testDir)

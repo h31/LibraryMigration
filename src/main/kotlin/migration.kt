@@ -387,7 +387,11 @@ class RouteExtractor(val library1: Library,
 //                    println("Cannot find edge for $invocation")
                     continue
                 }
-                val methodCall = codeElements.methodCalls.first { call -> call.name == invocation.name && call.end.line == invocation.line }
+                val methodCall = codeElements.methodCalls.firstOrNull { call -> call.name == invocation.name && call.end.line == invocation.line }
+                if (methodCall == null) {
+                    logger.error("Cannot find method")
+                    continue
+                }
                 usedEdges += LocatedEdge(callEdge, methodCall)
                 if (methodCall.parentNode is ExpressionStmt == false) {
                     val linkedEdge = callEdge.linkedEdge
@@ -406,7 +410,8 @@ class RouteExtractor(val library1: Library,
                 }
                 val constructorCall = codeElements.objectCreation.firstOrNull { objectCreation -> (objectCreation.type.toString() == invocation.simpleType()) && (objectCreation.end.line == invocation.line) }
                 if (constructorCall == null) {
-                    error("Cannot find node for $invocation")
+                    logger.error("Cannot find node for $invocation")
+                    continue
                 }
                 usedEdges += LocatedEdge(constructorEdge, constructorCall)
             }
