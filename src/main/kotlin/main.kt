@@ -65,7 +65,7 @@ fun migrate(projectDir: Path,
         addImports(cu, to)
 
         val migratedCode = cu.toString()
-        println(migratedCode);
+//        println(migratedCode);
 
         val relativePath = projectDir.relativize(source.toPath())
         Files.write(testDir.resolve(relativePath), migratedCode.toByteArray())
@@ -171,10 +171,14 @@ fun migrateFile(library1: Library,
                 sourceFile = file,
                 invocations = invocations)
 
-        migration.doMigration()
-        migrateClassMembers(library1, library2, codeElements)
-        migrateFunctionArguments(library1, library2, methodDecl)
-        migrateReturnValue(library1, library2, methodDecl)
+        try {
+            migration.doMigration()
+        } catch (ex: Exception) {
+            ex.printStackTrace()
+        }
+//        migrateClassMembers(library1, library2, codeElements)
+//        migrateFunctionArguments(library1, library2, methodDecl)
+//        migrateReturnValue(library1, library2, methodDecl)
     }
 //    fixEntityTypes(codeElements, library1, library2)
 }

@@ -373,7 +373,7 @@ class RouteExtractor(val library1: Library,
     private val logger = KotlinLogging.logger {}
 
     fun extractFromJSON(invocations: List<Invocation>): List<LocatedEdge> {
-        val localInvocations = invocations.filter { inv -> inv.callerName == functionName && inv.filename == this.sourceFile.name }
+        val localInvocations = invocations.filterNotNull().filter { inv -> inv.callerName == functionName && inv.filename == this.sourceFile.name }
 
         val usedEdges: MutableList<LocatedEdge> = mutableListOf()
         val edges = library1.stateMachines.flatMap { machine -> machine.edges }

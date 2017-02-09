@@ -49,6 +49,7 @@ class PathFinder(val edges: Set<Edge>, val src: Set<State>, val initProps: Map<S
 //                    }
 //                }
 //                continue
+                throw IllegalArgumentException()
                 error("Empty pendings!")
             }
             val model = pending.poll()
