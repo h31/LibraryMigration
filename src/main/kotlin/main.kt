@@ -180,7 +180,7 @@ fun migrateFile(library1: Library,
         } catch (ex: Exception) {
             ex.printStackTrace()
         }
-//        migrateClassMembers(library1, library2, codeElements)
+        migrateClassMembers(library1, library2, codeElements)
 //        migrateFunctionArguments(library1, library2, methodDecl)
 //        migrateReturnValue(library1, library2, methodDecl)
     }
