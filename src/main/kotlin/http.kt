@@ -219,6 +219,7 @@ fun makeApache(): Library {
     val entity = StateMachine(name = "Entity")
     val entityUtils = StateMachine(name = "EntityUtils")
     val body = StateMachine(name = "Body")
+    val contentType = StateMachine(name = "ContentTypeApache")
     val statusCode = StateMachine(name = "StatusCode")
 
 //    val hasURL = State(name = "hasURL", machine = request)
@@ -338,11 +339,19 @@ fun makeApache(): Library {
             templateParams = mapOf("name" to requestParamName.getDefaultState(), "value" to requestParamValue.getDefaultState())
     )
 
+    TemplateEdge(
+            machine = contentType,
+            src = contentType.getInitState(),
+            dst = contentType.getConstructedState(),
+            template = "ContentType.create(\"application/x-www-form-urlencoded\")", // TODO
+            templateParams = mapOf()
+    )
+
     ConstructorEdge(
             machine = byteArrayEntity,
             src = byteArrayEntity.getInitState(),
             dst = byteArrayEntity.getConstructedState(),
-            param = listOf(EntityParam(payload))
+            param = listOf(EntityParam(payload), EntityParam(contentType))
     )
 
     CallEdge(
@@ -402,7 +411,7 @@ fun makeApache(): Library {
             name = "apache",
             stateMachines = listOf(url, request, client, response, body, httpClientFactory,
                     inputStream, contentLength, entity, entityUtils, statusCode, byteArrayEntity, payload, postRequest,
-                    requestParamName, requestParamValue),
+                    requestParamName, requestParamValue, contentType),
             machineTypes = mapOf(
                     url to "String",
                     request to "org.apache.http.client.methods.HttpGet",
@@ -419,7 +428,8 @@ fun makeApache(): Library {
                     byteArrayEntity to "org.apache.http.entity.ByteArrayEntity",
                     payload to "String",
                     requestParamName to "String",
-                    requestParamValue to "String"
+                    requestParamValue to "String",
+                    contentType to "org.apache.http.entity.ContentType"
             )
     )
 }

@@ -26,14 +26,6 @@ class MigrationTest {
         testFile.writeText(newContent)
     }
 
-    val instagramDisableTest = {path: Path ->
-        val testFile = path.resolve("src/test/java/InstagramTest.java").toFile()
-        val lines = testFile.readLines()
-        Assert.assertTrue(lines[20].endsWith("@Test"))
-        val newContent = lines.filterIndexed { i, s -> i != 20 }.joinToString("\n")
-        testFile.writeText(newContent)
-    }
-
     @Before
     fun init() {
         makePictures(HttpModels.withName())
@@ -44,7 +36,7 @@ class MigrationTest {
         Assert.assertTrue(migrate(projectDir = examples.resolve("instagram-java-scraper"),
                 from = okhttp,
                 to = apache,
-                testPatcher = {stripAspects(it); instagramDisableTest(it)}
+                testPatcher = stripAspects
         ))
     }
 
@@ -53,7 +45,7 @@ class MigrationTest {
         Assert.assertTrue(migrate(projectDir = examples.resolve("instagram-java-scraper"),
                 from = okhttp,
                 to = java,
-                testPatcher = {stripAspects(it)}
+                testPatcher = stripAspects
         ))
     }
 
