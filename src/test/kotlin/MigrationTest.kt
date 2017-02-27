@@ -1,11 +1,6 @@
-import org.jetbrains.annotations.Mutable
 import org.junit.Assert
 import org.junit.Before
 import org.junit.Test
-import java.io.File
-import java.io.FileInputStream
-import java.nio.charset.Charset
-import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
 
@@ -26,12 +21,12 @@ class MigrationTest {
         testFile.writeText(newContent)
     }
 
-    val instagramDisableTest = {path: Path ->
-        val testFile = path.resolve("src/test/java/InstagramTest.java").toFile()
-        val lines = testFile.readLines()
-        Assert.assertTrue(lines[20].endsWith("@Test"))
-        val newContent = lines.filterIndexed { i, s -> i != 20 }.joinToString("\n")
-        testFile.writeText(newContent)
+    val instagramFixTest = {path: Path ->
+        val testFile = path.resolve("src/main/java/me/postaddict/instagramscraper/model/Media.java").toFile()
+        val lines = testFile.readLines().toMutableList()
+        Assert.assertTrue(lines[51].contains("TYPE_VIDEO"))
+        lines[51].replace("))", ") && mediaMap.containsKey(\"videos\"))")
+        testFile.writeText(lines.joinToString("\n"))
     }
 
     @Before
@@ -44,7 +39,7 @@ class MigrationTest {
         Assert.assertTrue(migrate(projectDir = examples.resolve("instagram-java-scraper"),
                 from = okhttp,
                 to = apache,
-                testPatcher = {stripAspects(it); instagramDisableTest(it)}
+                testPatcher = {stripAspects(it);}
         ))
     }
 
