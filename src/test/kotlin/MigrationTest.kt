@@ -1,4 +1,3 @@
-import org.jetbrains.annotations.Mutable
 import org.junit.Assert
 import org.junit.Before
 import org.junit.Test
