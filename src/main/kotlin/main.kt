@@ -73,7 +73,13 @@ fun migrate(projectDir: Path,
     return checkMigrationCorrectness(testDir, testClassName)
 }
 
-private fun parseInvocations(traceFile: File) = ObjectMapper().registerKotlinModule().readValue<List<RouteExtractor.Invocation>>(traceFile)
+typealias GroupedInvocation = Map<String, Map<String, List<RouteExtractor.Invocation>>>
+
+private fun parseInvocations(traceFile: File): GroupedInvocation {
+    val invocations = ObjectMapper().registerKotlinModule().readValue<List<RouteExtractor.Invocation>>(traceFile)
+    val grouped = invocations.groupBy { it.filename }.mapValues { it.value.groupBy { it.callerName } } // TODO: groupingBy
+    return grouped
+}
 
 private fun prepareTestDir(projectDir: Path, testDir: Path) {
     testDir.toFile().deleteRecursively()
@@ -158,7 +164,7 @@ fun migrateFile(library1: Library,
                 library2: Library,
                 codeElements: CodeElements,
                 file: File,
-                invocations: List<RouteExtractor.Invocation>) {
+                invocations: GroupedInvocation) {
     for (methodDecl in codeElements.methodDecls) {
         val methodLocalCodeElements = methodDecl.getCodeElements()
 

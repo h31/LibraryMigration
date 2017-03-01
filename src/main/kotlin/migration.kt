@@ -44,7 +44,7 @@ class Migration(val library1: Library,
                 val codeElements: CodeElements,
                 val functionName: String,
                 val sourceFile: File,
-                val invocations: List<RouteExtractor.Invocation>) {
+                val invocations: GroupedInvocation) {
     val dependencies: MutableMap<StateMachine, Expression> = mutableMapOf()
     // val pendingStmts = mutableListOf<Statement>()
     var nameGeneratorCounter = 0
@@ -370,8 +370,8 @@ class RouteExtractor(val library1: Library,
                      val sourceFile: File) {
     private val logger = KotlinLogging.logger {}
 
-    fun extractFromJSON(invocations: List<Invocation>): List<LocatedEdge> {
-        val localInvocations = invocations.filter { inv -> inv.callerName == functionName && inv.filename == this.sourceFile.name }
+    fun extractFromJSON(invocations: GroupedInvocation): List<LocatedEdge> {
+        val localInvocations = invocations[sourceFile.name]!![functionName]!! // invocations.filter { inv -> inv.callerName == functionName && inv.filename == this.sourceFile.name }
 
         val usedEdges: MutableList<LocatedEdge> = mutableListOf()
         val edges = library1.stateMachines.flatMap { machine -> machine.edges }
@@ -471,7 +471,7 @@ class RouteExtractor(val library1: Library,
 
 class RouteMaker(val globalRoute: MutableList<Route>,
                  val extractor: RouteExtractor,
-                 val invocations: List<RouteExtractor.Invocation>,
+                 val invocations: GroupedInvocation,
                  val library1: Library,
                  val library2: Library,
                  val dependencies: MutableMap<StateMachine, Expression>) {
