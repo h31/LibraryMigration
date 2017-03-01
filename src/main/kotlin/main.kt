@@ -8,7 +8,6 @@ import com.github.javaparser.ast.Node
 import com.github.javaparser.ast.body.*
 import com.github.javaparser.ast.expr.*
 import com.github.javaparser.ast.stmt.BlockStmt
-import com.github.javaparser.ast.stmt.ExpressionStmt
 import com.github.javaparser.ast.type.ClassOrInterfaceType
 import com.github.javaparser.ast.visitor.VoidVisitorAdapter
 import mu.KotlinLogging
@@ -88,7 +87,7 @@ private fun addImports(cu: CompilationUnit, library: Library) {
     cu.imports.addAll((library.allTypes())
             .filter { type -> type.contains('.') }
             .filterNot { type -> type.contains('$') }
-            .map { type -> ImportDeclaration(NameExpr(type), false, false) })
+            .map { type -> ImportDeclaration(Name(type), false, false) })
 }
 
 private fun migrateClassMembers(library1: Library, library2: Library,
@@ -99,8 +98,8 @@ private fun migrateClassMembers(library1: Library, library2: Library,
             if (field.variables.size > 1) {
                 continue
             }
-            val fieldType = field.type.toString()
-            field.type = getNewType(fieldType, library1, library2) ?: field.type
+            val fieldType = field.elementType.toString()
+            field.variables.first().type = getNewType(fieldType, library1, library2) ?: field.elementType
         }
     }
 }
@@ -202,38 +201,6 @@ fun prettyPrinter(string: String): String {
 
 data class CallExpressionParams(val scope: Expression?, val args: List<Expression>)
 
-private fun setAsChild(parent: Node, expr: Expression) {
-    if (parent is MethodCallExpr) {
-        parent.scope = expr
-    } else if (parent is ExpressionStmt) {
-        parent.expression = expr
-    } else if (parent is VariableDeclarator) {
-        parent.init = expr
-    } else {
-        error("TODO")
-    }
-}
-
-var listNameCounter = 0;
-
-private fun fixEntityTypes(codeElements: CodeElements, graph1: Library, graph2: Library) {
-    for (type in graph1.machineSimpleTypes) {
-        val newType = graph2.machineSimpleTypes[type.key]
-        if (newType != null) {
-            val declarations = codeElements.variableDeclarations.filter { it -> it.type.toString() == type.value }
-            for (decl in declarations) {
-                decl.type = ClassOrInterfaceType(newType)
-            }
-            val objectCreations = codeElements.objectCreation.filter { it -> it.type.toString() == type.value }
-            for (obj in objectCreations) {
-                obj.type = ClassOrInterfaceType(newType)
-            }
-        }
-    }
-}
-
-private fun checkNodePosition(node: Node, beginLine: Int, endLine: Int) = node.begin.line >= beginLine && node.end.line <= endLine
-
 fun parseFile(file: File): CompilationUnit {
     val fis = FileInputStream(file)
     return JavaParser.parse(fis);
@@ -293,11 +260,11 @@ data class MethodDiff(val methodName: String,
     fun methodChanged() = newInSrc.isNotEmpty() || newInDst.isNotEmpty()
 }
 
-class MethodOrConstructorDeclaration(val node: BodyDeclaration) {
+class MethodOrConstructorDeclaration(val node: CallableDeclaration<out Node>) { // TODO: Node?
     fun get() = node
     fun getCodeElements(): CodeElements {
         val methodLocalCodeElements = CodeElements()
-        if (node is MethodDeclaration) {
+        if (node is MethodDeclaration) { // TODO: Unify
             CodeElementsVisitor().visit(node, methodLocalCodeElements);
         } else if (node is ConstructorDeclaration) {
             CodeElementsVisitor().visit(node, methodLocalCodeElements);
@@ -305,12 +272,8 @@ class MethodOrConstructorDeclaration(val node: BodyDeclaration) {
         return methodLocalCodeElements
     }
 
-    fun name() = if (node is MethodDeclaration) node.name else "<init>"
-    fun arguments() = when (node) {
-        is MethodDeclaration -> node.parameters
-        is ConstructorDeclaration -> node.parameters
-        else -> throw IllegalArgumentException()
-    }
+    fun name() = if (node is MethodDeclaration) node.name.identifier else "<init>"
+    fun arguments() = node.parameters
 }
 
 private val logger = KotlinLogging.logger {}

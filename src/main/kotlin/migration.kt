@@ -1,9 +1,6 @@
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties
-import com.fasterxml.jackson.databind.ObjectMapper
-import com.fasterxml.jackson.module.kotlin.readValue
-import com.fasterxml.jackson.module.kotlin.registerKotlinModule
-import com.github.javaparser.ASTHelper
 import com.github.javaparser.ast.Node
+import com.github.javaparser.ast.NodeList
 import com.github.javaparser.ast.body.VariableDeclarator
 import com.github.javaparser.ast.expr.*
 import com.github.javaparser.ast.stmt.BlockStmt
@@ -13,6 +10,7 @@ import com.github.javaparser.ast.stmt.Statement
 import com.github.javaparser.ast.type.ClassOrInterfaceType
 import mu.KotlinLogging
 import java.io.File
+import java.util.*
 
 /**
  * Created by artyom on 22.08.16.
@@ -199,8 +197,8 @@ class Migration(val library1: Library,
     }
 
     private fun getVariableNameFromExpression(methodCall: Node): String? {
-        val parent = methodCall.parentNode
-        return if (parent is VariableDeclarator) parent.id.name else null
+        val parent = methodCall.parentNode.unpack()
+        return if (parent is VariableDeclarator) parent.name.identifier else null
     }
 
     private fun makeCallExpressionParams(edge: CallEdge): CallExpressionParams {
@@ -232,7 +230,7 @@ class Migration(val library1: Library,
 
     private fun makeCallExpression(step: CallEdge): Expression {
         val callParams = makeCallExpressionParams(step)
-        val expr = MethodCallExpr(callParams.scope, step.methodName, callParams.args)
+        val expr = MethodCallExpr(callParams.scope, step.methodName).setArguments(callParams.args.toNodeList())
         return expr
     }
 
@@ -249,7 +247,7 @@ class Migration(val library1: Library,
 
     private fun makeConstructorExpression(step: ConstructorEdge): Expression {
         val params = step.param.filterIsInstance<EntityParam>().map { param -> checkNotNull(dependencies[param.machine]) }
-        val expr = ObjectCreationExpr(null, ClassOrInterfaceType(library2.getType(step.dst.machine, routeMaker.props[step.dst.machine])), params)
+        val expr = ObjectCreationExpr(null, ClassOrInterfaceType(library2.getType(step.dst.machine, routeMaker.props[step.dst.machine])), params.toNodeList())
         return expr
     }
 }
@@ -265,34 +263,32 @@ class ReplacementPerformer(val replacements: List<Replacement>,
             applyReplacement(replacement)
         }
         for (stmt in removedStmts) {
-//            if (replacements.flatMap { it.pendingExpressions }.none { getBlockStmt(it.expression).first == stmt } ) {
-                (stmt.parentNode as? BlockStmt)?.stmts?.remove(stmt)
-//            }
+                (stmt.parentNode.unpack() as? BlockStmt)?.statements?.remove(stmt)
         }
     }
 
     fun applyReplacement(replacement: Replacement) {
         val oldExpr = replacement.oldNode
         val (statement, blockStmt) = getBlockStmt(oldExpr)
-        val statements = blockStmt.stmts
+        val statements = blockStmt.statements
 
         if (replacement.pendingExpressions.isNotEmpty()) {
             val pos = statements.indexOf(statement)
             val pushedPendingExpressions = replacement.pendingExpressions.filter { it.makeVariable }
             val pendingStatements = pushedPendingExpressions.map { pending -> makeNewStatement(pending) }
             statements.addAll(pos, pendingStatements)
-            for (stmt in pendingStatements) {
-                stmt.parentNode = blockStmt
-            }
+//            for (stmt in pendingStatements) {
+//                stmt.parentNode = blockStmt
+//            }
 
             val lastExpr = replacement.pendingExpressions.last()
-            if (lastExpr.hasReturnValue && oldExpr.parentNode !is VariableDeclarator) {
+            if (lastExpr.hasReturnValue && oldExpr.parentNode.get() !is VariableDeclarator) {
                 val expr = lastExpr.provides!!
                 replaceNode(expr, oldExpr)
             } else {
                 removedStmts += statement
             }
-        } else if (replacement.oldNode.parentNode is ExpressionStmt || replacement.oldNode.parentNode is VariableDeclarator) {
+        } else if (oldExpr.parentNode.get() is ExpressionStmt || oldExpr.parentNode.get() is VariableDeclarator) {
             logger.info("Remove $statement")
             removedStmts += statement
         }
@@ -309,37 +305,39 @@ class ReplacementPerformer(val replacements: List<Replacement>,
     }
 
     private fun replaceNode(newExpr: Expression, oldExpr: Node) {
-        val parent = oldExpr.parentNode
+        val parent = oldExpr.parentNode.get()
         when (parent) {
             is AssignExpr -> parent.value = newExpr
             is BinaryExpr -> parent.left = newExpr
             is ObjectCreationExpr -> {
-                val argsPos = parent.args.indexOf(oldExpr)
-                parent.args.set(argsPos, newExpr)
-                newExpr.parentNode = parent
+                val argsPos = parent.arguments.indexOf(oldExpr)
+                parent.arguments.set(argsPos, newExpr)
+//                newExpr.parentNode = parent
             }
             is MethodCallExpr -> {
-                val argsPos = parent.args.indexOf(oldExpr)
+                val argsPos = parent.arguments.indexOf(oldExpr)
                 if (argsPos >= 0) {
-                    parent.args.set(argsPos, newExpr)
+                    parent.arguments.set(argsPos, newExpr)
                 } else {
-                    parent.scope = newExpr
+                    parent.setScope(newExpr)
                 }
-                newExpr.parentNode = parent
+//                newExpr.parentNode = parent
             }
-            is ReturnStmt -> parent.expr = newExpr
-            is CastExpr -> parent.expr = newExpr
+            is ReturnStmt -> parent.setExpression(newExpr)
+            is CastExpr -> parent.expression = newExpr
             is ExpressionStmt -> parent.expression = newExpr
             else -> error("Don't know how to insert into " + parent.toString())
         }
     }
 
     private fun getBlockStmt(initialNode: Node): Pair<Statement, BlockStmt> {
-        var node: Node = initialNode
-        while (node.parentNode is BlockStmt == false) {
-            node = node.parentNode
-        }
-        return Pair(node as Statement, node.parentNode as BlockStmt)
+        var node: Node
+        var parent: Node = initialNode
+        do {
+            node = parent
+            parent = node.parentNode.get()
+        } while (parent is BlockStmt == false)
+        return Pair(node as Statement, parent as BlockStmt)
     }
 
     // private fun getNewVarName(pendingStmts: List<PendingExpression>): String = pendingStmts.map { stmt -> stmt.provides }.lastOrNull() ?: error("New statement should provide a variable")
@@ -358,9 +356,9 @@ class ReplacementPerformer(val replacements: List<Replacement>,
     }
 
     private fun makeNewVariable(type: String, name: String, initExpr: Expression?): Statement {
-        val newVariable = ASTHelper.createVariableDeclarationExpr(ClassOrInterfaceType(type), name)
+        val newVariable = VariableDeclarationExpr(ClassOrInterfaceType(type), name)
         if (initExpr != null) {
-            newVariable.vars.first().init = initExpr
+            newVariable.variables.first().setInitializer(initExpr)
         }
         return ExpressionStmt(newVariable)
     }
@@ -387,9 +385,9 @@ class RouteExtractor(val library1: Library,
 //                    println("Cannot find edge for $invocation")
                     continue
                 }
-                val methodCall = codeElements.methodCalls.first { call -> call.name == invocation.name && call.end.line == invocation.line }
+                val methodCall = codeElements.methodCalls.first { call -> call.name.identifier == invocation.name && call.end.unpack()?.line == invocation.line }
                 usedEdges += LocatedEdge(callEdge, methodCall)
-                if (methodCall.parentNode is ExpressionStmt == false) {
+                if (methodCall.parentNode.get() is ExpressionStmt == false) {
                     val linkedEdge = callEdge.linkedEdge
                     if (linkedEdge != null) {
                         usedEdges += LocatedEdge(linkedEdge, methodCall)
@@ -404,7 +402,7 @@ class RouteExtractor(val library1: Library,
 //                    println("Cannot find edge for $invocation")
                     continue
                 }
-                val constructorCall = codeElements.objectCreation.firstOrNull { objectCreation -> (objectCreation.type.toString() == invocation.simpleType()) && (objectCreation.end.line == invocation.line) }
+                val constructorCall = codeElements.objectCreation.firstOrNull { objectCreation -> (objectCreation.type.toString() == invocation.simpleType()) && (objectCreation.end.get().line == invocation.line) }
                 if (constructorCall == null) {
                     error("Cannot find node for $invocation")
                 }
@@ -452,8 +450,8 @@ class RouteExtractor(val library1: Library,
     data class LocatedEdge(
             val edge: Edge,
             val node: Node,
-            val nodeLine: Int = node.end.line,
-            val nodeColumn: Int = node.end.column
+            val nodeLine: Int = node.end.get().line,
+            val nodeColumn: Int = node.end.get().column
     )
 
     @JsonIgnoreProperties("node")
@@ -621,14 +619,14 @@ class RouteMaker(val globalRoute: MutableList<Route>,
     }
 
     private fun extractDependenciesFromMethod(edge: CallEdge, methodCall: MethodCallExpr) {
-        val args = edge.param.filterIsInstance<EntityParam>().mapIndexed { i, param -> param.state to methodCall.args[i] }.toMap()
-        val scope = (edge.src to methodCall.scope)
+        val args = edge.param.filterIsInstance<EntityParam>().mapIndexed { i, param -> param.state to methodCall.arguments[i] }.toMap()
+        val scope = (edge.src to methodCall.scope.get())
         val deps = args + scope
         addDependenciesToContext(deps)
     }
 
     private fun extractDependenciesFromConstructor(edge: ConstructorEdge, constructorCall: ObjectCreationExpr) {
-        val args = edge.param.filterIsInstance<EntityParam>().mapIndexed { i, param -> param.state to constructorCall.args[i] }.toMap()
+        val args = edge.param.filterIsInstance<EntityParam>().mapIndexed { i, param -> param.state to constructorCall.arguments[i] }.toMap()
 //        val scope = (edge.src to methodCall.scope)
         val deps = args // TODO: scope
         addDependenciesToContext(deps)
@@ -666,3 +664,7 @@ class RouteMaker(val globalRoute: MutableList<Route>,
     private fun getDependencyStep(step: Edge) = library2.stateMachines.flatMap { machine -> machine.edges }
             .first { edge: Edge -> (edge.src != edge.dst) && (edge is UsageEdge == false) && (edge.dst == step.dst) }
 }
+
+fun <T> Optional<T>.unpack(): T? = orElse(null)
+
+fun <NodeT: Node> List<NodeT>.toNodeList() = NodeList.nodeList(this)

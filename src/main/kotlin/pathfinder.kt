@@ -194,7 +194,7 @@ class PropsContext {
             if (edge is ExpressionEdge) {
                 for ((index, param) in edge.param.withIndex()) {
                     if (param is ActionParam) {
-                        val expr = (locatedEdge.node as MethodCallExpr).args[index]
+                        val expr = (locatedEdge.node as MethodCallExpr).arguments[index]
                         actionParams += Pair(param.propertyName, expr)
                     }
                 }
