@@ -4,7 +4,8 @@ src_dir=$(pwd)
 cd "$(dirname "$0")"
 
 cd instagram-java-scraper/
-./gradlew --stacktrace --debug clean test
+patch -p0 < ../../unnamed.patch
+./gradlew clean test
 cd ../
 
 cd HTTP/
