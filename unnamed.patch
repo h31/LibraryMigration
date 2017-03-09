@@ -1,0 +1,39 @@
+Index: build.gradle
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- build.gradle	(revision e0673248314c7eb380f0d8aa7ceaa919b3f202b4)
++++ build.gradle	(revision )
+@@ -28,6 +28,7 @@
+ dependencies {
+     testCompile group: 'junit', name: 'junit', version: '4.11'
+     compile 'com.squareup.okhttp3:okhttp:3.2.0'
++    compile 'com.squareup.okhttp3:logging-interceptor:3.2.0'
+     compile 'com.google.code.gson:gson:2.7'
+     compile 'com.fasterxml.jackson.core:jackson-databind:2.8.3'
+     compile 'org.apache.httpcomponents:httpclient:4.5.2'
+Index: src/main/java/me/postaddict/instagramscraper/Instagram.java
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- src/main/java/me/postaddict/instagramscraper/Instagram.java	(revision e0673248314c7eb380f0d8aa7ceaa919b3f202b4)
++++ src/main/java/me/postaddict/instagramscraper/Instagram.java	(revision )
+@@ -10,6 +10,7 @@
+ import okhttp3.Request;
+ import okhttp3.RequestBody;
+ import okhttp3.Response;
++import okhttp3.logging.HttpLoggingInterceptor;
+ 
+ import java.io.IOException;
+ import java.security.SecureRandom;
+@@ -23,7 +24,7 @@
+     private Gson gson;
+ 
+     public Instagram() {
+-        this.httpClient = new OkHttpClient();
++        this.httpClient = new OkHttpClient.Builder().addInterceptor(new HttpLoggingInterceptor().setLevel(HttpLoggingInterceptor.Level.BODY)).build();
+         this.gson = new Gson();
+     }
+ 
