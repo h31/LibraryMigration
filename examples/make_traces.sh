@@ -5,7 +5,7 @@ cd "$(dirname "$0")"
 
 cd instagram-java-scraper/
 patch -p0 < ../../unnamed.patch
-./gradlew clean test
+./gradlew --stacktrace --info clean test
 cd ../
 
 cd HTTP/
