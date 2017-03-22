@@ -143,7 +143,6 @@ digraph G {
         FormMade_FormBodyBuilder -> virtual8 [ style = "bold" label="build()"  ];
         virtual8 -> FormMade_FormBodyBuilder [ style = "bold"  ];
         virtual8 -> Constructed_RequestBody [ label="return RequestBody()"  ];
-        Constructed_FormBodyBuilder -> Constructed_FormBodyBuilder [ label="Auto", style = "solid"  ];
         Constructed_RequestParamName -> FormMade_FormBodyBuilder [ label="Usage in add(RequestParamName: String, RequestParamValue: String)", style = "dashed"  ];
         Constructed_RequestParamValue -> FormMade_FormBodyBuilder [ label="Usage in add(RequestParamName: String, RequestParamValue: String)", style = "dashed"  ];
 }

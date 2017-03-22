@@ -34,7 +34,7 @@ fun main(args: Array<String>) {
 //    )
     migrate(projectDir = Paths.get("/home/artyom/Compile/acme4j/acme4j-client"),
             from = HttpModels.java,
-            to = HttpModels.apache
+            to = HttpModels.okhttp
     )
 }
 
@@ -105,7 +105,8 @@ private fun migrateClassMembers(library1: Library, library2: Library,
                 continue
             }
             val fieldType = field.elementType.toString()
-            field.variables.first().type = getNewType(fieldType, library1, library2) ?: field.elementType
+            val machine = getMachineForType(fieldType, library1) ?: continue
+            field.variables.first().type = getNewType(machine, library2, field)
         }
     }
 }
@@ -117,7 +118,8 @@ private fun migrateFunctionArguments(library1: Library, library2: Library,
         val args = node.parameters
         for (arg in args) {
             val argType = arg.type.toString()
-            arg.type = getNewType(argType, library1, library2) ?: arg.type
+            val machine = getMachineForType(argType, library1) ?: continue
+            arg.type = getNewType(machine, library2, arg)
         }
     }
 }
@@ -125,20 +127,23 @@ private fun migrateFunctionArguments(library1: Library, library2: Library,
 private fun migrateReturnValue(library1: Library, library2: Library, methodDecl: MethodOrConstructorDeclaration) {
     val node = methodDecl.get()
     if (node is MethodDeclaration) {
-        node.type = getNewType(node.type.toString(), library1, library2) ?: node.type
+        val machine = getMachineForType(node.type.toString(), library1) ?: return
+        node.type = getNewType(machine, library2, node)
     }
 }
 
-private fun getNewType(oldType: String, library1: Library, library2: Library): ClassOrInterfaceType? {
-    val machine = library1.machineTypes.filterValues { type -> library1.simpleType(type) == oldType }.keys.firstOrNull()
-    if (machine != null) {
-        val realMachine = if (machine.name == "HttpConnection") library1.stateMachines.first { it.name == "Connection" } else machine
-        if (library2.machineTypes.contains(realMachine) == false) return null // TODO()
-        val newType = library2.machineTypes[realMachine]
-        return ClassOrInterfaceType(newType)
+private fun getMachineForType(oldType: String, library1: Library): StateMachine? = library1.machineTypes.entries.firstOrNull { (_, type) -> library1.simpleType(type) == oldType }?.key
+
+private fun getNewType(machine: StateMachine, library2: Library, node: Node): ClassOrInterfaceType {
+    val replacementMachine = if (library2.machineTypes.contains(machine)) {
+        machine
     } else {
-        return null
+        val ui = UserInteraction()
+        val answer = ui.askUser("Replacement for ${machine.label()} at ${node.begin.get()}", library2.stateMachines.map { it.label() })
+        library2.stateMachines.first { it.label() == answer }
     }
+    val newType = library2.machineTypes[replacementMachine]
+    return ClassOrInterfaceType(newType)
 }
 
 private fun parseImports(imports: List<ImportDeclaration>) = imports.map { x -> x.name.toString() }

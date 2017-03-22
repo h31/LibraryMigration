@@ -76,20 +76,6 @@ class Migration(val library1: Library,
         replacementPerformer.apply()
     }
 
-//    private fun calcIfNeedToMakeVariable() {
-//        val allSteps: MutableList<Pair<Route, Edge>> = mutableListOf()
-//        for (route in globalRoute) {
-//            for (step in route.route) {
-//                allSteps += Pair(route, step)
-//            }
-//        }
-//        for (step in allSteps) {
-//            val count = allSteps.count { pair -> pair.second.src.machine == step.second.machine || pair.second is CallEdge && (pair.second as CallEdge).param.filterIsInstance<EntityParam>().any { it.machine == step.second.machine } }
-//            needToMakeVariable.put(step, count > 1)
-////            if (allSteps.drop(stepIndexed.index+1).any { furtherStep -> furtherStep.second.src == step.second.dst })
-//        }
-//    }
-
     private fun makeInsertRules() {
         val steps = mutableListOf<Triple<Int, Int, Edge>>()
         for (route in globalRoute.withIndex()) {
@@ -371,7 +357,7 @@ class RouteExtractor(val library1: Library,
     private val logger = KotlinLogging.logger {}
 
     fun extractFromJSON(invocations: GroupedInvocation): List<LocatedEdge> {
-        val localInvocations = invocations[sourceFile.name]!![functionName]!! // invocations.filter { inv -> inv.callerName == functionName && inv.filename == this.sourceFile.name }
+        val localInvocations = invocations[sourceFile.name]!![functionName] ?: return emptyList() // invocations.filter { inv -> inv.callerName == functionName && inv.filename == this.sourceFile.name }
 
         val usedEdges: MutableList<LocatedEdge> = mutableListOf()
         val edges = library1.stateMachines.flatMap { machine -> machine.edges }
@@ -525,6 +511,7 @@ class RouteMaker(val globalRoute: MutableList<Route>,
             }
             globalRoute += Route(oldNode = usage.node, route = route.path, edge = edge)
         }
+        check(actionsQueue.isEmpty())
         // addFinalizers() // TODO
     }
 

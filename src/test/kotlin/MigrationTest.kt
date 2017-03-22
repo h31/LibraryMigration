@@ -30,23 +30,23 @@ class MigrationTest {
         makePictures(HttpModels.withName())
     }
 
-    @Test
-    fun migrateInstagramOkHttp() {
-        Assert.assertTrue(migrate(projectDir = examples.resolve("instagram-java-scraper"),
-                from = okhttp,
-                to = apache,
-                testPatcher = stripAspects
-        ))
-    }
-
-    @Test
-    fun migrateInstagramJava() {
-        Assert.assertTrue(migrate(projectDir = examples.resolve("instagram-java-scraper"),
-                from = okhttp,
-                to = java,
-                testPatcher = stripAspects
-        ))
-    }
+//    @Test
+//    fun migrateInstagramOkHttp() {
+//        Assert.assertTrue(migrate(projectDir = examples.resolve("instagram-java-scraper"),
+//                from = okhttp,
+//                to = apache,
+//                testPatcher = stripAspects
+//        ))
+//    }
+//
+//    @Test
+//    fun migrateInstagramJava() {
+//        Assert.assertTrue(migrate(projectDir = examples.resolve("instagram-java-scraper"),
+//                from = okhttp,
+//                to = java,
+//                testPatcher = stripAspects
+//        ))
+//    }
 
     @Test
     fun migrateJavaApache() {

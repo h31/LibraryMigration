@@ -1,3 +1,4 @@
+import com.github.javaparser.JavaParser
 import com.github.javaparser.ast.expr.Expression
 import com.github.javaparser.ast.expr.IntegerLiteralExpr
 import com.samskivert.mustache.Mustache
@@ -14,7 +15,7 @@ fun fillPlaceholders(template: String, stringParams: Map<String, String>): Strin
 
 fun makeStringParams(params: Map<String, Edge>, variables: Map<StateMachine, String>) = params.mapValues { it -> generateCode(it.value, variables[it.value.machine]) }
 
-fun templateIntoAST(template: String) = IntegerLiteralExpr(template)
+fun templateIntoAST(template: String) = JavaParser.parseExpression<Expression>(template)
 
 fun generateCode(edge: Edge, obj: String?): String = when (edge) {
     is CallEdge -> obj + "." + edge.methodName
