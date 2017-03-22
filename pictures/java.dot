@@ -9,7 +9,6 @@ digraph G {
     label = <<B>URLData: URL</B>>;
         Init_URLData [ label="Init" ];
         hasURL_URLData [ label="hasURL" ];
-        Constructed_URLData [ label="Constructed" ];
         virtual0 [ shape = point ];
     }
     subgraph cluster2 {
@@ -65,7 +64,6 @@ digraph G {
         hasURL_URLData -> virtual0 [ style = "bold" label="openConnection()"  ];
         virtual0 -> hasURL_URLData [ style = "bold"  ];
         virtual0 -> Constructed_JavaRequest [ label="return URLConnection()"  ];
-        Constructed_URLData -> Constructed_URLData [ label="Auto", style = "solid"  ];
         Constructed_JavaRequest -> Connected_JavaRequest [ label="Auto", style = "solid"  ];
         Connected_JavaRequest -> virtual1 [ style = "bold" label="Template"  ];
         virtual1 -> Connected_JavaRequest [ style = "bold"  ];
@@ -82,7 +80,6 @@ digraph G {
         virtual4 -> Connected_JavaRequest [ style = "bold"  ];
         virtual4 -> Constructed_OutputStream [ label="return OutputStream()"  ];
         Connected_JavaRequest -> Constructed_HttpConnection [ label="(HttpConnection) JavaRequest", style = "bold"  ];
-        Constructed_JavaRequest -> Constructed_JavaRequest [ label="Auto", style = "solid"  ];
         Constructed_HttpConnection -> Connected_JavaRequest [ label="Auto", style = "solid"  ];
         Constructed_HttpConnection -> virtual5 [ style = "bold" label="getResponseCode()"  ];
         virtual5 -> Constructed_HttpConnection [ style = "bold"  ];
@@ -92,7 +89,6 @@ digraph G {
         Constructed_OutputStream -> Constructed_OutputStream [ label="close()", style = "bold"  ];
         Constructed_OutputStream -> Constructed_OutputStream [ label="flush()", style = "bold"  ];
         Constructed_OutputStream -> Constructed_OutputStream [ label="write(Payload: byte[])", style = "bold"  ];
-        Constructed_OutputStream -> Constructed_OutputStream [ label="Auto", style = "solid"  ];
         Init_Payload -> Constructed_Payload [ label="Template", style = "bold"  ];
         Constructed_Payload -> Constructed_OutputStream [ label="Usage in write(Payload: byte[])", style = "dashed"  ];
         Constructed_RequestParamName -> Constructed_Payload [ label="Usage in Template", style = "dashed"  ];

@@ -1,6 +1,9 @@
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties
 import com.github.javaparser.ast.Node
 import com.github.javaparser.ast.NodeList
+import com.github.javaparser.ast.body.ConstructorDeclaration
+import com.github.javaparser.ast.body.FieldDeclaration
+import com.github.javaparser.ast.body.MethodDeclaration
 import com.github.javaparser.ast.body.VariableDeclarator
 import com.github.javaparser.ast.expr.*
 import com.github.javaparser.ast.stmt.BlockStmt
@@ -50,13 +53,14 @@ class Migration(val library1: Library,
     var nameGeneratorCounter = 0
     val replacements: MutableList<Replacement> = mutableListOf()
     val globalRoute: MutableList<Route> = mutableListOf()
-    val needToMakeVariable: MutableMap<Pair<Route, Edge>, Boolean> = mutableMapOf()
 
     private val logger = KotlinLogging.logger {}
 
     val extractor = RouteExtractor(library1, codeElements, functionName, sourceFile)
     val routeMaker = RouteMaker(globalRoute, extractor, invocations, library1, library2, dependencies)
     val replacementPerformer = ReplacementPerformer(replacements, routeMaker)
+
+    val ui = UserInteraction(library1.name, library2.name, sourceFile.absolutePath)
 
     fun doMigration() {
         logger.info("Function: $functionName")
@@ -236,6 +240,54 @@ class Migration(val library1: Library,
         val expr = ObjectCreationExpr(null, ClassOrInterfaceType(library2.getType(step.dst.machine, routeMaker.props[step.dst.machine])), params.toNodeList())
         return expr
     }
+
+    fun migrateClassMembers(codeElements: CodeElements) {
+        for (classDecl in codeElements.classes) {
+            val fields = classDecl.members.filterIsInstance<FieldDeclaration>()
+            for (field in fields) {
+                if (field.variables.size > 1) {
+                    continue
+                }
+                val fieldType = field.elementType.toString()
+                val machine = getMachineForType(fieldType, library1) ?: continue
+                field.variables.first().type = getNewType(machine, library2, field)
+            }
+        }
+    }
+
+    fun migrateFunctionArguments(methodDecl: MethodOrConstructorDeclaration) {
+        val node = methodDecl.get()
+        if (node is ConstructorDeclaration) {
+            val args = node.parameters
+            for (arg in args) {
+                val argType = arg.type.toString()
+                val machine = getMachineForType(argType, library1) ?: continue
+                arg.type = getNewType(machine, library2, arg)
+            }
+        }
+    }
+
+    fun migrateReturnValue(methodDecl: MethodOrConstructorDeclaration) {
+        val node = methodDecl.get()
+        if (node is MethodDeclaration) {
+            val machine = getMachineForType(node.type.toString(), library1) ?: return
+            node.type = getNewType(machine, library2, node)
+        }
+    }
+
+    private fun getMachineForType(oldType: String, library1: Library): StateMachine? = library1.machineTypes.entries.firstOrNull { (_, type) -> library1.simpleType(type) == oldType }?.key
+
+    private fun getNewType(machine: StateMachine, library2: Library, node: Node): ClassOrInterfaceType {
+        val replacementMachine = if (library2.machineTypes.contains(machine)) {
+            machine
+        } else {
+            val answer = ui.makeDecision("Replacement for ${machine.label()} at ${node.begin.get()}", library2.stateMachines.map { it.label() })
+            library2.stateMachines.first { it.label() == answer }
+        }
+        val newType = library2.machineTypes[replacementMachine]
+        return ClassOrInterfaceType(newType)
+    }
+
 }
 
 class ReplacementPerformer(val replacements: List<Replacement>,

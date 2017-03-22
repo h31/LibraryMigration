@@ -40,6 +40,7 @@ fun main(args: Array<String>) {
 
 fun migrate(projectDir: Path,
             traceFile: Path = projectDir.resolve("log.json"),
+            answersFile: Path = projectDir.resolve("answers.json"),
             from: Library,
             to: Library,
             testPatcher: (Path) -> Unit = {},
@@ -96,56 +97,6 @@ private fun addImports(cu: CompilationUnit, library: Library) {
             .map { type -> ImportDeclaration(Name(type), false, false) })
 }
 
-private fun migrateClassMembers(library1: Library, library2: Library,
-                                codeElements: CodeElements) {
-    for (classDecl in codeElements.classes) {
-        val fields = classDecl.members.filterIsInstance<FieldDeclaration>()
-        for (field in fields) {
-            if (field.variables.size > 1) {
-                continue
-            }
-            val fieldType = field.elementType.toString()
-            val machine = getMachineForType(fieldType, library1) ?: continue
-            field.variables.first().type = getNewType(machine, library2, field)
-        }
-    }
-}
-
-private fun migrateFunctionArguments(library1: Library, library2: Library,
-                                     methodDecl: MethodOrConstructorDeclaration) {
-    val node = methodDecl.get()
-    if (node is ConstructorDeclaration) {
-        val args = node.parameters
-        for (arg in args) {
-            val argType = arg.type.toString()
-            val machine = getMachineForType(argType, library1) ?: continue
-            arg.type = getNewType(machine, library2, arg)
-        }
-    }
-}
-
-private fun migrateReturnValue(library1: Library, library2: Library, methodDecl: MethodOrConstructorDeclaration) {
-    val node = methodDecl.get()
-    if (node is MethodDeclaration) {
-        val machine = getMachineForType(node.type.toString(), library1) ?: return
-        node.type = getNewType(machine, library2, node)
-    }
-}
-
-private fun getMachineForType(oldType: String, library1: Library): StateMachine? = library1.machineTypes.entries.firstOrNull { (_, type) -> library1.simpleType(type) == oldType }?.key
-
-private fun getNewType(machine: StateMachine, library2: Library, node: Node): ClassOrInterfaceType {
-    val replacementMachine = if (library2.machineTypes.contains(machine)) {
-        machine
-    } else {
-        val ui = UserInteraction()
-        val answer = ui.askUser("Replacement for ${machine.label()} at ${node.begin.get()}", library2.stateMachines.map { it.label() })
-        library2.stateMachines.first { it.label() == answer }
-    }
-    val newType = library2.machineTypes[replacementMachine]
-    return ClassOrInterfaceType(newType)
-}
-
 private fun parseImports(imports: List<ImportDeclaration>) = imports.map { x -> x.name.toString() }
 
 private fun diffLibraryClasses(library1: Library, library2: Library) = library1.allTypes() - library2.allTypes()
@@ -182,9 +133,9 @@ fun migrateFile(library1: Library,
                 invocations = invocations)
 
         migration.doMigration()
-        migrateClassMembers(library1, library2, codeElements)
-        migrateFunctionArguments(library1, library2, methodDecl)
-        migrateReturnValue(library1, library2, methodDecl)
+        migration.migrateClassMembers(codeElements)
+        migration.migrateFunctionArguments(methodDecl)
+        migration.migrateReturnValue(methodDecl)
     }
 //    fixEntityTypes(codeElements, library1, library2)
 }

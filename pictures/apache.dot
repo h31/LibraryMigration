@@ -30,7 +30,6 @@ digraph G {
     subgraph cluster5 {
     label = <<B>HttpClientFactory: HttpClients</B>>;
         Init_HttpClientFactory [ label="Init" ];
-        Constructed_HttpClientFactory [ label="Constructed" ];
         virtual4 [ shape = point ];
     }
     subgraph cluster6 {
@@ -50,7 +49,6 @@ digraph G {
     subgraph cluster9 {
     label = <<B>EntityUtils: EntityUtils</B>>;
         Init_EntityUtils [ label="Init" ];
-        Constructed_EntityUtils [ label="Constructed" ];
         virtual7 [ shape = point ];
     }
     subgraph cluster10 {
@@ -91,7 +89,6 @@ digraph G {
         Init_GetRequest -> Constructed_GetRequest [ label="new GetRequest: HttpGet(URL: String)", style = "bold"  ];
         Constructed_GetRequest -> Constructed_GetRequest [ label="addHeader(headerName, headerValue)", style = "bold"  ];
         Constructed_GetRequest -> Constructed_Client [ label="Usage in execute(GetRequest: HttpGet)", style = "dashed"  ];
-        Constructed_GetRequest -> Constructed_GetRequest [ label="Auto", style = "solid"  ];
         Constructed_Client -> virtual0 [ style = "bold" label="execute(GetRequest: HttpGet)"  ];
         virtual0 -> Constructed_Client [ style = "bold"  ];
         virtual0 -> Constructed_Response [ label="return CloseableHttpResponse()"  ];
@@ -99,18 +96,15 @@ digraph G {
         virtual1 -> Constructed_Client [ style = "bold"  ];
         virtual1 -> Constructed_Response [ label="return CloseableHttpResponse()"  ];
         Constructed_Client -> Final_Client [ label="close()", style = "bold"  ];
-        Constructed_Client -> Constructed_Client [ label="Auto", style = "solid"  ];
         Constructed_Response -> virtual2 [ style = "bold" label="getEntity()"  ];
         virtual2 -> Constructed_Response [ style = "bold"  ];
         virtual2 -> Constructed_Entity [ label="return HttpEntity()"  ];
         Constructed_Response -> virtual3 [ style = "bold" label="Template"  ];
         virtual3 -> Constructed_Response [ style = "bold"  ];
         virtual3 -> Constructed_StatusCode [ label="return int()"  ];
-        Constructed_Response -> Constructed_Response [ label="Auto", style = "solid"  ];
         Init_HttpClientFactory -> virtual4 [ style = "bold" label="createDefault()"  ];
         virtual4 -> Init_HttpClientFactory [ style = "bold"  ];
         virtual4 -> Constructed_Client [ label="return CloseableHttpClient()"  ];
-        Constructed_HttpClientFactory -> Constructed_HttpClientFactory [ label="Auto", style = "solid"  ];
         Constructed_Entity -> Init_EntityUtils [ label="Usage in toString(Entity: HttpEntity)", style = "dashed"  ];
         Constructed_Entity -> virtual5 [ style = "bold" label="getContent()"  ];
         virtual5 -> Constructed_Entity [ style = "bold"  ];
@@ -118,21 +112,17 @@ digraph G {
         Constructed_Entity -> virtual6 [ style = "bold" label="getContentLength()"  ];
         virtual6 -> Constructed_Entity [ style = "bold"  ];
         virtual6 -> Constructed_ContentLength [ label="return long()"  ];
-        Constructed_Entity -> Constructed_Entity [ label="Auto", style = "solid"  ];
         Init_EntityUtils -> virtual7 [ style = "bold" label="toString(Entity: HttpEntity)"  ];
         virtual7 -> Init_EntityUtils [ style = "bold"  ];
         virtual7 -> Constructed_Body [ label="return String()"  ];
-        Constructed_EntityUtils -> Constructed_EntityUtils [ label="Auto", style = "solid"  ];
         Init_ByteArrayEntity -> Constructed_ByteArrayEntity [ label="new ByteArrayEntity: ByteArrayEntity(Payload: String, ContentTypeApache: ContentType)", style = "bold"  ];
         Constructed_ByteArrayEntity -> Constructed_PostRequest [ label="Usage in setEntity(ByteArrayEntity: ByteArrayEntity)", style = "dashed"  ];
-        Constructed_ByteArrayEntity -> Constructed_ByteArrayEntity [ label="Auto", style = "solid"  ];
         Init_Payload -> Constructed_Payload [ label="Template", style = "bold"  ];
         Constructed_Payload -> Constructed_ByteArrayEntity [ label="Usage in new ByteArrayEntity: ByteArrayEntity(Payload: String, ContentTypeApache: ContentType)", style = "dashed"  ];
         Init_PostRequest -> Constructed_PostRequest [ label="new PostRequest: HttpPost(URL: String)", style = "bold"  ];
         Constructed_PostRequest -> Constructed_PostRequest [ label="addHeader(headerName, headerValue)", style = "bold"  ];
         Constructed_PostRequest -> Constructed_Client [ label="Usage in execute(PostRequest: HttpPost)", style = "dashed"  ];
         Constructed_PostRequest -> Constructed_PostRequest [ label="setEntity(ByteArrayEntity: ByteArrayEntity)", style = "bold"  ];
-        Constructed_PostRequest -> Constructed_PostRequest [ label="Auto", style = "solid"  ];
         Constructed_RequestParamName -> Constructed_Payload [ label="Usage in Template", style = "dashed"  ];
         Constructed_RequestParamValue -> Constructed_Payload [ label="Usage in Template", style = "dashed"  ];
         Init_ContentTypeApache -> Constructed_ContentTypeApache [ label="Template", style = "bold"  ];
