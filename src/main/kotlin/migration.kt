@@ -60,7 +60,7 @@ class Migration(val library1: Library,
     val routeMaker = RouteMaker(globalRoute, extractor, invocations, library1, library2, dependencies)
     val replacementPerformer = ReplacementPerformer(replacements, routeMaker)
 
-    val ui = UserInteraction(library1.name, library2.name, sourceFile.absolutePath)
+    val ui = UserInteraction(library1.name, library2.name, sourceFile.relativeToOrSelf(File(".").absoluteFile).toString()) // TODO: Dirty hack
 
     fun doMigration() {
         logger.info("Function: $functionName")
@@ -244,13 +244,18 @@ class Migration(val library1: Library,
     fun migrateClassMembers(codeElements: CodeElements) {
         for (classDecl in codeElements.classes) {
             val fields = classDecl.members.filterIsInstance<FieldDeclaration>()
-            for (field in fields) {
+            for (field in fields.toList()) {
                 if (field.variables.size > 1) {
                     continue
                 }
                 val fieldType = field.elementType.toString()
                 val machine = getMachineForType(fieldType, library1) ?: continue
-                field.variables.first().type = getNewType(machine, library2, field)
+                val newType = getNewType(machine, library2, field)
+                if (newType != null) {
+                    field.variables.first().type = newType
+                } else {
+                    field.remove()
+                }
             }
         }
     }
@@ -277,11 +282,15 @@ class Migration(val library1: Library,
 
     private fun getMachineForType(oldType: String, library1: Library): StateMachine? = library1.machineTypes.entries.firstOrNull { (_, type) -> library1.simpleType(type) == oldType }?.key
 
-    private fun getNewType(machine: StateMachine, library2: Library, node: Node): ClassOrInterfaceType {
+    private fun getNewType(machine: StateMachine, library2: Library, node: Node): ClassOrInterfaceType? {
         val replacementMachine = if (library2.machineTypes.contains(machine)) {
             machine
         } else {
-            val answer = ui.makeDecision("Replacement for ${machine.label()} at ${node.begin.get()}", library2.stateMachines.map { it.label() })
+            val replacements = library2.stateMachines.map { it.label() } + "Remove"
+            val answer = ui.makeDecision("Replacement for ${machine.label()} at ${node.begin.get()}", replacements)
+            if (answer == "Remove") {
+                return null
+            }
             library2.stateMachines.first { it.label() == answer }
         }
         val newType = library2.machineTypes[replacementMachine]
@@ -326,7 +335,7 @@ class ReplacementPerformer(val replacements: List<Replacement>,
             } else {
                 removedStmts += statement
             }
-        } else if (oldExpr.parentNode.get() is ExpressionStmt || oldExpr.parentNode.get() is VariableDeclarator) {
+        } else if (oldExpr.parentNode.get() is ExpressionStmt || oldExpr.parentNode.get() is VariableDeclarator || oldExpr.parentNode.get() is AssignExpr) {
             logger.info("Remove $statement")
             removedStmts += statement
         }

@@ -116,7 +116,7 @@ interface Edge : Labelable {
         val loop = src == dst
         val withSideEffects = actions.any { it.withSideEffects }
         val map = mutableMapOf<String, Any>()
-        allowTransition(map)
+        allowTransition(map) // TODO: Check properties modification
         return loop && !withSideEffects // && map.isEmpty()
     }
 
