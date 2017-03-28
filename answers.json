@@ -1,0 +1,7 @@
+[ {
+  "file" : "examples/instagram-java-scraper/src/main/java/me/postaddict/instagramscraper/Instagram.java",
+  "library1" : "okhttp",
+  "library2" : "java",
+  "question" : "Replacement for Client: OkHttpClient at (line 22,col 5)",
+  "response" : "Remove"
+} ]

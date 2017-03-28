@@ -2,6 +2,7 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.readValue
 import com.fasterxml.jackson.module.kotlin.registerKotlinModule
 import java.io.File
+import java.io.IOException
 
 /**
  * Created by artyom on 09.03.17.
@@ -41,6 +42,9 @@ class UserInteraction(val library1: String, val library2: String, val file: Stri
     }
 
     private fun askUser(question: String, cases: List<String>): String {
+        if (System.getenv().containsKey("CI")) {
+            throw IOException()
+        }
         println("Question: $question")
         for (case in cases.withIndex()) {
             println("${case.index + 1}. ${case.value}")
