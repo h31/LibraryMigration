@@ -70,6 +70,12 @@ fun makeJava(): Library {
             dst = connected
     )
 
+    CallEdge(
+            machine = request,
+            dst = connected,
+            methodName = "connect"
+    )
+
     val readerToString = TemplateEdge(
             machine = request,
             src = connected,
@@ -110,6 +116,11 @@ fun makeJava(): Library {
             propertyModifier = { map -> map + Pair("method", "POST") },
             hasReturnValue = false,
             param = listOf(ConstParam("true"))
+    )
+
+    CallEdge(
+            machine = request,
+            methodName = "setRequestMethod"
     )
 
     LinkedEdge(
@@ -179,12 +190,24 @@ fun makeJava(): Library {
 
     CallEdge(
             machine = httpConnection,
-            methodName = "setRequestProperty"
+            methodName = "setRequestProperty",
+            actions = listOf(Actions.setHeader),
+            param = listOf(ActionParam("headerName"), ActionParam("headerValue")),
+            hasReturnValue = false
     )
 
     CallEdge(
             machine = httpConnection,
-            methodName = "setDoOutput"
+            methodName = "setRequestMethod"
+    )
+
+    CallEdge(
+            machine = httpConnection,
+            methodName = "setDoOutput",
+            actions = listOf(Actions.usePost),
+            propertyModifier = { map -> map + Pair("method", "POST") },
+            hasReturnValue = false,
+            param = listOf(ConstParam("true"))
     )
 
     return Library(

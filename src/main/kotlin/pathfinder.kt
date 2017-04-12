@@ -40,15 +40,6 @@ class PathFinder(val edges: Set<Edge>, val src: Set<State>, val initProps: Map<S
             }
             if (pending.isEmpty()) {
                 logger.error("Not found!")
-//                visited.add(Model(State(name = "Constructed", machine = StateMachine("Payload"))))
-//                haveMissingRequirements.mapValues { model -> model.value.filterNot { state -> state.machine.name == "Payload" } }
-//                for (entry in haveMissingRequirements) {
-//                    val newList = entry.value.filterNot { state -> state.machine.name == "Payload" }
-//                    if (newList != entry.value) {
-//                        entry.setValue(newList)
-//                    }
-//                }
-//                continue
                 error("Empty pendings!")
             }
             val model = pending.poll()

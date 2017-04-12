@@ -29,22 +29,26 @@ object AnswerCache {
 }
 
 class UserInteraction(val library1: String, val library2: String, val file: String) {
-    fun makeDecision(question: String, cases: List<String>): String {
+    fun makeDecision(question: String, cases: List<String>?): String {
         val answers = AnswerCache.answers
         val cachedAnswer = answers.firstOrNull { it.file == file && it.library1 == library1 && it.library2 == library2 && it.question == question }
         if (cachedAnswer != null) {
             return cachedAnswer.response
         } else {
-            val response = askUser(question, cases)
+            if (System.getenv().containsKey("CI")) {
+                throw IOException()
+            }
+            val response = if (cases != null) {
+                askUserCase(question, cases)
+            } else {
+                askUserFreeform(question)
+            }
             AnswerCache.addAnswer(Answer(file = file, library1 = library1, library2 = library2, question = question, response = response))
             return response
         }
     }
 
-    private fun askUser(question: String, cases: List<String>): String {
-        if (System.getenv().containsKey("CI")) {
-            throw IOException()
-        }
+    private fun askUserCase(question: String, cases: List<String>): String {
         println("Question: $question")
         for (case in cases.withIndex()) {
             println("${case.index + 1}. ${case.value}")
@@ -53,6 +57,18 @@ class UserInteraction(val library1: String, val library2: String, val file: Stri
             val response = readLine()?.toIntOrNull()
             if (response != null) {
                 return cases[response-1]
+            } else {
+                println("Incorrect input")
+            }
+        }
+    }
+
+    private fun askUserFreeform(question: String): String {
+        println("Question: $question")
+        while (true) {
+            val response = readLine()
+            if (response != null) {
+                return response
             } else {
                 println("Incorrect input")
             }

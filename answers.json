@@ -4,4 +4,64 @@
   "library2" : "java",
   "question" : "Replacement for Client: OkHttpClient at (line 22,col 5)",
   "response" : "Remove"
+}, {
+  "file" : "../../Compile/acme4j/acme4j-client/src/main/java/org/shredzone/acme4j/connector/DefaultConnection.java",
+  "library1" : "java",
+  "library2" : "okhttp",
+  "question" : "Add object to context, iteration 0",
+  "response" : "Builder.hasURL"
+}, {
+  "file" : "../../Compile/acme4j/acme4j-client/src/main/java/org/shredzone/acme4j/connector/DefaultConnection.java",
+  "library1" : "java",
+  "library2" : "okhttp",
+  "question" : "Object name, iteration 0",
+  "response" : "conn"
+}, {
+  "file" : "../../Compile/acme4j/acme4j-client/src/test/java/org/shredzone/acme4j/connector/HttpConnectorTest.java",
+  "library1" : "java",
+  "library2" : "okhttp",
+  "question" : "Add object to context, iteration 0",
+  "response" : "Builder.hasURL"
+}, {
+  "file" : "../../Compile/acme4j/acme4j-client/src/test/java/org/shredzone/acme4j/connector/HttpConnectorTest.java",
+  "library1" : "java",
+  "library2" : "okhttp",
+  "question" : "Object name, iteration 0",
+  "response" : "conn"
+}, {
+  "file" : "../../Compile/acme4j/acme4j-client/src/test/java/org/shredzone/acme4j/connector/DefaultConnectionTest.java",
+  "library1" : "java",
+  "library2" : "okhttp",
+  "question" : "Add object to context, iteration 0",
+  "response" : "Skip"
+}, {
+  "file" : "../../Compile/acme4j/acme4j-client/src/main/java/org/shredzone/acme4j/provider/letsencrypt/LetsEncryptHttpConnector.java",
+  "library1" : "java",
+  "library2" : "okhttp",
+  "question" : "Replacement for HttpConnection: HttpURLConnection at (line 40,col 5)",
+  "response" : "Builder: Request.Builder"
+}, {
+  "file" : "../../Compile/acme4j/acme4j-client/src/main/java/org/shredzone/acme4j/connector/DefaultConnection.java",
+  "library1" : "java",
+  "library2" : "okhttp",
+  "question" : "Replacement for HttpConnection: HttpURLConnection at (line 69,col 5)",
+  "response" : "Builder: Request.Builder"
+}, {
+  "file" : "../../Compile/acme4j/acme4j-client/src/main/java/org/shredzone/acme4j/connector/HttpConnector.java",
+  "library1" : "java",
+  "library2" : "okhttp",
+  "question" : "Replacement for HttpConnection: HttpURLConnection at (line 55,col 5)",
+  "response" : "Builder: Request.Builder"
+}, {
+  "file" : "../../Compile/acme4j/acme4j-client/src/main/java/org/shredzone/acme4j/challenge/OutOfBand01Challenge.java",
+  "library1" : "java",
+  "library2" : "okhttp",
+  "question" : "Replacement for URLData: URL at (line 47,col 5)",
+  "response" : "URL: String"
+}, {
+  "file" : "../../Compile/acme4j/acme4j-client/src/test/java/org/shredzone/acme4j/connector/DefaultConnectionTest.java",
+  "library1" : "java",
+  "library2" : "okhttp",
+  "question" : "Replacement for HttpConnection: HttpURLConnection at (line 54,col 5)",
+  "response" : "Builder: Request.Builder"
 } ]

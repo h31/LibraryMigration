@@ -10,9 +10,17 @@ import com.github.javaparser.ast.expr.*
 import com.github.javaparser.ast.stmt.BlockStmt
 import com.github.javaparser.ast.type.ClassOrInterfaceType
 import com.github.javaparser.ast.visitor.VoidVisitorAdapter
+import com.github.javaparser.symbolsolver.javaparsermodel.JavaParserFacade
+import com.github.javaparser.symbolsolver.model.resolution.TypeSolver
+import com.github.javaparser.symbolsolver.resolution.typesolvers.CombinedTypeSolver
+import com.github.javaparser.symbolsolver.resolution.typesolvers.JarTypeSolver
+import com.github.javaparser.symbolsolver.resolution.typesolvers.JavaParserTypeSolver
+import com.github.javaparser.symbolsolver.resolution.typesolvers.ReflectionTypeSolver
 import mu.KotlinLogging
 import org.gradle.tooling.GradleConnector
 import org.gradle.tooling.ProjectConnection
+import org.gradle.tooling.model.ExternalDependency
+import org.gradle.tooling.model.eclipse.EclipseProject
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.FileInputStream
@@ -56,22 +64,24 @@ fun migrate(projectDir: Path,
     val testDir = projectDir.resolveSibling("${projectDir.fileName}_test_${from.name}_${to.name}")
     prepareTestDir(projectDir, testDir)
 
+    val project = GradleProject(projectDir)
+
     for ((source, cu) in pending) {
         logger.info("Migrating $source")
         val codeElements = CodeElements();
         CodeElementsVisitor().visit(cu, codeElements);
 
-        migrateFile(from, to, codeElements, source, invocations)
+        migrateFile(from, to, codeElements, source, invocations, project)
         addImports(cu, to)
 
         val migratedCode = cu.toString()
         println(migratedCode);
 
         val relativePath = projectDir.relativize(source.toPath())
-        Files.write(testDir.resolve(relativePath), migratedCode.toByteArray())
+        Files.write(projectDir.resolve(relativePath), migratedCode.toByteArray())
     }
     testPatcher(testDir)
-    return checkMigrationCorrectness(testDir, testClassName)
+    return project.checkMigrationCorrectness(testDir, testClassName)
 }
 
 typealias GroupedInvocation = Map<String, Map<String, List<RouteExtractor.Invocation>>>
@@ -120,7 +130,8 @@ fun migrateFile(library1: Library,
                 library2: Library,
                 codeElements: CodeElements,
                 file: File,
-                invocations: GroupedInvocation) {
+                invocations: GroupedInvocation,
+                project: GradleProject) {
     for (methodDecl in codeElements.methodDecls) {
         val methodLocalCodeElements = methodDecl.getCodeElements()
 
@@ -130,7 +141,8 @@ fun migrateFile(library1: Library,
                 codeElements = methodLocalCodeElements,
                 functionName = methodDecl.name(),
                 sourceFile = file,
-                invocations = invocations)
+                invocations = invocations,
+                project = project)
 
         migration.doMigration()
         migration.migrateClassMembers(codeElements)
@@ -177,6 +189,7 @@ private class CodeElementsVisitor : VoidVisitorAdapter<CodeElements>() {
     override fun visit(n: MethodCallExpr, arg: CodeElements) {
         arg.methodCalls.add(n);
         arg.nodes.add(n);
+        arg.codeEvents.add(n)
         super.visit(n, arg)
     }
 
@@ -194,6 +207,7 @@ private class CodeElementsVisitor : VoidVisitorAdapter<CodeElements>() {
     override fun visit(n: ObjectCreationExpr, arg: CodeElements) {
         arg.objectCreation.add(n);
         arg.nodes.add(n);
+        arg.codeEvents.add(n)
         super.visit(n, arg)
     }
 
@@ -214,7 +228,8 @@ data class CodeElements(val classes: MutableList<ClassOrInterfaceDeclaration> = 
                         val objectCreation: MutableList<ObjectCreationExpr> = mutableListOf(),
                         val variableDeclarations: MutableList<VariableDeclarationExpr> = mutableListOf(),
                         val blockStmts: MutableList<BlockStmt> = mutableListOf(),
-                        val nodes: MutableList<Node> = mutableListOf())
+                        val nodes: MutableList<Node> = mutableListOf(),
+                        val codeEvents: MutableList<Node> = mutableListOf())
 
 data class MethodDiff(val methodName: String,
                       val newInSrc: List<IndexedValue<Parameter>>,
@@ -243,55 +258,88 @@ private val logger = KotlinLogging.logger {}
 data class ClassDiff(val name: String,
                      val methodsChanged: Map<MethodDeclaration, MethodDiff>)
 
-fun checkMigrationCorrectness(testDir: Path, testClassName: String?): Boolean {
-    logger.info("Running migrated code")
+class GradleProject(val projectDir: Path) {
+    val traceFile: Path = projectDir.resolve("log.json")
+    val answersFile: Path = projectDir.resolve("answers.json")
 
     val connector = GradleConnector.newConnector()
-    val connection = connector.forProjectDirectory(testDir.toFile()).connect()
 
-    val (buildResult, buildOutput) = runGradleTask(connection, "assemble")
-    if (buildResult == false) {
-        logger.error("Compilation failed!")
-        logger.error(buildOutput)
-        return false
+    private fun runGradleTask(connection: ProjectConnection, taskName: String): Pair<Boolean, String> {
+        val buildOutputStream = ByteArrayOutputStream()
+        val buildLauncher = connection.newBuild().forTasks(taskName).withArguments("-i").setStandardError(buildOutputStream)
+        try {
+            buildLauncher.run()
+            return Pair(true, "")
+        } catch (ex: Exception) {
+            return Pair(false, ex.toString() + "\n" + buildOutputStream.toString(Charset.defaultCharset().toString()))
+        }
     }
 
-    val runTests = true
-    val (testResult, testOutput) = when {
-        runTests && testClassName != null -> runGradleTest(connection, testClassName)
-        runTests && testClassName == null -> runGradleTask(connection, "test")
-        else -> Pair(true, "")
+    private fun runGradleTest(connection: ProjectConnection, testClassName: String): Pair<Boolean, String> {
+        val buildOutputStream = ByteArrayOutputStream()
+        val buildLauncher = connection.newTestLauncher().withJvmTestClasses(testClassName).withArguments("-i").setStandardError(buildOutputStream)
+        try {
+            buildLauncher.run()
+            return Pair(true, "")
+        } catch (ex: Exception) {
+            return Pair(false, ex.toString() + "\n" + buildOutputStream.toString(Charset.defaultCharset().toString()))
+        }
     }
-    connection.close()
-    if (testResult) {
-        logger.info("Migration OK")
-        return true
-    } else {
-        logger.error("Migrated code doesn't work properly")
-        logger.error("Migrated:")
-        logger.error(testOutput)
-        return false
-    }
-}
 
-private fun runGradleTask(connection: ProjectConnection, taskName: String): Pair<Boolean, String> {
-    val buildOutputStream = ByteArrayOutputStream()
-    val buildLauncher = connection.newBuild().forTasks(taskName).withArguments("-i").setStandardError(buildOutputStream)
-    try {
-        buildLauncher.run()
-        return Pair(true, "")
-    } catch (ex: Exception) {
-        return Pair(false, ex.toString() + "\n" + buildOutputStream.toString(Charset.defaultCharset().toString()))
-    }
-}
+    fun checkMigrationCorrectness(testDir: Path, testClassName: String?): Boolean {
+        logger.info("Running migrated code")
 
-private fun runGradleTest(connection: ProjectConnection, testClassName: String): Pair<Boolean, String> {
-    val buildOutputStream = ByteArrayOutputStream()
-    val buildLauncher = connection.newTestLauncher().withJvmTestClasses(testClassName).withArguments("-i").setStandardError(buildOutputStream)
-    try {
-        buildLauncher.run()
-        return Pair(true, "")
-    } catch (ex: Exception) {
-        return Pair(false, ex.toString() + "\n" + buildOutputStream.toString(Charset.defaultCharset().toString()))
+        val testProjectConnection = connector.forProjectDirectory(testDir.toFile()).connect()
+
+        val (buildResult, buildOutput) = runGradleTask(testProjectConnection, "assemble")
+        if (buildResult == false) {
+            logger.error("Compilation failed!")
+            logger.error(buildOutput)
+            return false
+        }
+
+        val runTests = true
+        val (testResult, testOutput) = when {
+            runTests && testClassName != null -> runGradleTest(testProjectConnection, testClassName)
+            runTests && testClassName == null -> runGradleTask(testProjectConnection, "test")
+            else -> Pair(true, "")
+        }
+        testProjectConnection.close()
+        if (testResult) {
+            logger.info("Migration OK")
+            return true
+        } else {
+            logger.error("Migrated code doesn't work properly")
+            logger.error("Migrated:")
+            logger.error(testOutput)
+            return false
+        }
+    }
+
+    fun getTypeSolver(): TypeSolver {
+        val combinedTypeSolver = CombinedTypeSolver()
+        combinedTypeSolver.add(ReflectionTypeSolver())
+
+        val connection = connector.forProjectDirectory(projectDir.toFile()).connect()
+        val model = connection.model(EclipseProject::class.java).get()
+        for (dependency in model.classpath.all) {
+            println(dependency.file)
+            combinedTypeSolver.add(JarTypeSolver.getJarTypeSolver(dependency.file.absolutePath))
+        }
+        for (source in model.sourceDirectories.all) {
+            println(source.directory)
+            combinedTypeSolver.add(JavaParserTypeSolver(source.directory))
+        }
+//        val model2 = connection.model(org.gradle.tooling.model.DomainObjectSet<ExternalDependency>::class.java).get()
+//        val model3 = connection.model(org.gradle.tooling.model.Dependency::class.java).get()
+
+//        combinedTypeSolver.add(JavaParserTypeSolver(File("src/test/resources/javaparser_src/proper_source")))
+//        combinedTypeSolver.add(JavaParserTypeSolver(File("src/test/resources/javaparser_src/generated")))
+
+        return combinedTypeSolver
+    }
+
+    val javaParserFacade: JavaParserFacade by lazy {
+        JavaParserFacade.get(getTypeSolver())
     }
 }

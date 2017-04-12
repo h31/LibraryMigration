@@ -65,6 +65,7 @@ digraph G {
         virtual0 -> hasURL_URLData [ style = "bold"  ];
         virtual0 -> Constructed_JavaRequest [ label="return URLConnection()"  ];
         Constructed_JavaRequest -> Connected_JavaRequest [ label="Auto", style = "solid"  ];
+        Constructed_JavaRequest -> Connected_JavaRequest [ label="connect()", style = "bold"  ];
         Connected_JavaRequest -> virtual1 [ style = "bold" label="Template"  ];
         virtual1 -> Connected_JavaRequest [ style = "bold"  ];
         virtual1 -> Constructed_Body [ label="return String()"  ];
@@ -73,6 +74,7 @@ digraph G {
         virtual2 -> Constructed_InputStream [ label="return InputStream()"  ];
         Constructed_JavaRequest -> Constructed_JavaRequest [ label="setRequestProperty(headerName, headerValue)", style = "bold"  ];
         Constructed_JavaRequest -> Constructed_JavaRequest [ label="setDoOutput(true)", style = "bold"  ];
+        Constructed_JavaRequest -> Constructed_JavaRequest [ label="setRequestMethod()", style = "bold"  ];
         Connected_JavaRequest -> virtual3 [ style = "bold" label="getContentLengthLong()"  ];
         virtual3 -> Connected_JavaRequest [ style = "bold"  ];
         virtual3 -> Constructed_ContentLength [ label="return long()"  ];
@@ -85,7 +87,8 @@ digraph G {
         virtual5 -> Constructed_HttpConnection [ style = "bold"  ];
         virtual5 -> Constructed_StatusCode [ label="return int()"  ];
         Constructed_HttpConnection -> Constructed_HttpConnection [ label="setRequestProperty()", style = "bold"  ];
-        Constructed_HttpConnection -> Constructed_HttpConnection [ label="setDoOutput()", style = "bold"  ];
+        Constructed_HttpConnection -> Constructed_HttpConnection [ label="setRequestMethod()", style = "bold"  ];
+        Constructed_HttpConnection -> Constructed_HttpConnection [ label="setDoOutput(true)", style = "bold"  ];
         Constructed_OutputStream -> Constructed_OutputStream [ label="close()", style = "bold"  ];
         Constructed_OutputStream -> Constructed_OutputStream [ label="flush()", style = "bold"  ];
         Constructed_OutputStream -> Constructed_OutputStream [ label="write(Payload: byte[])", style = "bold"  ];

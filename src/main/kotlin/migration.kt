@@ -11,9 +11,15 @@ import com.github.javaparser.ast.stmt.ExpressionStmt
 import com.github.javaparser.ast.stmt.ReturnStmt
 import com.github.javaparser.ast.stmt.Statement
 import com.github.javaparser.ast.type.ClassOrInterfaceType
+import com.github.javaparser.symbolsolver.javaparsermodel.JavaParserFacade
 import mu.KotlinLogging
 import java.io.File
 import java.util.*
+import com.github.javaparser.symbolsolver.resolution.typesolvers.JavaParserTypeSolver
+import com.github.javaparser.symbolsolver.resolution.typesolvers.ReflectionTypeSolver
+import com.github.javaparser.symbolsolver.resolution.typesolvers.CombinedTypeSolver
+
+
 
 /**
  * Created by artyom on 22.08.16.
@@ -47,7 +53,8 @@ class Migration(val library1: Library,
                 val codeElements: CodeElements,
                 val functionName: String,
                 val sourceFile: File,
-                val invocations: GroupedInvocation) {
+                val invocations: GroupedInvocation,
+                val project: GradleProject) {
     val dependencies: MutableMap<StateMachine, Expression> = mutableMapOf()
     // val pendingStmts = mutableListOf<Statement>()
     var nameGeneratorCounter = 0
@@ -56,11 +63,11 @@ class Migration(val library1: Library,
 
     private val logger = KotlinLogging.logger {}
 
-    val extractor = RouteExtractor(library1, codeElements, functionName, sourceFile)
-    val routeMaker = RouteMaker(globalRoute, extractor, invocations, library1, library2, dependencies)
-    val replacementPerformer = ReplacementPerformer(replacements, routeMaker)
-
     val ui = UserInteraction(library1.name, library2.name, sourceFile.relativeToOrSelf(File(".").absoluteFile).toString()) // TODO: Dirty hack
+
+    val extractor = RouteExtractor(library1, codeElements, functionName, sourceFile, project)
+    val routeMaker = RouteMaker(globalRoute, extractor, invocations, library1, library2, dependencies, ui)
+    val replacementPerformer = ReplacementPerformer(replacements, routeMaker)
 
     fun doMigration() {
         logger.info("Function: $functionName")
@@ -293,7 +300,7 @@ class Migration(val library1: Library,
             }
             library2.stateMachines.first { it.label() == answer }
         }
-        val newType = library2.machineTypes[replacementMachine]
+        val newType = library2.machineTypes[replacementMachine]?.replace('$', '.') // TODO: Without replace?
         return ClassOrInterfaceType(newType)
     }
 
@@ -414,11 +421,21 @@ class ReplacementPerformer(val replacements: List<Replacement>,
 class RouteExtractor(val library1: Library,
                      val codeElements: CodeElements,
                      val functionName: String,
-                     val sourceFile: File) {
+                     val sourceFile: File,
+                     val project: GradleProject) {
     private val logger = KotlinLogging.logger {}
 
     fun extractFromJSON(invocations: GroupedInvocation): List<LocatedEdge> {
         val localInvocations = invocations[sourceFile.name]!![functionName] ?: return emptyList() // invocations.filter { inv -> inv.callerName == functionName && inv.filename == this.sourceFile.name }
+//        val events = codeElements.codeEvents.sortedBy { event -> event.end.get() }
+//        for (event in events) {
+//            try {
+//                val type = project.javaParserFacade.getType(event)
+//                println(type)
+//            } catch (ex: RuntimeException) {
+//                System.err.println(ex)
+//            }
+//        }
 
         val usedEdges: MutableList<LocatedEdge> = mutableListOf()
         val edges = library1.stateMachines.flatMap { machine -> machine.edges }
@@ -426,13 +443,18 @@ class RouteExtractor(val library1: Library,
             if (invocation.kind == "method-call") {
                 val callEdge = edges.filterIsInstance<CallEdge>().firstOrNull { edge ->
                     edge.methodName == invocation.name &&
-                            invocation.simpleType() == edge.machine.type()
+                            edge.machine.type() == invocation.simpleType() &&
+                            if (edge.param.isNotEmpty() && edge.param.first() is ConstParam) (edge.param.first() as ConstParam).value == invocation.args.first() else true
                 }
                 if (callEdge == null) {
 //                    println("Cannot find edge for $invocation")
                     continue
                 }
-                val methodCall = codeElements.methodCalls.first { call -> call.name.identifier == invocation.name && call.end.unpack()?.line == invocation.line }
+                val methodCall = codeElements.methodCalls.firstOrNull { call -> call.name.identifier == invocation.name && call.end.unpack()?.line == invocation.line }
+                if (methodCall == null) {
+                    logger.error("Cannot find node for $invocation")
+                    continue
+                }
                 usedEdges += LocatedEdge(callEdge, methodCall)
                 if (methodCall.parentNode.get() is ExpressionStmt == false) {
                     val linkedEdge = callEdge.linkedEdge
@@ -521,7 +543,8 @@ class RouteMaker(val globalRoute: MutableList<Route>,
                  val invocations: GroupedInvocation,
                  val library1: Library,
                  val library2: Library,
-                 val dependencies: MutableMap<StateMachine, Expression>) {
+                 val dependencies: MutableMap<StateMachine, Expression>,
+                 val ui: UserInteraction) {
     val context: MutableSet<State> = mutableSetOf()
     val props: MutableMap<StateMachine, Map<String, Any>> = mutableMapOf()
     val actionsQueue = mutableListOf<Action>()
@@ -565,6 +588,9 @@ class RouteMaker(val globalRoute: MutableList<Route>,
                 }
             }
             val route = findRoute(context, dst, actionsQueue + actions)
+            if (route == null) {
+                continue
+            }
             actionsQueue.clear()
             props += route.stateProps
             for (step in route.path) {
@@ -572,7 +598,7 @@ class RouteMaker(val globalRoute: MutableList<Route>,
             }
             globalRoute += Route(oldNode = usage.node, route = route.path, edge = edge)
         }
-        check(actionsQueue.isEmpty())
+        // check(actionsQueue.isEmpty())
         // addFinalizers() // TODO
     }
 
@@ -640,7 +666,7 @@ class RouteMaker(val globalRoute: MutableList<Route>,
         val contextMachines = context.map(State::machine)
         val needsFinalization = contextMachines.filter { machine -> library2.stateMachines.contains(machine) && machine.states.any(State::isFinal) }
         for (machine in needsFinalization) {
-            val route = findRoute(context, machine.getFinalState(), listOf()).path
+            val route = findRoute(context, machine.getFinalState(), listOf())!!.path
             if (route.isNotEmpty()) {
                 val firstOccurence = globalRoute.first { route -> route.route.any { edge -> edge.machine == machine } }
                 firstOccurence.finalizerRoute = route
@@ -648,12 +674,30 @@ class RouteMaker(val globalRoute: MutableList<Route>,
         }
     }
 
-    private fun findRoute(src: Set<State>, dst: State?, actions: List<Action>): PathFinder.Model {
-        logger.info("  Searching route from ${src.joinToString(transform = State::stateAndMachineName)} to ${dst?.stateAndMachineName()} with ${actions.joinToString(transform = Action::name)}")
+    private fun findRoute(src: Set<State>, dst: State?, actions: List<Action>): PathFinder.Model? {
+        var states = src.filter { state -> library2.states().contains(state) }.toSet()
+        logger.info("  Searching route from ${states.joinToString(transform = State::stateAndMachineName)} to ${dst?.stateAndMachineName()} with ${actions.joinToString(transform = Action::name)}")
         val edges = library2.stateMachines.flatMap(StateMachine::edges).toSet()
-        val pathFinder = PathFinder(edges, src, props, actions.sorted())
-        pathFinder.findPath(dst)
-        return pathFinder.resultModel
+        var iteration = 0
+        while (true) {
+            try {
+                val pathFinder = PathFinder(edges, states, props, actions.sorted())
+                pathFinder.findPath(dst)
+                return pathFinder.resultModel
+            } catch (ex: Exception) {
+                val statesPool = library2.states()
+                val response = ui.makeDecision("Add object to context, iteration $iteration", statesPool.map { it.toString() } + "Skip")
+                if (response == "Skip") {
+                    return null
+                }
+                val newState = statesPool.single { it.toString() == response }
+                states -= states.filter { it.machine == newState.machine }
+                states += newState
+                val dependency = ui.makeDecision("Object name, iteration $iteration", null)
+                dependencies += Pair(newState.machine, IntegerLiteralExpr(dependency))
+                iteration++
+            }
+        }
     }
 
 //    private fun getUsages(methodName: String) =
@@ -716,3 +760,4 @@ class RouteMaker(val globalRoute: MutableList<Route>,
 fun <T> Optional<T>.unpack(): T? = orElse(null)
 
 fun <NodeT: Node> List<NodeT>.toNodeList() = NodeList.nodeList(this)
+
