@@ -80,7 +80,7 @@ data class StateMachine(val name: String,
                     machine = copiedMachine,
                     src = state,
                     dst = pairState,
-                    propertyModifier = { props -> props + Pair("inherited", true) },
+                    propertyModifier = { props -> props + Pair("inherited", true) + Pair("instanceof", copiedMachine.name) },
                     explicitCast = false
             )
         }
