@@ -18,6 +18,9 @@ class MigrationTest {
 
     val examples = Paths.get("examples")
 
+    val instagram = GradleProject(examples.resolve("instagram-java-scraper"))
+    val http = GradleProject(examples.resolve("HTTP"))
+
     val stripAspects = {path: Path ->
         val testFile = path.resolve("build.gradle").toFile()
         val lines = testFile.readLines()
@@ -31,8 +34,8 @@ class MigrationTest {
     }
 
     @Test
-    fun migrateInstagramOkHttp() {
-        Assert.assertTrue(migrate(projectDir = examples.resolve("instagram-java-scraper"),
+    fun migrateInstagramApache() {
+        Assert.assertTrue(migrate(instagram,
                 from = okhttp,
                 to = apache,
                 testPatcher = stripAspects
@@ -41,7 +44,7 @@ class MigrationTest {
 
     @Test
     fun migrateInstagramJava() {
-        Assert.assertTrue(migrate(projectDir = examples.resolve("instagram-java-scraper"),
+        Assert.assertTrue(migrate(instagram,
                 from = okhttp,
                 to = java,
                 testPatcher = stripAspects
@@ -50,7 +53,7 @@ class MigrationTest {
 
     @Test
     fun migrateJavaApache() {
-        Assert.assertTrue(migrate(projectDir = examples.resolve("HTTP"),
+        Assert.assertTrue(migrate(http,
                 from = java,
                 to = apache,
                 testClassName = "migration.Java",
@@ -60,17 +63,17 @@ class MigrationTest {
 
     @Test
     fun migrateJavaApacheTwice() {
-        Assert.assertTrue(migrate(projectDir = examples.resolve("HTTP"),
+        Assert.assertTrue(migrate(http,
                 from = java,
                 to = apache
         ))
         println("And again...")
-        Assert.assertTrue(migrate(projectDir = examples.resolve("HTTP_test_java_apache"),
+        Assert.assertTrue(migrate(project = GradleProject(examples.resolve("HTTP_test_java_apache")),
                 from = apache,
                 to = java
         ))
         println("And again...")
-        Assert.assertTrue(migrate(projectDir = examples.resolve("HTTP_test_java_apache_test_apache_java"),
+        Assert.assertTrue(migrate(project = GradleProject(examples.resolve("HTTP_test_java_apache_test_apache_java")),
                 from = java,
                 to = apache
         ))
@@ -78,7 +81,7 @@ class MigrationTest {
 
     @Test
     fun migrateJavaOkhttp() {
-        Assert.assertTrue(migrate(projectDir = examples.resolve("HTTP"),
+        Assert.assertTrue(migrate(http,
                 from = java,
                 to = okhttp,
                 testClassName = "migration.Java",
@@ -88,7 +91,7 @@ class MigrationTest {
 
     @Test
     fun migrateApacheJava() {
-        Assert.assertTrue(migrate(projectDir = examples.resolve("HTTP"),
+        Assert.assertTrue(migrate(http,
                 from = apache,
                 to = java,
                 testClassName = "migration.Apache",
@@ -98,7 +101,7 @@ class MigrationTest {
 
     @Test
     fun migrateApacheOkhttp() {
-        Assert.assertTrue(migrate(projectDir = examples.resolve("HTTP"),
+        Assert.assertTrue(migrate(http,
                 from = apache,
                 to = okhttp,
                 testClassName = "migration.Apache",
@@ -108,7 +111,7 @@ class MigrationTest {
 
     @Test
     fun migrateOkhttpJava() {
-        Assert.assertTrue(migrate(projectDir = examples.resolve("HTTP"),
+        Assert.assertTrue(migrate(http,
                 from = okhttp,
                 to = java,
                 testClassName = "migration.OkHttp",
@@ -118,7 +121,7 @@ class MigrationTest {
 
     @Test
     fun migrateOkhttpApache() {
-        Assert.assertTrue(migrate(projectDir = examples.resolve("HTTP"),
+        Assert.assertTrue(migrate(http,
                 from = okhttp,
                 to = apache,
                 testPatcher = stripAspects

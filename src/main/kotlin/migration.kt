@@ -54,7 +54,7 @@ class Migration(val library1: Library,
                 val functionName: String,
                 val sourceFile: File,
                 val invocations: GroupedInvocation,
-                val project: GradleProject) {
+                val project: Project) {
     val dependencies: MutableMap<StateMachine, Expression> = mutableMapOf()
     // val pendingStmts = mutableListOf<Statement>()
     var nameGeneratorCounter = 0
@@ -432,7 +432,7 @@ class RouteExtractor(val library1: Library,
                      val codeElements: CodeElements,
                      val functionName: String,
                      val sourceFile: File,
-                     val project: GradleProject) {
+                     val project: Project) {
     private val logger = KotlinLogging.logger {}
 
     fun extractFromJSON(invocations: GroupedInvocation): List<LocatedEdge> {

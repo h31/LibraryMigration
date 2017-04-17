@@ -40,48 +40,47 @@ fun main(args: Array<String>) {
 //            from = models["okhttp"]!!,
 //            to = models["java"]!!
 //    )
-    migrate(projectDir = Paths.get("/home/artyom/Compile/acme4j/acme4j-client"),
+    val project = MavenProject(projectDir = Paths.get("/home/artyom/Compile/acme4j"),
+            moduleDir = Paths.get("/home/artyom/Compile/acme4j/acme4j-client"))
+    migrate(project = project,
             from = HttpModels.java,
             to = HttpModels.okhttp
     )
 }
 
-fun migrate(projectDir: Path,
-            traceFile: Path = projectDir.resolve("log.json"),
-            answersFile: Path = projectDir.resolve("answers.json"),
+fun migrate(project: Project,
             from: Library,
             to: Library,
             testPatcher: (Path) -> Unit = {},
             testClassName: String? = null): Boolean {
+    val manager = MigrationManager(project = project,
+            from = from,
+            to = to)
+
     val importsForMigration = diffLibraryClasses(from, to)
-    val pending = findJavaFilesForMigration(projectDir, importsForMigration)
+    val pending = manager.findJavaFilesForMigration(project.projectDir, importsForMigration)
     if (pending.none()) {
         error("Nothing to migrate")
     }
 
-    val invocations = parseInvocations(traceFile.toFile())
-
-    val testDir = projectDir.resolveSibling("${projectDir.fileName}_test_${from.name}_${to.name}")
-    prepareTestDir(projectDir, testDir)
-
-    val project = GradleProject(projectDir)
+    val invocations = parseInvocations(project.traceFile.toFile())
 
     for ((source, cu) in pending) {
         logger.info("Migrating $source")
         val codeElements = CodeElements();
         CodeElementsVisitor().visit(cu, codeElements);
 
-        migrateFile(from, to, codeElements, source, invocations, project)
+        manager.migrateFile(codeElements, source, invocations)
         addImports(cu, to)
 
         val migratedCode = cu.toString()
         println(migratedCode);
 
-        val relativePath = projectDir.relativize(source.toPath())
-        Files.write(testDir.resolve(relativePath), migratedCode.toByteArray())
+        val relativePath = project.projectDir.relativize(source.toPath())
+        Files.write(manager.destDir.resolve(relativePath), migratedCode.toByteArray())
     }
-    testPatcher(testDir)
-    return project.checkMigrationCorrectness(testDir, testClassName)
+    testPatcher(manager.destDir)
+    return manager.checkMigrationCorrectness(testClassName)
 }
 
 typealias GroupedInvocation = Map<String, Map<String, List<RouteExtractor.Invocation>>>
@@ -90,14 +89,6 @@ private fun parseInvocations(traceFile: File): GroupedInvocation {
     val invocations = ObjectMapper().registerKotlinModule().readValue<List<RouteExtractor.Invocation>>(traceFile)
     val grouped = invocations.groupBy { it.filename }.mapValues { it.value.groupBy { it.callerName } } // TODO: groupingBy
     return grouped
-}
-
-private fun prepareTestDir(projectDir: Path, testDir: Path) {
-    testDir.toFile().deleteRecursively()
-
-    Files.walk(projectDir).forEach { path ->
-        Files.copy(path, testDir.resolve(projectDir.relativize(path)))
-    }
 }
 
 private fun addImports(cu: CompilationUnit, library: Library) {
@@ -111,45 +102,9 @@ private fun parseImports(imports: List<ImportDeclaration>) = imports.map { x -> 
 
 private fun diffLibraryClasses(library1: Library, library2: Library) = library1.allTypes() - library2.allTypes()
 
-private fun findJavaFilesForMigration(root: Path, importsForMigration: List<String>) = root.toFile().walk().filter { file -> file.extension == "java" }.mapNotNull { javaSource ->
-    val cu = parseFile(javaSource)
-    val fileImports = parseImports(cu.imports)
-    if (fileImports.intersect(importsForMigration).isNotEmpty()) {
-        Pair(javaSource, cu)
-    } else {
-        null
-    }
-}
-
 fun makePictures(libraries: Map<String, Library>) = libraries.forEach {
     library ->
     graphvizRender(toDOT(library.value), library.key)
-}
-
-fun migrateFile(library1: Library,
-                library2: Library,
-                codeElements: CodeElements,
-                file: File,
-                invocations: GroupedInvocation,
-                project: GradleProject) {
-    for (methodDecl in codeElements.methodDecls) {
-        val methodLocalCodeElements = methodDecl.getCodeElements()
-
-        val migration = Migration(
-                library1 = library1,
-                library2 = library2,
-                codeElements = methodLocalCodeElements,
-                functionName = methodDecl.name(),
-                sourceFile = file,
-                invocations = invocations,
-                project = project)
-
-        migration.doMigration()
-        migration.migrateClassMembers(codeElements)
-        migration.migrateFunctionArguments(methodDecl)
-        migration.migrateReturnValue(methodDecl)
-    }
-//    fixEntityTypes(codeElements, library1, library2)
 }
 
 private fun findJavaFile(path: Path, name: String) = path.toFile().walk().single { file -> file.name == name }
@@ -258,9 +213,19 @@ private val logger = KotlinLogging.logger {}
 data class ClassDiff(val name: String,
                      val methodsChanged: Map<MethodDeclaration, MethodDiff>)
 
-class GradleProject(val projectDir: Path) {
-    val traceFile: Path = projectDir.resolve("log.json")
-    val answersFile: Path = projectDir.resolve("answers.json")
+interface Project {
+    val projectDir: Path
+    val moduleDir: Path
+    val traceFile: Path
+    val answersFile: Path
+
+    fun checkMigrationCorrectness(testDir: Path, testClassName: String?): Boolean
+}
+
+class GradleProject(override val projectDir: Path) : Project {
+    override val moduleDir: Path = projectDir
+    override val traceFile: Path = projectDir.resolve("log.json")
+    override val answersFile: Path = projectDir.resolve("answers.json")
 
     val connector = GradleConnector.newConnector()
 
@@ -286,7 +251,7 @@ class GradleProject(val projectDir: Path) {
         }
     }
 
-    fun checkMigrationCorrectness(testDir: Path, testClassName: String?): Boolean {
+    override fun checkMigrationCorrectness(testDir: Path, testClassName: String?): Boolean {
         logger.info("Running migrated code")
 
         val testProjectConnection = connector.forProjectDirectory(testDir.toFile()).connect()
@@ -342,4 +307,65 @@ class GradleProject(val projectDir: Path) {
     val javaParserFacade: JavaParserFacade by lazy {
         JavaParserFacade.get(getTypeSolver())
     }
+}
+
+class MavenProject(override val projectDir: Path,
+                   override val moduleDir: Path) : Project {
+    override val traceFile: Path = projectDir.resolve("log.json")
+    override val answersFile: Path = projectDir.resolve("answers.json")
+
+    override fun checkMigrationCorrectness(testDir: Path, testClassName: String?): Boolean = true
+}
+
+class MigrationManager(val from: Library,
+                       val to: Library,
+                       val project: Project) {
+    private val migratedDir = project.projectDir.resolveSibling("migrated")
+    val destDir = migratedDir.resolveSibling("${project.projectDir.fileName}_migrated_${from.name}_${to.name}")
+
+    init {
+        if (!Files.isDirectory(migratedDir)) Files.createDirectory(migratedDir)
+
+        destDir.toFile().deleteRecursively()
+
+        Files.walk(project.projectDir).forEach { path ->
+            Files.copy(path, destDir.resolve(project.projectDir.relativize(path)))
+        }
+    }
+
+
+    fun findJavaFilesForMigration(root: Path, importsForMigration: List<String>) = root.toFile().walk().filter { file -> file.extension == "java" }.mapNotNull { javaSource ->
+        val cu = parseFile(javaSource)
+        val fileImports = parseImports(cu.imports)
+        if (fileImports.intersect(importsForMigration).isNotEmpty()) {
+            Pair(javaSource, cu)
+        } else {
+            null
+        }
+    }
+
+    fun migrateFile(codeElements: CodeElements,
+                    file: File,
+                    invocations: GroupedInvocation) {
+        for (methodDecl in codeElements.methodDecls) {
+            val methodLocalCodeElements = methodDecl.getCodeElements()
+
+            val migration = Migration(
+                    library1 = from,
+                    library2 = to,
+                    codeElements = methodLocalCodeElements,
+                    functionName = methodDecl.name(),
+                    sourceFile = file,
+                    invocations = invocations,
+                    project = project)
+
+            migration.doMigration()
+            migration.migrateClassMembers(codeElements)
+            migration.migrateFunctionArguments(methodDecl)
+            migration.migrateReturnValue(methodDecl)
+        }
+//    fixEntityTypes(codeElements, library1, library2)
+    }
+
+    fun checkMigrationCorrectness(testClassName: String?): Boolean = project.checkMigrationCorrectness(destDir, testClassName)
 }
