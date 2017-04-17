@@ -65,11 +65,38 @@ data class StateMachine(val name: String,
     override fun label() = name + ": " + type()
 
     fun inherit(name: String): StateMachine {
-        val copy = copy(name = name, inherits = this)
-        return copy
+        val copiedMachine = copy(name = name, inherits = this)
+        copiedMachine.states += states.map { it.copy(machine = copiedMachine) }
+        for (state in copiedMachine.states.filterNot { it.isInit() || it.isFinal() }) {
+            val pairState = states.single { it.name == state.name }
+            CastEdge(
+                    machine = this,
+                    src = pairState,
+                    dst = state
+//                    allowTransition = { it["inherited"] == true } // TODO
+            )
+
+            CastEdge(
+                    machine = copiedMachine,
+                    src = state,
+                    dst = pairState,
+                    propertyModifier = { props -> props + Pair("inherited", true) },
+                    explicitCast = false
+            )
+        }
+        return copiedMachine
     }
 
     fun type() = checkNotNull(library.machineSimpleTypes[this])
+
+    fun describesType(type: String): Boolean {
+        if (this.type() == type) {
+            return true
+        } else {
+            val inheritors = library.stateMachines.filter { it.inherits == this }
+            return inheritors.any { it.describesType(type) }
+        }
+    }
 
     fun makeInitState() = State("Init", this)
     fun makeConstructedState() = State("Constructed", this)
@@ -180,7 +207,7 @@ data class AutoEdge(override val machine: StateMachine,
         machine.edges += this
     }
 
-    override fun label() = "Auto"
+    override fun label() = "Auto from $src to $dst"
 }
 
 data class ConstructorEdge(override val machine: StateMachine,
@@ -288,7 +315,9 @@ data class CastEdge(override val machine: StateMachine,
                     override val dst: State = src,
                     override val actions: List<Action> = listOf(),
                     override var allowTransition: (Map<String, Any>) -> Boolean = { true },
-                    override var propertyModifier: (Map<String, Any>) -> Map<String, Any> = { it }) : Edge {
+                    override var propertyModifier: (Map<String, Any>) -> Map<String, Any> = { it },
+
+                    val explicitCast: Boolean = true) : Edge {
     override fun getStyle() = "bold"
 
     init {

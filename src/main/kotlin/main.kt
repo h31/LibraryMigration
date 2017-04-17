@@ -78,7 +78,7 @@ fun migrate(projectDir: Path,
         println(migratedCode);
 
         val relativePath = projectDir.relativize(source.toPath())
-        Files.write(projectDir.resolve(relativePath), migratedCode.toByteArray())
+        Files.write(testDir.resolve(relativePath), migratedCode.toByteArray())
     }
     testPatcher(testDir)
     return project.checkMigrationCorrectness(testDir, testClassName)

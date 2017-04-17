@@ -21,6 +21,7 @@ digraph G {
         Constructed_Response [ label="Constructed" ];
         virtual1 [ shape = point ];
         virtual2 [ shape = point ];
+        virtual3 [ shape = point ];
     }
     subgraph cluster4 {
     label = <<B>Body: String</B>>;
@@ -37,21 +38,21 @@ digraph G {
     subgraph cluster7 {
     label = <<B>Entity: ResponseBody</B>>;
         Constructed_Entity [ label="Constructed" ];
-        virtual3 [ shape = point ];
         virtual4 [ shape = point ];
         virtual5 [ shape = point ];
+        virtual6 [ shape = point ];
     }
     subgraph cluster8 {
     label = <<B>Builder: Request.Builder</B>>;
         Init_Builder [ label="Init" ];
         Constructed_Builder [ label="Constructed" ];
         hasURL_Builder [ label="hasURL" ];
-        virtual6 [ shape = point ];
+        virtual7 [ shape = point ];
     }
     subgraph cluster9 {
     label = <<B>Call: Call</B>>;
         Constructed_Call [ label="Constructed" ];
-        virtual7 [ shape = point ];
+        virtual8 [ shape = point ];
     }
     subgraph cluster10 {
     label = <<B>StatusCode: int</B>>;
@@ -81,7 +82,7 @@ digraph G {
         Init_FormBodyBuilder [ label="Init" ];
         Constructed_FormBodyBuilder [ label="Constructed" ];
         FormMade_FormBodyBuilder [ label="FormMade" ];
-        virtual8 [ shape = point ];
+        virtual9 [ shape = point ];
     }
     subgraph cluster16 {
     label = <<B>RequestParamName: String</B>>;
@@ -91,51 +92,71 @@ digraph G {
     label = <<B>RequestParamValue: String</B>>;
         Constructed_RequestParamValue [ label="Constructed" ];
     }
-        Constructed_URL -> encodedURL_URL [ label="Auto", style = "solid"  ];
+    subgraph cluster18 {
+    label = <<B>ResponseHeaderName: String</B>>;
+        Constructed_ResponseHeaderName [ label="Constructed" ];
+    }
+    subgraph cluster19 {
+    label = <<B>ResponseHeaderValue: String</B>>;
+        Constructed_ResponseHeaderValue [ label="Constructed" ];
+    }
+        Constructed_URL -> encodedURL_URL [ label="Auto from URL.Constructed to URL.encodedURL", style = "solid"  ];
         encodedURL_URL -> hasURL_Builder [ label="Usage in url(URL: String)", style = "dashed"  ];
         Constructed_Request -> Constructed_Client [ label="Usage in newCall(Request: Request)", style = "dashed"  ];
         Init_Client -> Constructed_Client [ label="new Client: OkHttpClient()", style = "bold"  ];
         Constructed_Client -> virtual0 [ style = "bold" label="newCall(Request: Request)"  ];
         virtual0 -> Constructed_Client [ style = "bold"  ];
         virtual0 -> Constructed_Call [ label="return Call()"  ];
-        Constructed_Client -> Final_Client [ label="Auto", style = "solid"  ];
+        Constructed_Client -> Final_Client [ label="Auto from Client.Constructed to Client.Final", style = "solid"  ];
+        Constructed_Client -> Constructed_Client [ label="Auto from Client.Constructed to Client.Constructed", style = "solid"  ];
         Constructed_Response -> virtual1 [ style = "bold" label="body()"  ];
         virtual1 -> Constructed_Response [ style = "bold"  ];
         virtual1 -> Constructed_Entity [ label="return ResponseBody()"  ];
-        Constructed_Response -> virtual2 [ style = "bold" label="code()"  ];
+        Constructed_Response -> virtual2 [ style = "bold" label="header(ResponseHeaderName: String)"  ];
         virtual2 -> Constructed_Response [ style = "bold"  ];
-        virtual2 -> Constructed_StatusCode [ label="return int()"  ];
-        Constructed_Entity -> virtual3 [ style = "bold" label="string()"  ];
-        virtual3 -> Constructed_Entity [ style = "bold"  ];
-        virtual3 -> Constructed_Body [ label="return String()"  ];
-        Constructed_Entity -> virtual4 [ style = "bold" label="byteStream()"  ];
+        virtual2 -> Constructed_ResponseHeaderValue [ label="return String()"  ];
+        Constructed_Response -> virtual3 [ style = "bold" label="code()"  ];
+        virtual3 -> Constructed_Response [ style = "bold"  ];
+        virtual3 -> Constructed_StatusCode [ label="return int()"  ];
+        Constructed_Response -> Constructed_Response [ label="Auto from Response.Constructed to Response.Constructed", style = "solid"  ];
+        Constructed_Entity -> virtual4 [ style = "bold" label="string()"  ];
         virtual4 -> Constructed_Entity [ style = "bold"  ];
-        virtual4 -> Constructed_InputStream [ label="return InputStream()"  ];
-        Constructed_Entity -> virtual5 [ style = "bold" label="contentLength()"  ];
+        virtual4 -> Constructed_Body [ label="return String()"  ];
+        Constructed_Entity -> virtual5 [ style = "bold" label="byteStream()"  ];
         virtual5 -> Constructed_Entity [ style = "bold"  ];
-        virtual5 -> Constructed_ContentLength [ label="return long()"  ];
+        virtual5 -> Constructed_InputStream [ label="return InputStream()"  ];
+        Constructed_Entity -> virtual6 [ style = "bold" label="contentLength()"  ];
+        virtual6 -> Constructed_Entity [ style = "bold"  ];
+        virtual6 -> Constructed_ContentLength [ label="return long()"  ];
+        Constructed_Entity -> Constructed_Entity [ label="Auto from Entity.Constructed to Entity.Constructed", style = "solid"  ];
         Init_Builder -> Constructed_Builder [ label="new Builder: Request.Builder()", style = "bold"  ];
         Constructed_Builder -> hasURL_Builder [ label="url(URL: String)", style = "bold"  ];
         hasURL_Builder -> hasURL_Builder [ label="post(RequestBody: RequestBody)", style = "bold"  ];
         hasURL_Builder -> hasURL_Builder [ label="header(headerName, headerValue)", style = "bold"  ];
-        hasURL_Builder -> virtual6 [ style = "bold" label="build()"  ];
-        virtual6 -> hasURL_Builder [ style = "bold"  ];
-        virtual6 -> Constructed_Request [ label="return Request()"  ];
-        Constructed_Call -> virtual7 [ style = "bold" label="execute()"  ];
-        virtual7 -> Constructed_Call [ style = "bold"  ];
-        virtual7 -> Constructed_Response [ label="return Response()"  ];
+        hasURL_Builder -> virtual7 [ style = "bold" label="build()"  ];
+        virtual7 -> hasURL_Builder [ style = "bold"  ];
+        virtual7 -> Constructed_Request [ label="return Request()"  ];
+        Constructed_Builder -> Constructed_Builder [ label="Auto from Builder.Constructed to Builder.Constructed", style = "solid"  ];
+        Constructed_Call -> virtual8 [ style = "bold" label="execute()"  ];
+        virtual8 -> Constructed_Call [ style = "bold"  ];
+        virtual8 -> Constructed_Response [ label="return Response()"  ];
+        Constructed_Call -> Constructed_Call [ label="Auto from Call.Constructed to Call.Constructed", style = "solid"  ];
         Init_RequestBody -> Constructed_RequestBody [ label="create(MediaType: MediaType, Payload: String)", style = "bold"  ];
         Constructed_RequestBody -> hasURL_Builder [ label="Usage in post(RequestBody: RequestBody)", style = "dashed"  ];
+        Constructed_RequestBody -> Constructed_RequestBody [ label="Auto from RequestBody.Constructed to RequestBody.Constructed", style = "solid"  ];
         Init_ContentType -> Constructed_ContentType [ label="Template", style = "bold"  ];
         Constructed_ContentType -> Constructed_MediaType [ label="Usage in parse(ContentType: String)", style = "dashed"  ];
         Constructed_Payload -> Constructed_RequestBody [ label="Usage in create(MediaType: MediaType, Payload: String)", style = "dashed"  ];
         Init_MediaType -> Constructed_MediaType [ label="parse(ContentType: String)", style = "bold"  ];
         Constructed_MediaType -> Constructed_RequestBody [ label="Usage in create(MediaType: MediaType, Payload: String)", style = "dashed"  ];
+        Constructed_MediaType -> Constructed_MediaType [ label="Auto from MediaType.Constructed to MediaType.Constructed", style = "solid"  ];
         Init_FormBodyBuilder -> Constructed_FormBodyBuilder [ label="new FormBodyBuilder: FormBody.Builder()", style = "bold"  ];
         Constructed_FormBodyBuilder -> FormMade_FormBodyBuilder [ label="add(RequestParamName: String, RequestParamValue: String)", style = "bold"  ];
-        FormMade_FormBodyBuilder -> virtual8 [ style = "bold" label="build()"  ];
-        virtual8 -> FormMade_FormBodyBuilder [ style = "bold"  ];
-        virtual8 -> Constructed_RequestBody [ label="return RequestBody()"  ];
+        FormMade_FormBodyBuilder -> virtual9 [ style = "bold" label="build()"  ];
+        virtual9 -> FormMade_FormBodyBuilder [ style = "bold"  ];
+        virtual9 -> Constructed_RequestBody [ label="return RequestBody()"  ];
+        Constructed_FormBodyBuilder -> Constructed_FormBodyBuilder [ label="Auto from FormBodyBuilder.Constructed to FormBodyBuilder.Constructed", style = "solid"  ];
         Constructed_RequestParamName -> FormMade_FormBodyBuilder [ label="Usage in add(RequestParamName: String, RequestParamValue: String)", style = "dashed"  ];
         Constructed_RequestParamValue -> FormMade_FormBodyBuilder [ label="Usage in add(RequestParamName: String, RequestParamValue: String)", style = "dashed"  ];
+        Constructed_ResponseHeaderName -> Constructed_Response [ label="Usage in header(ResponseHeaderName: String)", style = "dashed"  ];
 }

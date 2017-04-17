@@ -79,6 +79,8 @@ public aspect MainAspect {
     public static String defaultToString(Object o) {
         if (o == null) {
             return "null";
+        } else if (o instanceof Boolean) {
+            return o.toString();
         } else {
             return o.getClass().getName() + "@" +
                     Integer.toHexString(System.identityHashCode(o));

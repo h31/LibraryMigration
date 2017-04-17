@@ -2,6 +2,9 @@ import com.github.javaparser.ast.expr.Expression
 import com.github.javaparser.ast.expr.MethodCallExpr
 import mu.KotlinLogging
 import java.util.*
+import org.slf4j.LoggerFactory
+
+
 
 /**
  * Created by artyom on 08.09.16.
@@ -66,6 +69,7 @@ class PathFinder(val edges: Set<Edge>, val src: Set<State>, val initProps: Map<S
                      val props: Map<String, Any> = mutableMapOf(),
                      val actions: List<Action> = listOf()) {
         var path: List<Edge> = listOf()
+        val pathSizeWithoutNoCostEdges by lazy { path.count { it !is CastEdge && it !is AutoEdge } }
         var stateProps: Map<StateMachine, Map<String, Any>> = mapOf()
         var context: Set<State> = setOf()
 
@@ -144,7 +148,7 @@ class PathFinder(val edges: Set<Edge>, val src: Set<State>, val initProps: Map<S
             }
             newModel.path = current.path + edge
             newModel.stateProps = current.stateProps + Pair(newModel.state.machine, newModel.props)
-            newModel.context = current.context.filterNot { it.machine == edge.dst.machine }.toSet() + edge.dst
+            newModel.context = current.context.filterNot { it.machine == edge.dst.machine || if (edge is CastEdge) it == edge.src else false }.toSet() + edge.dst
             if (requirements.isNotEmpty()) {
                 logger.info("Model ${newModel.state} + edge $edge have requirements: $requirements")
                 haveMissingRequirements += Pair(newModel, requirements)
@@ -173,11 +177,13 @@ class PropsContext {
     var actionParams: List<Pair<String, Expression>> = listOf()
     var actions: List<Action> = listOf()
 
+    var logger = LoggerFactory.getLogger(PropsContext::class.java)
+
     fun addEdgeFromTrace(locatedEdge: RouteExtractor.LocatedEdge) {
         val edge = locatedEdge.edge
         val props = makeProps(edge.dst)
         val isAllowed = edge.allowTransition(props)
-        if (!isAllowed) error("Not allowed")
+        if (!isAllowed) logger.error("Not allowed: {} at {}", locatedEdge.edge, locatedEdge.node.begin.get())
         val newProps = edge.propertyModifier(props)
         stateProps += Pair(edge.dst.machine, newProps)
         for (action in edge.actions) {

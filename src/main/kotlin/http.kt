@@ -29,13 +29,16 @@ fun makeJava(): Library {
     val inputStream = StateMachine(name = "InputStream")
     val contentLength = StateMachine(name = "ContentLength")
     val statusCode = StateMachine(name = "StatusCode")
-    val httpConnection = StateMachine(name = "HttpConnection")
     val outputStream = StateMachine(name = "OutputStream")
     val payload = StateMachine(name = "Payload")
     val requestParamName = StateMachine(name = "RequestParamName")
     val requestParamValue = StateMachine(name = "RequestParamValue")
 
+    val responseHeaderName = StateMachine(name = "ResponseHeaderName")
+    val responseHeaderValue = StateMachine(name = "ResponseHeaderValue")
+
     val connected = State(name = "Connected", machine = request)
+    val httpConnection = request.inherit("HttpConnection")
 
     AutoEdge(
             machine = url,
@@ -142,6 +145,16 @@ fun makeJava(): Library {
             )
     )
 
+    LinkedEdge(
+            dst = responseHeaderValue.getConstructedState(),
+            edge = CallEdge(
+                    machine = request,
+                    src = connected,
+                    methodName = "getHeaderField",
+                    param = listOf(EntityParam(responseHeaderName))
+            )
+    )
+
     CallEdge(
             machine = outputStream,
             methodName = "close"
@@ -169,50 +182,41 @@ fun makeJava(): Library {
             hasReturnValue = false
     ) //             allowTransition = { map -> val written = map.contains("Written"); map.put("Written", true); !written },
 
-    CastEdge(
-            machine = request,
-            src = connected,
-            dst = httpConnection.getConstructedState()
-    )
-
-    AutoEdge(
-            machine = httpConnection,
-            dst = connected
-    )
-
     LinkedEdge(
             dst = statusCode.getConstructedState(),
             edge = CallEdge(
                     machine = httpConnection,
+                    src = httpConnection.states.first { it.name == "Connected" },
                     methodName = "getResponseCode"
             )
     )
 
-    CallEdge(
-            machine = httpConnection,
-            methodName = "setRequestProperty",
-            actions = listOf(Actions.setHeader),
-            param = listOf(ActionParam("headerName"), ActionParam("headerValue")),
-            hasReturnValue = false
-    )
+//    CallEdge(
+//            machine = httpConnection,
+//            methodName = "setRequestProperty",
+//            actions = listOf(Actions.setHeader),
+//            param = listOf(ActionParam("headerName"), ActionParam("headerValue")),
+//            hasReturnValue = false
+//    )
 
-    CallEdge(
-            machine = httpConnection,
-            methodName = "setRequestMethod"
-    )
+//    CallEdge(
+//            machine = httpConnection,
+//            methodName = "setRequestMethod"
+//    )
 
-    CallEdge(
-            machine = httpConnection,
-            methodName = "setDoOutput",
-            actions = listOf(Actions.usePost),
-            propertyModifier = { map -> map + Pair("method", "POST") },
-            hasReturnValue = false,
-            param = listOf(ConstParam("true"))
-    )
+//    CallEdge(
+//            machine = httpConnection,
+//            methodName = "setDoOutput",
+//            actions = listOf(Actions.usePost),
+//            propertyModifier = { map -> map + Pair("method", "POST") },
+//            hasReturnValue = false,
+//            param = listOf(ConstParam("true"))
+//    )
 
     return Library(
             name = "java",
-            stateMachines = listOf(url, urlData, request, body, inputStream, contentLength, statusCode, httpConnection, outputStream, payload, requestParamName, requestParamValue),
+            stateMachines = listOf(url, urlData, request, body, inputStream, contentLength, statusCode, httpConnection, outputStream, payload, requestParamName, requestParamValue,
+                    responseHeaderName, responseHeaderValue),
             machineTypes = mapOf(
                     urlData to "java.net.URL",
                     url to "String",
@@ -225,7 +229,9 @@ fun makeJava(): Library {
                     outputStream to "java.io.OutputStream",
                     payload to "byte[]",
                     requestParamName to "String",
-                    requestParamValue to "String"
+                    requestParamValue to "String",
+                    responseHeaderName to "String",
+                    responseHeaderValue to "String"
             )
     )
 }
@@ -474,6 +480,8 @@ fun makeOkHttp(): Library {
     val formBodyBuilder = StateMachine(name = "FormBodyBuilder")
     val requestParamName = StateMachine(name = "RequestParamName")
     val requestParamValue = StateMachine(name = "RequestParamValue")
+    val responseHeaderName = StateMachine(name = "ResponseHeaderName")
+    val responseHeaderValue = StateMachine(name = "ResponseHeaderValue")
     val contentType = StateMachine(name = "ContentType")
     val mediaType = StateMachine(name = "MediaType")
     val payload = StateMachine(name = "Payload")
@@ -615,6 +623,15 @@ fun makeOkHttp(): Library {
     )
 
     LinkedEdge(
+            dst = responseHeaderValue.getConstructedState(),
+            edge = CallEdge(
+                    machine = response,
+                    methodName = "header",
+                    param = listOf(EntityParam(responseHeaderName))
+            )
+    )
+
+    LinkedEdge(
             dst = body.getDefaultState(),
             edge = CallEdge(
                     machine = entity,
@@ -650,7 +667,7 @@ fun makeOkHttp(): Library {
             name = "okhttp",
             stateMachines = listOf(url, request, client, response, body,
                     inputStream, contentLength, entity, builder, call, statusCode, requestBody, contentType, payload,
-                    mediaType, formBodyBuilder, requestParamName, requestParamValue),
+                    mediaType, formBodyBuilder, requestParamName, requestParamValue, responseHeaderName, responseHeaderValue),
             machineTypes = mapOf(
                     url to "String",
                     request to "okhttp3.Request",
@@ -664,6 +681,8 @@ fun makeOkHttp(): Library {
                     formBodyBuilder to "okhttp3.FormBody\$Builder",
                     requestParamName to "String",
                     requestParamValue to "String",
+                    responseHeaderName to "String",
+                    responseHeaderValue to "String",
                     contentType to "String",
                     mediaType to "okhttp3.MediaType",
                     payload to "String",

@@ -237,9 +237,13 @@ class Migration(val library1: Library,
     }
 
     private fun makeCastExpression(step: CastEdge): Expression {
-        val type = library2.getType(step.dst.machine, null)
-        val expr = CastExpr(ClassOrInterfaceType(type), dependencies[step.machine])
-        return EnclosedExpr(expr)
+        if (step.explicitCast) {
+            val type = library2.getType(step.dst.machine, null)
+            val expr = CastExpr(ClassOrInterfaceType(type), dependencies[step.machine])
+            return EnclosedExpr(expr)
+        } else {
+            return checkNotNull(dependencies[step.machine])
+        }
     }
 
     private fun makeConstructorExpression(step: ConstructorEdge): Expression {
@@ -380,6 +384,12 @@ class ReplacementPerformer(val replacements: List<Replacement>,
             is ReturnStmt -> parent.setExpression(newExpr)
             is CastExpr -> parent.expression = newExpr
             is ExpressionStmt -> parent.expression = newExpr
+            is ConditionalExpr -> when {
+                parent.condition == oldExpr -> parent.condition = newExpr
+                parent.thenExpr == oldExpr -> parent.thenExpr = newExpr
+                parent.elseExpr == oldExpr -> parent.elseExpr = newExpr
+                else -> TODO()
+            }
             else -> error("Don't know how to insert into " + parent.toString())
         }
     }
@@ -443,11 +453,11 @@ class RouteExtractor(val library1: Library,
             if (invocation.kind == "method-call") {
                 val callEdge = edges.filterIsInstance<CallEdge>().firstOrNull { edge ->
                     edge.methodName == invocation.name &&
-                            edge.machine.type() == invocation.simpleType() &&
+                            edge.machine.describesType(invocation.simpleType()) &&
                             if (edge.param.isNotEmpty() && edge.param.first() is ConstParam) (edge.param.first() as ConstParam).value == invocation.args.first() else true
                 }
                 if (callEdge == null) {
-//                    println("Cannot find edge for $invocation")
+                    println("Cannot find edge for $invocation")
                     continue
                 }
                 val methodCall = codeElements.methodCalls.firstOrNull { call -> call.name.identifier == invocation.name && call.end.unpack()?.line == invocation.line }
