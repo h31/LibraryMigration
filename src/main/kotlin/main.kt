@@ -321,7 +321,7 @@ class MigrationManager(val from: Library,
                        val to: Library,
                        val project: Project) {
     private val migratedDir = project.projectDir.resolveSibling("migrated")
-    val destDir = migratedDir.resolveSibling("${project.projectDir.fileName}_migrated_${from.name}_${to.name}")
+    val destDir = migratedDir.resolve("${project.projectDir.fileName}_migrated_${from.name}_${to.name}")
 
     init {
         if (!Files.isDirectory(migratedDir)) Files.createDirectory(migratedDir)
