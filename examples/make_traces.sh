@@ -4,7 +4,7 @@ src_dir=$(pwd)
 cd "$(dirname "$0")"
 
 cd instagram-java-scraper/
-if [ -f "./gradlew" ]
+if [ ! -f "./gradlew" ]
 then
 	git submodule update --init --recursive
 fi
