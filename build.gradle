@@ -43,6 +43,13 @@ idea {
     }
 }
 
+test {
+    testLogging {
+        events "started", "skipped", "failed"
+        exceptionFormat "full"
+    }
+}
+
 compileJava {
     sourceCompatibility = '1.8'
 }
