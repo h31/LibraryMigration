@@ -260,7 +260,7 @@ class GradleProject(override val projectDir: Path) : Project {
         if (buildResult == false) {
             logger.error("Compilation failed!")
             logger.error(buildOutput)
-            return false
+            throw Exception("Compilation failed: " + buildOutput)
         }
 
         val runTests = true
@@ -277,7 +277,7 @@ class GradleProject(override val projectDir: Path) : Project {
             logger.error("Migrated code doesn't work properly")
             logger.error("Migrated:")
             logger.error(testOutput)
-            return false
+            throw Exception("Migrated code doesn't work properly: " + testOutput)
         }
     }
 
