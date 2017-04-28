@@ -1,10 +1,8 @@
+import org.eclipse.jetty.server.Server
 import org.junit.Assert
 import org.junit.Before
+import org.junit.BeforeClass
 import org.junit.Test
-import java.io.File
-import java.io.FileInputStream
-import java.nio.charset.Charset
-import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
 
@@ -12,6 +10,16 @@ import java.nio.file.Paths
  * Created by artyom on 03.11.16.
  */
 class MigrationTest {
+    companion object {
+        val mock = InstagramMock()
+        val server = Server(8010)
+
+        init {
+            mock.read()
+            server.handler = mock;
+            server.start()
+        }
+    }
     val java: Library = HttpModels.java
     val apache: Library = HttpModels.apache
     val okhttp: Library = HttpModels.okhttp
@@ -37,17 +45,12 @@ class MigrationTest {
         testFile.writeText(newContent)
     }
 
-    @Before
-    fun init() {
-        makePictures(HttpModels.withName())
-    }
-
     @Test
     fun migrateInstagramApache() {
         Assert.assertTrue(migrate(instagram,
                 from = okhttp,
                 to = apache,
-                testPatcher = { stripAspects(it); instagramDisableTest(it); }
+                testPatcher = stripAspects
         ))
     }
 
@@ -56,7 +59,7 @@ class MigrationTest {
         Assert.assertTrue(migrate(instagram,
                 from = okhttp,
                 to = java,
-                testPatcher = { stripAspects(it); instagramDisableTest(it); }
+                testPatcher = stripAspects
         ))
     }
 

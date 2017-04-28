@@ -1,0 +1,61 @@
+From 94d4399fca2a04e900ea19a89a1ffeac65c3d8a3 Mon Sep 17 00:00:00 2001
+From: Artyom Aleksyuk <artyom.h31@gmail.com>
+Date: Thu, 27 Apr 2017 21:46:21 +0300
+Subject: [PATCH 1/1] Instagram Mock
+
+---
+ .../me/postaddict/instagramscraper/Endpoint.java     | 20 ++++++++++----------
+ src/test/java/InstagramTest.java                     |  2 +-
+ 2 files changed, 11 insertions(+), 11 deletions(-)
+
+diff --git a/src/main/java/me/postaddict/instagramscraper/Endpoint.java b/src/main/java/me/postaddict/instagramscraper/Endpoint.java
+index 6a7b9e6..ff1b3cb 100644
+--- a/src/main/java/me/postaddict/instagramscraper/Endpoint.java
++++ b/src/main/java/me/postaddict/instagramscraper/Endpoint.java
+@@ -1,20 +1,20 @@
+ package me.postaddict.instagramscraper;
+ 
+ public class Endpoint {
+-    public static final String BASE_URL = "https://www.instagram.com";
+-    public static final String ACCOUNT_PAGE = "https://www.instagram.com/{{username}}";
+-    public static final String MEDIA_LINK = "https://www.instagram.com/p/{{code}}";
+-    public static final String ACCOUNT_MEDIAS = "https://www.instagram.com/{{username}}/media?max_id={{maxId}}";
+-    public static final String ACCOUNT_JSON_INFO = "https://www.instagram.com/{{username}}/?__a=1";
+-    public static final String MEDIA_JSON_INFO = "https://www.instagram.com/p/{{code}}/?__a=1";
+-    public static final String MEDIA_JSON_BY_LOCATION_ID = "https://www.instagram.com/explore/locations/{{facebookLocationId}}/?__a=1&max_id={{maxId}}";
+-    public static final String MEDIA_JSON_BY_TAG = "https://www.instagram.com/explore/tags/{{tag}}/?__a=1&max_id={{maxId}}";
+-    public static final String GENERAL_SEARCH = "https://www.instagram.com/web/search/topsearch/?query={{query}}";
++    public static final String BASE_URL = "http://localhost:8010";
++    public static final String ACCOUNT_PAGE = "http://localhost:8010/{{username}}";
++    public static final String MEDIA_LINK = "http://localhost:8010/p/{{code}}";
++    public static final String ACCOUNT_MEDIAS = "http://localhost:8010/{{username}}/media?max_id={{maxId}}";
++    public static final String ACCOUNT_JSON_INFO = "http://localhost:8010/{{username}}/?__a=1";
++    public static final String MEDIA_JSON_INFO = "http://localhost:8010/p/{{code}}/?__a=1";
++    public static final String MEDIA_JSON_BY_LOCATION_ID = "http://localhost:8010/explore/locations/{{facebookLocationId}}/?__a=1&max_id={{maxId}}";
++    public static final String MEDIA_JSON_BY_TAG = "http://localhost:8010/explore/tags/{{tag}}/?__a=1&max_id={{maxId}}";
++    public static final String GENERAL_SEARCH = "http://localhost:8010/web/search/topsearch/?query={{query}}";
+     public static final String ACCOUNT_JSON_INFO_BY_ID = "ig_user({{userId}}){id,username,external_url,full_name,profile_pic_url,biography,followed_by{count},follows{count},media{count},is_private,is_verified}";
+     public static final String LAST_COMMENTS_BY_CODE = "ig_shortcode({{code}}){comments.last({{count}}){count,nodes{id,created_at,text,user{id,profile_pic_url,username,follows{count},followed_by{count},biography,full_name,media{count},is_private,external_url,is_verified}},page_info}}";
+     public static final String COMMENTS_BEFORE_COMMENT_ID_BY_CODE = "ig_shortcode({{code}}){comments.before({{commentId}},{{count}}){count,nodes{id,created_at,text,user{id,profile_pic_url,username,follows{count},followed_by{count},biography,full_name,media{count},is_private,external_url,is_verified}},page_info}}";
+ 
+-    public static final String INSTAGRAM_QUERY_URL = "https://www.instagram.com/query/";
++    public static final String INSTAGRAM_QUERY_URL = "http://localhost:8010/query/";
+ 
+     public static String getAccountPageLink(String username) {
+         return ACCOUNT_PAGE.replace("{{username}}", username);
+diff --git a/src/test/java/InstagramTest.java b/src/test/java/InstagramTest.java
+index f885a80..f5dd8cc 100644
+--- a/src/test/java/InstagramTest.java
++++ b/src/test/java/InstagramTest.java
+@@ -35,7 +35,7 @@ public class InstagramTest {
+     @Test
+     public void testGetMediaByUrl() throws IOException, InstagramException {
+         Instagram instagram = new Instagram();
+-        Media media = instagram.getMediaByUrl("https://www.instagram.com/p/BHaRdodBouH");
++        Media media = instagram.getMediaByUrl("http://localhost:8010/p/BHaRdodBouH");
+         assertEquals("kevin", media.owner.username);
+     }
+     
+-- 
+2.7.4
+

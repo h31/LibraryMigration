@@ -34,6 +34,7 @@ dependencies {
     compile group: 'org.jgrapht', name: 'jgrapht-ext', version: '1.0.1'
     compile 'com.github.systemdir.gml:GMLWriterForYed:1.0.0'
     testCompile 'junit:junit:4.12'
+    testCompile 'org.eclipse.jetty:jetty-server:9.4.4.v20170414'
 }
 
 idea {

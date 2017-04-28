@@ -9,11 +9,8 @@ then
 	git submodule update --init --recursive
 fi
 cp ../log.json.instagram log.json
+git apply ../0001-Instagram-Mock.patch
 
-#patch -p0 < ../../unnamed.patch
-#./gradlew --stacktrace --debug clean test
-#patch -p0 -R < ../../unnamed.patch
-# ./gradlew clean test
 cd ../
 
 cd HTTP/
