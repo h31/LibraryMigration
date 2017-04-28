@@ -170,8 +170,9 @@ fun makeJava(): Library {
             machine = payload,
             src = payload.getInitState(),
             dst = payload.getConstructedState(),
-            template = "({{ name }} + \"=\" + {{ value }}).getBytes()",
-            templateParams = mapOf("name" to requestParamName.getDefaultState(), "value" to requestParamValue.getDefaultState())
+            template = "({{ name }} + \"=\" + URLEncoder.encode( {{ value }}, \"UTF-8\" )).getBytes()",
+            templateParams = mapOf("name" to requestParamName.getDefaultState(), "value" to requestParamValue.getDefaultState()),
+            additionalTypes = listOf("java.net.URLEncoder")
     )
 
     CallEdge(
@@ -255,6 +256,7 @@ fun makeApache(): Library {
     val encodedURL = State(name = "encodedURL", machine = url)
     val payload = StateMachine(name = "Payload")
     val byteArrayEntity = StateMachine(name = "ByteArrayEntity")
+    val urlEncodedFormEntity = StateMachine(name = "UrlEncodedFormEntity")
 
     val requestParamName = StateMachine(name = "RequestParamName")
     val requestParamValue = StateMachine(name = "RequestParamValue")
@@ -383,6 +385,23 @@ fun makeApache(): Library {
             param = listOf(EntityParam(payload), EntityParam(contentType))
     )
 
+    TemplateEdge(
+            machine = urlEncodedFormEntity,
+            src = urlEncodedFormEntity.getInitState(),
+            dst = urlEncodedFormEntity.getConstructedState(),
+            template = "new UrlEncodedFormEntity(Collections.singletonList(new BasicNameValuePair( {{ name }}, {{ value }} )))",
+            templateParams = mapOf("name" to requestParamName.getDefaultState(), "value" to requestParamValue.getDefaultState()),
+            additionalTypes = listOf("org.apache.http.message.BasicNameValuePair", "java.util.Collections")
+    )
+
+    CallEdge(
+            machine = postRequest,
+            methodName = "setEntity",
+            param = listOf(EntityParam(urlEncodedFormEntity)),
+            actions = listOf(Actions.setPayload),
+            hasReturnValue = false
+    )
+
     CallEdge(
             machine = postRequest,
             methodName = "setEntity",
@@ -440,7 +459,7 @@ fun makeApache(): Library {
             name = "apache",
             stateMachines = listOf(url, request, client, response, body, httpClientFactory,
                     inputStream, contentLength, entity, entityUtils, statusCode, byteArrayEntity, payload, postRequest,
-                    requestParamName, requestParamValue, contentType),
+                    requestParamName, requestParamValue, contentType, urlEncodedFormEntity),
             machineTypes = mapOf(
                     url to "String",
                     request to "org.apache.http.client.methods.HttpGet",
@@ -455,6 +474,7 @@ fun makeApache(): Library {
                     entityUtils to "org.apache.http.util.EntityUtils",
                     statusCode to "int",
                     byteArrayEntity to "org.apache.http.entity.ByteArrayEntity",
+                    urlEncodedFormEntity to "org.apache.http.client.entity.UrlEncodedFormEntity",
                     payload to "String",
                     requestParamName to "String",
                     requestParamValue to "String",
