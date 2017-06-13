@@ -34,7 +34,7 @@ import java.nio.file.Paths
  */
 
 fun main(args: Array<String>) {
-    makePictures(HttpModels.withName())
+    makePictures(HttpModels.all())
 
 //    migrate(projectDir = Paths.get("examples/instagram-java-scraper"),
 //            from = models["okhttp"]!!,
@@ -104,10 +104,7 @@ private fun parseImports(imports: List<ImportDeclaration>) = imports.map { x -> 
 
 private fun diffLibraryClasses(library1: Library, library2: Library) = library1.allTypes() - library2.allTypes()
 
-fun makePictures(libraries: Map<String, Library>) = libraries.forEach {
-    library ->
-    graphvizRender(toDOT(library.value), library.key)
-}
+fun makePictures(libraries: List<Library>) = libraries.forEach { library -> DOTVisualization().makePicture(library) }
 
 private fun findJavaFile(path: Path, name: String) = path.toFile().walk().single { file -> file.name == name }
 

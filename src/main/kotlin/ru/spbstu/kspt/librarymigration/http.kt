@@ -9,7 +9,8 @@ object HttpModels {
     val apache: Library = makeApache()
     val okhttp: Library = makeOkHttp()
 
-    fun withName() = listOf(java, apache, okhttp).associateBy(Library::name)
+    fun all() = listOf(java, apache, okhttp)
+    fun withName() = all().associateBy(Library::name)
 }
 
 object Actions {

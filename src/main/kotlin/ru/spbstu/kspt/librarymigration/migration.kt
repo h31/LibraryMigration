@@ -490,7 +490,7 @@ class RouteExtractor(val library1: Library,
                 logger.info(edge.edge.label())
             }
             logger.info("---")
-            graphvizRender(toDOT(library1, usedEdgesCleanedUp.map { usage -> usage.edge }), "extracted_" + functionName)
+            DOTVisualization().makePicture(library1, "extracted_" + functionName, usedEdgesCleanedUp.map { usage -> usage.edge })
         }
         return usedEdgesCleanedUp.distinct()
     }
