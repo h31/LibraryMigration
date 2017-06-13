@@ -16,11 +16,11 @@ jobs:
 
       - run: ./gradlew dependencies
 
+      - run: examples/make_traces.sh
+
       - run: rm -f  $HOME/.gradle/caches/modules-2/modules-2.lock
 
       - run: rm -fr $HOME/.gradle/caches/*/plugin-resolution/
-
-      - run: examples/make_traces.sh
 
       - save_cache:
           paths:
