@@ -55,17 +55,16 @@ public class Java {
 
     @Test
     public void javaHeader() throws IOException {
-        URL url = new URL("http://kspt.icc.spbstu.ru/media/css/new/forms.css");
+        URL url = new URL("https://httpbin.org/headers");
         URLConnection conn = url.openConnection();
         conn.setRequestProperty("X-Header", "Test");
         String response = new BufferedReader(new InputStreamReader(conn.getInputStream())).lines().collect(Collectors.joining("\n", "", "\n"));
-        String hash = DigestUtils.md5Hex(response);
-        Assert.assertEquals(hash, Main.MD5_HASH);
+        Assert.assertTrue(response.contains("\"X-Header\": \"Test\""));
     }
 
     @Test
     public void javaPost() throws IOException {
-        URL url = new URL("http://kspt.icc.spbstu.ru/media/css/new/forms.css");
+        URL url = new URL("https://httpbin.org/post");
         URLConnection conn = url.openConnection();
         conn.setDoOutput(true);
         String data = "Hi!";
@@ -74,7 +73,6 @@ public class Java {
         os.flush();
         os.close();
         String response = new BufferedReader(new InputStreamReader(conn.getInputStream())).lines().collect(Collectors.joining("\n", "", "\n"));
-        String hash = DigestUtils.md5Hex(response);
-        Assert.assertEquals(hash, Main.MD5_HASH);
+        Assert.assertTrue(response.contains("Hi!"));
     }
 }
