@@ -1,7 +1,7 @@
+package ru.spbstu.kspt.librarymigration
+
 import org.eclipse.jetty.server.Server
 import org.junit.Assert
-import org.junit.Before
-import org.junit.BeforeClass
 import org.junit.Test
 import java.nio.file.Path
 import java.nio.file.Paths

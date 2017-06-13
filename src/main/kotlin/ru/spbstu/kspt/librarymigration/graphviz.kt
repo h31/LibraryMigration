@@ -1,3 +1,5 @@
+package ru.spbstu.kspt.librarymigration
+
 import com.github.systemdir.gml.YedGmlWriter
 import com.github.systemdir.gml.model.EdgeGraphicDefinition
 import com.github.systemdir.gml.model.GraphicDefinition

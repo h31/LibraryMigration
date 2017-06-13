@@ -1,3 +1,5 @@
+package ru.spbstu.kspt.librarymigration
+
 import com.github.javaparser.ast.expr.MethodCallExpr
 
 /**

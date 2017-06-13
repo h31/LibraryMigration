@@ -1,3 +1,5 @@
+package ru.spbstu.kspt.librarymigration
+
 import com.github.javaparser.JavaParser
 import com.github.javaparser.ast.expr.Expression
 import com.samskivert.mustache.Mustache

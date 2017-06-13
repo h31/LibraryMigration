@@ -1,3 +1,5 @@
+package ru.spbstu.kspt.librarymigration
+
 import com.github.javaparser.ast.expr.Expression
 import com.github.javaparser.ast.expr.MethodCallExpr
 import mu.KotlinLogging

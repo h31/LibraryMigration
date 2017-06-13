@@ -1,3 +1,5 @@
+package ru.spbstu.kspt.librarymigration
+
 /**
  * Created by artyom on 16.06.16.
  */

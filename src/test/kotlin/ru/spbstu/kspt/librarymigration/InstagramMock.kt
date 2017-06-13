@@ -1,3 +1,5 @@
+package ru.spbstu.kspt.librarymigration
+
 import org.eclipse.jetty.http.HttpURI
 import org.eclipse.jetty.server.Request
 import org.eclipse.jetty.server.Server

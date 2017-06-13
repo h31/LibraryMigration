@@ -1,3 +1,5 @@
+package ru.spbstu.kspt.librarymigration
+
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties
 import com.github.javaparser.ast.Node
 import com.github.javaparser.ast.NodeList
