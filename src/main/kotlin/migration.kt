@@ -11,14 +11,9 @@ import com.github.javaparser.ast.stmt.ExpressionStmt
 import com.github.javaparser.ast.stmt.ReturnStmt
 import com.github.javaparser.ast.stmt.Statement
 import com.github.javaparser.ast.type.ClassOrInterfaceType
-import com.github.javaparser.symbolsolver.javaparsermodel.JavaParserFacade
 import mu.KotlinLogging
 import java.io.File
 import java.util.*
-import com.github.javaparser.symbolsolver.resolution.typesolvers.JavaParserTypeSolver
-import com.github.javaparser.symbolsolver.resolution.typesolvers.ReflectionTypeSolver
-import com.github.javaparser.symbolsolver.resolution.typesolvers.CombinedTypeSolver
-
 
 
 /**
@@ -66,7 +61,7 @@ class Migration(val library1: Library,
 
     val extractor = RouteExtractor(library1, codeElements, functionName, sourceFile, project)
     val routeMaker = RouteMaker(globalRoute, extractor, invocations, library1, library2, dependencies, ui)
-    val replacementPerformer = ReplacementPerformer(replacements, routeMaker)
+    val transformer = Transformer(replacements, routeMaker)
 
     fun doMigration() {
         logger.info("Function: $functionName")
@@ -83,7 +78,7 @@ class Migration(val library1: Library,
                 else -> TODO()
             }
         }
-        replacementPerformer.apply()
+        transformer.apply()
     }
 
     private fun makeInsertRules() {
@@ -308,8 +303,8 @@ class Migration(val library1: Library,
     }
 }
 
-class ReplacementPerformer(val replacements: List<Replacement>,
-                           val routeMaker: RouteMaker) {
+class Transformer(val replacements: List<Replacement>,
+                  val routeMaker: RouteMaker) {
     val removedStmts = mutableListOf<Statement>()
 
     private val logger = KotlinLogging.logger {}
