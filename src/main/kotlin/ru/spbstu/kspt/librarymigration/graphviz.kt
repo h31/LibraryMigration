@@ -13,6 +13,7 @@ import java.awt.Color
 import java.io.File
 import java.io.FileReader
 import java.io.FileWriter
+import java.io.IOException
 import java.nio.file.Files
 import java.nio.file.Paths
 
@@ -77,7 +78,11 @@ fun DOTtoPDF(prefix: String) {
     val pdfPath = prefix + ".pdf"
     val rt = Runtime.getRuntime();
     val command = "dot -Tpdf %s -o %s".format(dotPath, pdfPath)
-    rt.exec(command)
+    try {
+        rt.exec(command)
+    } catch (ex: IOException) {
+        println("Graphviz is not available!")
+    }
 }
 
 fun toJGrapht(library: Library): DirectedPseudograph<State, Edge> {
