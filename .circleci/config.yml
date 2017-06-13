@@ -1,0 +1,34 @@
+version: 2
+jobs:
+  build:
+
+    working_directory: ~/LibraryMigration
+
+    docker:
+      - image: circleci/openjdk:8-jdk
+
+    steps:
+
+      - checkout
+
+      - restore_cache:
+          key: LibraryMigration-{{ checksum "build.gradle" }}
+
+      - run: ./gradlew dependencies
+
+      - run: rm -f  $HOME/.gradle/caches/modules-2/modules-2.lock
+
+      - run: rm -fr $HOME/.gradle/caches/*/plugin-resolution/
+
+      - run: examples/make_traces.sh
+
+      - save_cache:
+          paths:
+            - $HOME/.gradle/caches/
+            - $HOME/.gradle/wrapper/
+          key: LibraryMigration-{{ checksum "build.gradle" }}
+
+      - run: ./gradlew check
+
+      - store_test_results:
+          path: build/reports/tests/test/
