@@ -39,9 +39,6 @@ data class Library(val name: String,
     fun states() = stateMachines.flatMap(StateMachine::states)
 }
 
-//data class Type(val entity: Entity,
-//                val type: String)
-
 data class StateMachine(val name: String,
                         val inherits: StateMachine? = null) : Labelable {
     val states: MutableSet<State> = mutableSetOf()

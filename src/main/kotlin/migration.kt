@@ -56,7 +56,6 @@ class Migration(val library1: Library,
                 val invocations: GroupedInvocation,
                 val project: Project) {
     val dependencies: MutableMap<StateMachine, Expression> = mutableMapOf()
-    // val pendingStmts = mutableListOf<Statement>()
     var nameGeneratorCounter = 0
     val replacements: MutableList<Replacement> = mutableListOf()
     val globalRoute: MutableList<Route> = mutableListOf()
@@ -307,7 +306,6 @@ class Migration(val library1: Library,
         val newType = library2.machineTypes[replacementMachine]?.replace('$', '.') // TODO: Without replace?
         return ClassOrInterfaceType(newType)
     }
-
 }
 
 class ReplacementPerformer(val replacements: List<Replacement>,
@@ -436,7 +434,7 @@ class RouteExtractor(val library1: Library,
     private val logger = KotlinLogging.logger {}
 
     fun extractFromJSON(invocations: GroupedInvocation): List<LocatedEdge> {
-        val localInvocations = invocations[sourceFile.name]!![functionName] ?: return emptyList() // invocations.filter { inv -> inv.callerName == functionName && inv.filename == this.sourceFile.name }
+        val localInvocations = invocations[sourceFile.name]?.get(functionName) ?: return emptyList() // invocations.filter { inv -> inv.callerName == functionName && inv.filename == this.sourceFile.name }
 //        val events = codeElements.codeEvents.sortedBy { event -> event.end.get() }
 //        for (event in events) {
 //            try {

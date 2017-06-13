@@ -12,34 +12,20 @@ import org.slf4j.LoggerFactory
 class PathFinder(val edges: Set<Edge>, val src: Set<State>, val initProps: Map<StateMachine, Map<String, Any>>,
                  val requiredActions: List<Action>) {
     lateinit var resultModel: Model
+
+    // Ассоциативный массив семантических действий с указанием их количества
     val requiredActionsMultiset = requiredActions.fold(mapOf<Action, Int>(), {map, action -> map + Pair(action, map[action]?.inc() ?: 1)})
 
     private val logger = KotlinLogging.logger {}
 
     fun findPath(goal: State?) {
+        // Начальные модели
         for (state in src) {
             pending += Model(state = state, props = getProps(state.machine, null)).setContext(src)
         }
         while (true) {
             if (haveMissingRequirements.isNotEmpty()) {
-                val processedModels = mutableListOf<Model>()
-                for ((model, requirements) in haveMissingRequirements) {
-                    val requiredModels = visited.filter { requirements.contains(it.state) }.filter { it.actions.isEmpty() } // TODO
-                    if (requiredModels.size == requirements.size) {
-                        logger.info("Model ${model.state} received all dependencies ($requirements)")
-                        val newModel = model.copy(actions = model.actions + requiredModels.flatMap { it.actions })
-                        val newPath = model.path.toMutableList()
-                        newPath.addAll(Math.max(newPath.size - 1, 0), requiredModels.flatMap { it.path })
-                        newModel.path = newPath
-                        newModel.context += model.context + requiredModels.flatMap { it.context }
-                        for (requiredModel in requiredModels) {
-                            newModel.stateProps += requiredModel.stateProps
-                        }
-                        pending += newModel
-                        processedModels += model
-                    }
-                }
-                processedModels.forEach { model -> haveMissingRequirements.removeAll { it.first == model } }
+                processRequirements()
             }
             if (pending.isEmpty()) {
                 logger.error("Not found!")
@@ -55,6 +41,30 @@ class PathFinder(val edges: Set<Edge>, val src: Set<State>, val initProps: Map<S
                 return
             }
         }
+    }
+
+    /**
+     * Обработка зависимостей
+     */
+    private fun processRequirements() {
+        val processedModels = mutableListOf<Model>()
+        for ((model, requirements) in haveMissingRequirements) {
+            val requiredModels = visited.filter { requirements.contains(it.state) }.filter { it.actions.isEmpty() } // TODO
+            if (requiredModels.size == requirements.size) {
+                logger.info("Model ${model.state} received all dependencies ($requirements)")
+                val newModel = model.copy(actions = model.actions + requiredModels.flatMap { it.actions })
+                val newPath = model.path.toMutableList()
+                newPath.addAll(Math.max(newPath.size - 1, 0), requiredModels.flatMap { it.path })
+                newModel.path = newPath
+                newModel.context += model.context + requiredModels.flatMap { it.context }
+                for (requiredModel in requiredModels) {
+                    newModel.stateProps += requiredModel.stateProps
+                }
+                pending += newModel
+                processedModels += model
+            }
+        }
+        processedModels.forEach { model -> haveMissingRequirements.removeAll { it.first == model } }
     }
 
     class ModelCompare : Comparator<Model> {

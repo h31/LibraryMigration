@@ -40,8 +40,10 @@ fun main(args: Array<String>) {
 //            from = models["okhttp"]!!,
 //            to = models["java"]!!
 //    )
-    val project = MavenProject(projectDir = Paths.get("/home/artyom/Compile/acme4j"),
-            moduleDir = Paths.get("/home/artyom/Compile/acme4j/acme4j-client"))
+//    val project = MavenProject(projectDir = Paths.get("/home/artyom/Compile/acme4j"),
+//            moduleDir = Paths.get("/home/artyom/Compile/acme4j/acme4j-client"))
+    val project = MavenProject(projectDir = Paths.get("/home/artyom/Compile/signpost"),
+            moduleDir = Paths.get("/home/artyom/Compile/signpost/signpost-core"))
     migrate(project = project,
             from = HttpModels.java,
             to = HttpModels.okhttp
@@ -311,7 +313,7 @@ class GradleProject(override val projectDir: Path) : Project {
 
 class MavenProject(override val projectDir: Path,
                    override val moduleDir: Path) : Project {
-    override val traceFile: Path = projectDir.resolve("log.json")
+    override val traceFile: Path = moduleDir.resolve("log.json")
     override val answersFile: Path = projectDir.resolve("answers.json")
 
     override fun checkMigrationCorrectness(testDir: Path, testClassName: String?): Boolean = true
