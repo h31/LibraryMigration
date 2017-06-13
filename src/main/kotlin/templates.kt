@@ -1,8 +1,6 @@
 import com.github.javaparser.JavaParser
 import com.github.javaparser.ast.expr.Expression
-import com.github.javaparser.ast.expr.IntegerLiteralExpr
 import com.samskivert.mustache.Mustache
-import java.io.FileReader
 
 /**
  * Created by artyom on 05.07.16.

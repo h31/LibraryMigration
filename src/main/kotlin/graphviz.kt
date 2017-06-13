@@ -1,22 +1,18 @@
+import com.github.systemdir.gml.YedGmlWriter
+import com.github.systemdir.gml.model.EdgeGraphicDefinition
+import com.github.systemdir.gml.model.GraphicDefinition
+import com.github.systemdir.gml.model.NodeGraphicDefinition
+import com.github.systemdir.gml.model.YedGmlGraphicsProvider
 import com.samskivert.mustache.Mustache
 import org.jgrapht.EdgeFactory
-import org.jgrapht.ext.DOTExporter
-import org.jgrapht.ext.EdgeNameProvider
 import org.jgrapht.ext.VertexNameProvider
 import org.jgrapht.graph.DirectedPseudograph
+import java.awt.Color
 import java.io.File
 import java.io.FileReader
 import java.io.FileWriter
 import java.nio.file.Files
 import java.nio.file.Paths
-import com.github.systemdir.gml.YedGmlWriter
-import org.jgrapht.graph.DefaultEdge
-import com.github.systemdir.gml.model.NodeGraphicDefinition
-import com.github.systemdir.gml.model.GraphicDefinition
-import com.github.systemdir.gml.model.EdgeGraphicDefinition
-import com.github.systemdir.gml.model.YedGmlGraphicsProvider
-import java.awt.Color
-import java.awt.Color.*
 
 
 /**

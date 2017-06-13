@@ -8,7 +8,6 @@ import com.github.javaparser.ast.Node
 import com.github.javaparser.ast.body.*
 import com.github.javaparser.ast.expr.*
 import com.github.javaparser.ast.stmt.BlockStmt
-import com.github.javaparser.ast.type.ClassOrInterfaceType
 import com.github.javaparser.ast.visitor.VoidVisitorAdapter
 import com.github.javaparser.symbolsolver.javaparsermodel.JavaParserFacade
 import com.github.javaparser.symbolsolver.model.resolution.TypeSolver
@@ -19,7 +18,6 @@ import com.github.javaparser.symbolsolver.resolution.typesolvers.ReflectionTypeS
 import mu.KotlinLogging
 import org.gradle.tooling.GradleConnector
 import org.gradle.tooling.ProjectConnection
-import org.gradle.tooling.model.ExternalDependency
 import org.gradle.tooling.model.eclipse.EclipseProject
 import java.io.ByteArrayOutputStream
 import java.io.File
