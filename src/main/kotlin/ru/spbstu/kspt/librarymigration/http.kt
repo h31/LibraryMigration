@@ -110,15 +110,6 @@ fun makeJava(): Library {
             )
     )
 
-    LinkedEdge(
-            dst = inputStream.getDefaultState(),
-            edge = CallEdge(
-                    machine = request,
-                    src = connected,
-                    methodName = "getErrorStream" // TODO
-            )
-    )
-
     CallEdge(
             machine = request,
             methodName = "setRequestProperty",
