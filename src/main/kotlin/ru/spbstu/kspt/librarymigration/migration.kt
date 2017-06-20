@@ -304,6 +304,10 @@ class Migration(val library1: Library,
         val newType = library2.machineTypes[replacementMachine]?.replace('$', '.') // TODO: Without replace?
         return JavaParser.parseClassOrInterfaceType(newType)
     }
+
+    fun migrateClassField(field: FieldDeclaration) {
+        val methods = field.getChildNodesByType(MethodCallExpr::class.java) + field.getChildNodesByType(ObjectCreationExpr::class.java)
+    }
 }
 
 class Transformer(val replacements: List<Replacement>,
