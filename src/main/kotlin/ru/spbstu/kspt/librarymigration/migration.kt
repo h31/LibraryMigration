@@ -608,63 +608,7 @@ class RouteMaker(val globalRoute: MutableList<Route>,
         // check(actionsQueue.isEmpty())
         // addFinalizers() // TODO
     }
-
-//    private fun extendRoute(route: List<Edge>): List<Edge> {
-//        val outputRoute = mutableListOf<Edge>()
-//        for (step in route) {
-//            when (step) {
-//                is UsageEdge -> {
-//                    if ((step.edge is CallEdge && step.edge.isStatic) == false) {
-////                        val dependencyStep = step.edge
-//                        val newRoute = findRoute(context, step.src, null) // dependencyStep.action
-//                        outputRoute += newRoute.path
-//                        outputRoute += step.edge
-//                        for (edge in newRoute.path) {
-//                            context.removeAll { it.machine == edge.dst.machine }
-//                            context += edge.dst
-//                        }
-//                        props += newRoute.stateProps
-//                    } else {
-//                        outputRoute += step
-//                        context.removeAll { it.machine == step.dst.machine }
-//                        context += step.dst
-//                    }
-//                }
-//                is ExpressionEdge -> {
-//                    val missingDeps = step.param.filterIsInstance<EntityParam>().filterNot { param -> context.contains(param.state) }.map(EntityParam::state) + (if (context.contains(step.src) == false) listOf(step.src) else listOf())
-//                    for (dependency in missingDeps) {
-//                        val newRoute = findRoute(context, dependency, null)
-//                        outputRoute += newRoute.path
-//                        for (edge in newRoute.path) {
-//                            context.removeAll { it.machine == edge.dst.machine }
-//                            context += edge.dst
-//                        }
-//                        props += newRoute.stateProps
-//                    }
-//                    outputRoute += step
-//                    context.removeAll { it.machine == step.dst.machine }
-//                    context += step.dst
-//                }
-//                is LinkedEdge -> {
-//                    val missingDeps = step.edge.param.filterIsInstance<EntityParam>().filterNot { param -> context.contains(param.state) }
-//                    for (dependency in missingDeps) {
-//                        val newRoute = findRoute(context, dependency.state, null)
-//                        outputRoute += newRoute.path
-//                        for (edge in newRoute.path) {
-//                            context.removeAll { it.machine == edge.dst.machine }
-//                            context += edge.dst
-//                        }
-//                        props += newRoute.stateProps
-//                    }
-//                    outputRoute += step
-//                    context.removeAll { it.machine == step.dst.machine }
-//                    context += step.dst
-//                }
-//            }
-//        }
-//        return outputRoute
-//    }
-
+    
     private fun fillContextWithInit() {
         context += library2.stateMachines.flatMap { machine -> machine.states }.filter(State::isInit).toMutableSet()
     }
