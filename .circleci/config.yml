@@ -18,14 +18,14 @@ jobs:
 
       - run: examples/make_traces.sh
 
-      - run: rm -f  $HOME/.gradle/caches/modules-2/modules-2.lock
+      - run: rm -f  /home/circleci/.gradle/caches/modules-2/modules-2.lock
 
-      - run: rm -fr $HOME/.gradle/caches/*/plugin-resolution/
+      - run: rm -fr /home/circleci/.gradle/caches/*/plugin-resolution/
 
       - save_cache:
           paths:
-            - $HOME/.gradle/caches/
-            - $HOME/.gradle/wrapper/
+            - /home/circleci/.gradle/caches/
+            - /home/circleci/.gradle/wrapper/
           key: LibraryMigration-{{ checksum "build.gradle" }}
 
       - run: ./gradlew check
