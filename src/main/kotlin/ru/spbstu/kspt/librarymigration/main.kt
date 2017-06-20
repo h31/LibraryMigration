@@ -191,7 +191,7 @@ data class MethodDiff(val methodName: String,
     fun methodChanged() = newInSrc.isNotEmpty() || newInDst.isNotEmpty()
 }
 
-class MethodOrConstructorDeclaration(val node: CallableDeclaration<out Node>) { // TODO: Node?
+class MethodOrConstructorDeclaration(val node: CallableDeclaration<*>) {
     fun get() = node
     fun getCodeElements(): CodeElements {
         val methodLocalCodeElements = CodeElements()
