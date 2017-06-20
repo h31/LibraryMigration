@@ -23,10 +23,3 @@ fun generateCode(edge: Edge, obj: String?): String = when (edge) {
     is AutoEdge -> obj ?: throw Exception()
     else -> throw Exception()
 }
-
-fun main(args: Array<String>) {
-    val machine = StateMachine(name = "Test")
-    val edge = CallEdge(machine = machine, methodName = "method")
-
-//    println(fillPlaceholders("Hello {{ obj }}", templateParams = mapOf("obj" to edge), variables = mapOf(machine to "object")))
-}

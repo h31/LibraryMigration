@@ -1,6 +1,7 @@
 package ru.spbstu.kspt.librarymigration
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties
+import com.github.javaparser.JavaParser
 import com.github.javaparser.ast.Node
 import com.github.javaparser.ast.NodeList
 import com.github.javaparser.ast.body.ConstructorDeclaration
@@ -235,7 +236,7 @@ class Migration(val library1: Library,
     private fun makeCastExpression(step: CastEdge): Expression {
         if (step.explicitCast) {
             val type = library2.getType(step.dst.machine, null)
-            val expr = CastExpr(ClassOrInterfaceType(type), dependencies[step.machine])
+            val expr = CastExpr(JavaParser.parseClassOrInterfaceType(type), dependencies[step.machine])
             return EnclosedExpr(expr)
         } else {
             return checkNotNull(dependencies[step.machine])
@@ -244,7 +245,7 @@ class Migration(val library1: Library,
 
     private fun makeConstructorExpression(step: ConstructorEdge): Expression {
         val params = step.param.filterIsInstance<EntityParam>().map { param -> checkNotNull(dependencies[param.machine]) }
-        val expr = ObjectCreationExpr(null, ClassOrInterfaceType(library2.getType(step.dst.machine, routeMaker.props[step.dst.machine])), params.toNodeList())
+        val expr = ObjectCreationExpr(null, JavaParser.parseClassOrInterfaceType(library2.getType(step.dst.machine, routeMaker.props[step.dst.machine])), params.toNodeList())
         return expr
     }
 
@@ -301,7 +302,7 @@ class Migration(val library1: Library,
             library2.stateMachines.first { it.label() == answer }
         }
         val newType = library2.machineTypes[replacementMachine]?.replace('$', '.') // TODO: Without replace?
-        return ClassOrInterfaceType(newType)
+        return JavaParser.parseClassOrInterfaceType(newType)
     }
 }
 
@@ -415,7 +416,7 @@ class Transformer(val replacements: List<Replacement>,
     }
 
     private fun makeNewVariable(type: String, name: String, initExpr: Expression?): Statement {
-        val newVariable = VariableDeclarationExpr(ClassOrInterfaceType(type), name)
+        val newVariable = VariableDeclarationExpr(JavaParser.parseClassOrInterfaceType(type), name)
         if (initExpr != null) {
             newVariable.variables.first().setInitializer(initExpr)
         }

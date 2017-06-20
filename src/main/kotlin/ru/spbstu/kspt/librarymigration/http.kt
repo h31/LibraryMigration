@@ -501,7 +501,6 @@ fun makeOkHttp(): Library {
     val entity = StateMachine(name = "Entity")
     val body = StateMachine(name = "Body")
     val statusCode = StateMachine(name = "StatusCode")
-    val static = StateMachine(name = "Static")
     val requestBody = StateMachine(name = "RequestBody")
     val formBodyBuilder = StateMachine(name = "FormBodyBuilder")
     val requestParamName = StateMachine(name = "RequestParamName")

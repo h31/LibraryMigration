@@ -19,7 +19,7 @@ interface Identifiable {
 data class Library(val name: String,
                    val stateMachines: List<StateMachine>,
                    val machineTypes: Map<StateMachine, String>,
-                   val typeGenerator: (StateMachine, Map<String, Any>) -> String? = { machine, props -> null }) {
+                   val typeGenerator: (StateMachine, Map<String, Any>) -> String? = { _, _ -> null }) {
     val machineSimpleTypes: Map<StateMachine, String> get() = machineTypes.mapValues { entry -> simpleType(entry.value) }
     val edges: List<Edge> = stateMachines.flatMap(StateMachine::edges)
     private val additionalTypes: List<String> = edges.filterIsInstance<TemplateEdge>().flatMap(TemplateEdge::additionalTypes)
