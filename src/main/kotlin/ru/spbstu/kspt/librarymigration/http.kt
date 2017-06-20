@@ -67,6 +67,11 @@ fun makeJava(): Library {
             )
     )
 
+    CallEdge(
+            machine = request, // TODO
+            methodName = "setFixedLengthStreamingMode"
+    )
+
     val body = StateMachine(name = "Body")
 
     AutoEdge(
@@ -102,6 +107,15 @@ fun makeJava(): Library {
                     machine = request,
                     src = connected,
                     methodName = "getInputStream"
+            )
+    )
+
+    LinkedEdge(
+            dst = inputStream.getDefaultState(),
+            edge = CallEdge(
+                    machine = request,
+                    src = connected,
+                    methodName = "getErrorStream" // TODO
             )
     )
 

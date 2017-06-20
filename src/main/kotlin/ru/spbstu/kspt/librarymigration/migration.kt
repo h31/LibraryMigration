@@ -62,7 +62,7 @@ class Migration(val library1: Library,
     val ui = UserInteraction(library1.name, library2.name, sourceFile.relativeToOrSelf(File(".").absoluteFile).toString()) // TODO: Dirty hack
 
     val extractor = RouteExtractor(library1, codeElements, functionName, sourceFile, project)
-    val routeMaker = RouteMaker(globalRoute, extractor, invocations, library1, library2, dependencies, ui)
+    val routeMaker = RouteMaker(globalRoute, extractor, invocations, library1, library2, dependencies, ui, functionName)
     val transformer = Transformer(replacements, routeMaker)
 
     fun doMigration() {
@@ -452,7 +452,7 @@ class RouteExtractor(val library1: Library,
                             if (edge.param.isNotEmpty() && edge.param.first() is ConstParam) (edge.param.first() as ConstParam).value == invocation.args.first() else true
                 }
                 if (callEdge == null) {
-                    println("Cannot find edge for $invocation")
+//                    println("Cannot find edge for $invocation")
                     continue
                 }
                 val methodCall = codeElements.methodCalls.firstOrNull { call -> call.name.identifier == invocation.name && call.end.unpack()?.line == invocation.line }
@@ -549,7 +549,8 @@ class RouteMaker(val globalRoute: MutableList<Route>,
                  val library1: Library,
                  val library2: Library,
                  val dependencies: MutableMap<StateMachine, Expression>,
-                 val ui: UserInteraction) {
+                 val ui: UserInteraction,
+                 val functionName: String) {
     val context: MutableSet<State> = mutableSetOf()
     val props: MutableMap<StateMachine, Map<String, Any>> = mutableMapOf()
     val actionsQueue = mutableListOf<Action>()
@@ -592,7 +593,7 @@ class RouteMaker(val globalRoute: MutableList<Route>,
                     continue
                 }
             }
-            val route = findRoute(context, dst, actionsQueue + actions)
+            val route = findRoute(context, dst, actionsQueue + actions, functionName)
             if (route == null) {
                 continue
             }
@@ -671,7 +672,7 @@ class RouteMaker(val globalRoute: MutableList<Route>,
         val contextMachines = context.map(State::machine)
         val needsFinalization = contextMachines.filter { machine -> library2.stateMachines.contains(machine) && machine.states.any(State::isFinal) }
         for (machine in needsFinalization) {
-            val route = findRoute(context, machine.getFinalState(), listOf())!!.path
+            val route = findRoute(context, machine.getFinalState(), listOf(), "")!!.path // TODO: Function name
             if (route.isNotEmpty()) {
                 val firstOccurence = globalRoute.first { route -> route.route.any { edge -> edge.machine == machine } }
                 firstOccurence.finalizerRoute = route
@@ -679,7 +680,11 @@ class RouteMaker(val globalRoute: MutableList<Route>,
         }
     }
 
-    private fun findRoute(src: Set<State>, dst: State?, actions: List<Action>): PathFinder.Model? {
+    object IterationCounter {
+        var iteration = 0
+    }
+
+    private fun findRoute(src: Set<State>, dst: State?, actions: List<Action>, functionName: String): PathFinder.Model? {
         var states = src.filter { state -> library2.states().contains(state) }.toSet()
         logger.info("  Searching route from ${states.joinToString(transform = State::stateAndMachineName)} to ${dst?.stateAndMachineName()} with ${actions.joinToString(transform = Action::name)}")
         val edges = library2.stateMachines.flatMap(StateMachine::edges).toSet()
@@ -691,14 +696,14 @@ class RouteMaker(val globalRoute: MutableList<Route>,
                 return pathFinder.resultModel
             } catch (ex: Exception) {
                 val statesPool = library2.states()
-                val response = ui.makeDecision("Add object to context, iteration $iteration", statesPool.map { it.toString() } + "Skip")
+                val response = ui.makeDecision("Add object to context, function name $functionName", statesPool.map { it.toString() } + "Skip")
                 if (response == "Skip") {
                     return null
                 }
                 val newState = statesPool.single { it.toString() == response }
                 states -= states.filter { it.machine == newState.machine }
                 states += newState
-                val dependency = ui.makeDecision("Object name, iteration $iteration", null)
+                val dependency = ui.makeDecision("Object name, function name $functionName", null)
                 dependencies += Pair(newState.machine, IntegerLiteralExpr(dependency))
                 iteration++
             }

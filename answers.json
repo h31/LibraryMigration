@@ -64,4 +64,370 @@
   "library2" : "okhttp",
   "question" : "Replacement for HttpConnection: HttpURLConnection at (line 54,col 5)",
   "response" : "Builder: Request.Builder"
+}, {
+  "file" : "../../Compile/acme4j/acme4j-client/src/main/java/org/shredzone/acme4j/connector/DefaultConnection.java",
+  "library1" : "java",
+  "library2" : "okhttp",
+  "question" : "Add object to context, function name sendRequest",
+  "response" : "Builder.hasURL"
+}, {
+  "file" : "../../Compile/acme4j/acme4j-client/src/main/java/org/shredzone/acme4j/connector/DefaultConnection.java",
+  "library1" : "java",
+  "library2" : "okhttp",
+  "question" : "Object name, function name sendRequest",
+  "response" : "conn"
+}, {
+  "file" : "../../Compile/acme4j/acme4j-client/src/main/java/org/shredzone/acme4j/connector/DefaultConnection.java",
+  "library1" : "java",
+  "library2" : "okhttp",
+  "question" : "Add object to context, function name sendSignedRequest",
+  "response" : "Builder.hasURL"
+}, {
+  "file" : "../../Compile/acme4j/acme4j-client/src/main/java/org/shredzone/acme4j/connector/DefaultConnection.java",
+  "library1" : "java",
+  "library2" : "okhttp",
+  "question" : "Object name, function name sendSignedRequest",
+  "response" : "conn"
+}, {
+  "file" : "../../Compile/acme4j/acme4j-client/src/main/java/org/shredzone/acme4j/connector/DefaultConnection.java",
+  "library1" : "java",
+  "library2" : "okhttp",
+  "question" : "Add object to context, function name readJsonResponse",
+  "response" : "Response.Constructed"
+}, {
+  "file" : "../../Compile/acme4j/acme4j-client/src/main/java/org/shredzone/acme4j/connector/DefaultConnection.java",
+  "library1" : "java",
+  "library2" : "okhttp",
+  "question" : "Object name, function name readJsonResponse",
+  "response" : "resp"
+}, {
+  "file" : "../../Compile/acme4j/acme4j-client/src/main/java/org/shredzone/acme4j/connector/DefaultConnection.java",
+  "library1" : "java",
+  "library2" : "okhttp",
+  "question" : "Add object to context, function name readCertificate",
+  "response" : "Response.Constructed"
+}, {
+  "file" : "../../Compile/acme4j/acme4j-client/src/main/java/org/shredzone/acme4j/connector/DefaultConnection.java",
+  "library1" : "java",
+  "library2" : "okhttp",
+  "question" : "Object name, function name readCertificate",
+  "response" : "resp"
+}, {
+  "file" : "../../Compile/acme4j/acme4j-client/src/main/java/org/shredzone/acme4j/connector/DefaultConnection.java",
+  "library1" : "java",
+  "library2" : "okhttp",
+  "question" : "Add object to context, function name updateSession",
+  "response" : "Response.Constructed"
+}, {
+  "file" : "../../Compile/acme4j/acme4j-client/src/main/java/org/shredzone/acme4j/connector/DefaultConnection.java",
+  "library1" : "java",
+  "library2" : "okhttp",
+  "question" : "Object name, function name updateSession",
+  "response" : "resp"
+}, {
+  "file" : "../../Compile/acme4j/acme4j-client/src/main/java/org/shredzone/acme4j/connector/DefaultConnection.java",
+  "library1" : "java",
+  "library2" : "okhttp",
+  "question" : "Add object to context, function name getLocation",
+  "response" : "Response.Constructed"
+}, {
+  "file" : "../../Compile/acme4j/acme4j-client/src/main/java/org/shredzone/acme4j/connector/DefaultConnection.java",
+  "library1" : "java",
+  "library2" : "okhttp",
+  "question" : "Object name, function name getLocation",
+  "response" : "resp"
+}, {
+  "file" : "../../Compile/acme4j/acme4j-client/src/main/java/org/shredzone/acme4j/connector/DefaultConnection.java",
+  "library1" : "java",
+  "library2" : "okhttp",
+  "question" : "Add object to context, function name getRetryAfterHeader",
+  "response" : "Response.Constructed"
+}, {
+  "file" : "../../Compile/acme4j/acme4j-client/src/main/java/org/shredzone/acme4j/connector/DefaultConnection.java",
+  "library1" : "java",
+  "library2" : "okhttp",
+  "question" : "Object name, function name getRetryAfterHeader",
+  "response" : "resp"
+}, {
+  "file" : "../../Compile/acme4j/acme4j-client/src/main/java/org/shredzone/acme4j/connector/DefaultConnection.java",
+  "library1" : "java",
+  "library2" : "okhttp",
+  "question" : "Add object to context, function name throwAcmeException",
+  "response" : "Response.Constructed"
+}, {
+  "file" : "../../Compile/acme4j/acme4j-client/src/main/java/org/shredzone/acme4j/connector/DefaultConnection.java",
+  "library1" : "java",
+  "library2" : "okhttp",
+  "question" : "Object name, function name throwAcmeException",
+  "response" : "resp"
+}, {
+  "file" : "../../Compile/acme4j/acme4j-client/src/test/java/org/shredzone/acme4j/connector/HttpConnectorTest.java",
+  "library1" : "java",
+  "library2" : "okhttp",
+  "question" : "Add object to context, function name testOpenConnection",
+  "response" : "Builder.hasURL"
+}, {
+  "file" : "../../Compile/acme4j/acme4j-client/src/test/java/org/shredzone/acme4j/connector/HttpConnectorTest.java",
+  "library1" : "java",
+  "library2" : "okhttp",
+  "question" : "Object name, function name testOpenConnection",
+  "response" : "conn"
+}, {
+  "file" : "../../Compile/acme4j/acme4j-client/src/test/java/org/shredzone/acme4j/connector/DefaultConnectionTest.java",
+  "library1" : "java",
+  "library2" : "okhttp",
+  "question" : "Add object to context, function name testNoNonceFromHeader",
+  "response" : "Skip"
+}, {
+  "file" : "../../Compile/acme4j/acme4j-client/src/test/java/org/shredzone/acme4j/connector/DefaultConnectionTest.java",
+  "library1" : "java",
+  "library2" : "okhttp",
+  "question" : "Add object to context, function name testGetNonceFromHeader",
+  "response" : "Response.Constructed"
+}, {
+  "file" : "../../Compile/acme4j/acme4j-client/src/test/java/org/shredzone/acme4j/connector/DefaultConnectionTest.java",
+  "library1" : "java",
+  "library2" : "okhttp",
+  "question" : "Object name, function name testGetNonceFromHeader",
+  "response" : "resp"
+}, {
+  "file" : "../../Compile/acme4j/acme4j-client/src/test/java/org/shredzone/acme4j/connector/DefaultConnectionTest.java",
+  "library1" : "java",
+  "library2" : "okhttp",
+  "question" : "Add object to context, function name testInvalidNonceFromHeader",
+  "response" : "Response.Constructed"
+}, {
+  "file" : "../../Compile/acme4j/acme4j-client/src/test/java/org/shredzone/acme4j/connector/DefaultConnectionTest.java",
+  "library1" : "java",
+  "library2" : "okhttp",
+  "question" : "Object name, function name testInvalidNonceFromHeader",
+  "response" : "resp"
+}, {
+  "file" : "../../Compile/acme4j/acme4j-client/src/test/java/org/shredzone/acme4j/connector/DefaultConnectionTest.java",
+  "library1" : "java",
+  "library2" : "okhttp",
+  "question" : "Add object to context, function name testGetAbsoluteLocation",
+  "response" : "Response.Constructed"
+}, {
+  "file" : "../../Compile/acme4j/acme4j-client/src/test/java/org/shredzone/acme4j/connector/DefaultConnectionTest.java",
+  "library1" : "java",
+  "library2" : "okhttp",
+  "question" : "Object name, function name testGetAbsoluteLocation",
+  "response" : "resp"
+}, {
+  "file" : "../../Compile/acme4j/acme4j-client/src/test/java/org/shredzone/acme4j/connector/DefaultConnectionTest.java",
+  "library1" : "java",
+  "library2" : "okhttp",
+  "question" : "Add object to context, function name testGetRelativeLocation",
+  "response" : "Response.Constructed"
+}, {
+  "file" : "../../Compile/acme4j/acme4j-client/src/test/java/org/shredzone/acme4j/connector/DefaultConnectionTest.java",
+  "library1" : "java",
+  "library2" : "okhttp",
+  "question" : "Object name, function name testGetRelativeLocation",
+  "response" : "resp"
+}, {
+  "file" : "../../Compile/acme4j/acme4j-client/src/test/java/org/shredzone/acme4j/connector/DefaultConnectionTest.java",
+  "library1" : "java",
+  "library2" : "okhttp",
+  "question" : "Add object to context, function name testGetRetryAfterHeaderDate",
+  "response" : "Response.Constructed"
+}, {
+  "file" : "../../Compile/acme4j/acme4j-client/src/test/java/org/shredzone/acme4j/connector/DefaultConnectionTest.java",
+  "library1" : "java",
+  "library2" : "okhttp",
+  "question" : "Object name, function name testGetRetryAfterHeaderDate",
+  "response" : "resp"
+}, {
+  "file" : "../../Compile/acme4j/acme4j-client/src/test/java/org/shredzone/acme4j/connector/DefaultConnectionTest.java",
+  "library1" : "java",
+  "library2" : "okhttp",
+  "question" : "Add object to context, function name testGetRetryAfterHeaderDelta",
+  "response" : "Response.Constructed"
+}, {
+  "file" : "../../Compile/acme4j/acme4j-client/src/test/java/org/shredzone/acme4j/connector/DefaultConnectionTest.java",
+  "library1" : "java",
+  "library2" : "okhttp",
+  "question" : "Object name, function name testGetRetryAfterHeaderDelta",
+  "response" : "resp"
+}, {
+  "file" : "../../Compile/acme4j/acme4j-client/src/test/java/org/shredzone/acme4j/connector/DefaultConnectionTest.java",
+  "library1" : "java",
+  "library2" : "okhttp",
+  "question" : "Add object to context, function name testGetRetryAfterHeaderNull",
+  "response" : "Response.Constructed"
+}, {
+  "file" : "../../Compile/acme4j/acme4j-client/src/test/java/org/shredzone/acme4j/connector/DefaultConnectionTest.java",
+  "library1" : "java",
+  "library2" : "okhttp",
+  "question" : "Object name, function name testGetRetryAfterHeaderNull",
+  "response" : "resp"
+}, {
+  "file" : "../../Compile/acme4j/acme4j-client/src/test/java/org/shredzone/acme4j/connector/DefaultConnectionTest.java",
+  "library1" : "java",
+  "library2" : "okhttp",
+  "question" : "Add object to context, function name testThrowException",
+  "response" : "Response.Constructed"
+}, {
+  "file" : "../../Compile/acme4j/acme4j-client/src/test/java/org/shredzone/acme4j/connector/DefaultConnectionTest.java",
+  "library1" : "java",
+  "library2" : "okhttp",
+  "question" : "Object name, function name testThrowException",
+  "response" : "resp"
+}, {
+  "file" : "../../Compile/acme4j/acme4j-client/src/test/java/org/shredzone/acme4j/connector/DefaultConnectionTest.java",
+  "library1" : "java",
+  "library2" : "okhttp",
+  "question" : "Add object to context, function name testOtherThrowException",
+  "response" : "Response.Constructed"
+}, {
+  "file" : "../../Compile/acme4j/acme4j-client/src/test/java/org/shredzone/acme4j/connector/DefaultConnectionTest.java",
+  "library1" : "java",
+  "library2" : "okhttp",
+  "question" : "Object name, function name testOtherThrowException",
+  "response" : "resp"
+}, {
+  "file" : "../../Compile/acme4j/acme4j-client/src/test/java/org/shredzone/acme4j/connector/DefaultConnectionTest.java",
+  "library1" : "java",
+  "library2" : "okhttp",
+  "question" : "Add object to context, function name testNoTypeThrowException",
+  "response" : "Response.Constructed"
+}, {
+  "file" : "../../Compile/acme4j/acme4j-client/src/test/java/org/shredzone/acme4j/connector/DefaultConnectionTest.java",
+  "library1" : "java",
+  "library2" : "okhttp",
+  "question" : "Object name, function name testNoTypeThrowException",
+  "response" : "resp"
+}, {
+  "file" : "../../Compile/acme4j/acme4j-client/src/test/java/org/shredzone/acme4j/connector/DefaultConnectionTest.java",
+  "library1" : "java",
+  "library2" : "okhttp",
+  "question" : "Add object to context, function name testReadJsonResponse",
+  "response" : "Response.Constructed"
+}, {
+  "file" : "../../Compile/acme4j/acme4j-client/src/test/java/org/shredzone/acme4j/connector/DefaultConnectionTest.java",
+  "library1" : "java",
+  "library2" : "okhttp",
+  "question" : "Object name, function name testReadJsonResponse",
+  "response" : "resp"
+}, {
+  "file" : "../../Compile/acme4j/acme4j-client/src/test/java/org/shredzone/acme4j/connector/DefaultConnectionTest.java",
+  "library1" : "java",
+  "library2" : "okhttp",
+  "question" : "Add object to context, function name testReadCertificate",
+  "response" : "Response.Constructed"
+}, {
+  "file" : "../../Compile/acme4j/acme4j-client/src/test/java/org/shredzone/acme4j/connector/DefaultConnectionTest.java",
+  "library1" : "java",
+  "library2" : "okhttp",
+  "question" : "Object name, function name testReadCertificate",
+  "response" : "resp"
+}, {
+  "file" : "../../Compile/signpost/signpost-core_test_java_apache/src/main/java/oauth/signpost/basic/HttpURLConnectionRequestAdapter.java",
+  "library1" : "java",
+  "library2" : "okhttp",
+  "question" : "Replacement for HttpConnection: HttpURLConnection at (line 20,col 5)",
+  "response" : "Builder: Request.Builder"
+}, {
+  "file" : "../../Compile/signpost/signpost-core_test_java_apache/src/main/java/oauth/signpost/basic/HttpURLConnectionRequestAdapter.java",
+  "library1" : "java",
+  "library2" : "okhttp",
+  "question" : "Replacement for HttpConnection: HttpURLConnection at (line 22,col 44)",
+  "response" : "Builder: Request.Builder"
+}, {
+  "file" : "../../Compile/signpost/signpost-core_test_java_apache/src/main/java/oauth/signpost/basic/HttpURLConnectionRequestAdapter.java",
+  "library1" : "java",
+  "library2" : "okhttp",
+  "question" : "Replacement for HttpConnection: HttpURLConnection at (line 66,col 5)",
+  "response" : "Builder: Request.Builder"
+}, {
+  "file" : "../../Compile/signpost/signpost-core_test_java_apache/src/main/java/oauth/signpost/basic/HttpURLConnectionResponseAdapter.java",
+  "library1" : "java",
+  "library2" : "okhttp",
+  "question" : "Replacement for HttpConnection: HttpURLConnection at (line 17,col 5)",
+  "response" : "Response: Response"
+}, {
+  "file" : "../../Compile/signpost/signpost-core_test_java_apache/src/main/java/oauth/signpost/basic/HttpURLConnectionResponseAdapter.java",
+  "library1" : "java",
+  "library2" : "okhttp",
+  "question" : "Replacement for HttpConnection: HttpURLConnection at (line 19,col 45)",
+  "response" : "Response: Response"
+}, {
+  "file" : "../../Compile/signpost/signpost-core_test_java_apache/src/test/java/oauth/signpost/mocks/DefaultOAuthProviderMock.java",
+  "library1" : "java",
+  "library2" : "okhttp",
+  "question" : "Replacement for HttpConnection: HttpURLConnection at (line 24,col 5)",
+  "response" : "Builder: Request.Builder"
+}, {
+  "file" : "../../Compile/signpost/signpost-core/src/main/java/oauth/signpost/basic/HttpURLConnectionRequestAdapter.java",
+  "library1" : "java",
+  "library2" : "okhttp",
+  "question" : "Replacement for HttpConnection: HttpURLConnection at (line 14,col 5)",
+  "response" : "Builder: Request.Builder"
+}, {
+  "file" : "../../Compile/signpost/signpost-core/src/main/java/oauth/signpost/basic/HttpURLConnectionRequestAdapter.java",
+  "library1" : "java",
+  "library2" : "okhttp",
+  "question" : "Replacement for HttpConnection: HttpURLConnection at (line 16,col 44)",
+  "response" : "Builder: Request.Builder"
+}, {
+  "file" : "../../Compile/signpost/signpost-core/src/main/java/oauth/signpost/basic/HttpURLConnectionRequestAdapter.java",
+  "library1" : "java",
+  "library2" : "okhttp",
+  "question" : "Replacement for HttpConnection: HttpURLConnection at (line 60,col 5)",
+  "response" : "Builder: Request.Builder"
+}, {
+  "file" : "../../Compile/signpost/signpost-core/src/main/java/oauth/signpost/basic/HttpURLConnectionResponseAdapter.java",
+  "library1" : "java",
+  "library2" : "okhttp",
+  "question" : "Replacement for HttpConnection: HttpURLConnection at (line 11,col 5)",
+  "response" : "Response: Response"
+}, {
+  "file" : "../../Compile/signpost/signpost-core/src/main/java/oauth/signpost/basic/HttpURLConnectionResponseAdapter.java",
+  "library1" : "java",
+  "library2" : "okhttp",
+  "question" : "Replacement for HttpConnection: HttpURLConnection at (line 13,col 45)",
+  "response" : "Response: Response"
+}, {
+  "file" : "../../Compile/signpost/signpost-core/src/main/java/oauth/signpost/basic/HttpURLConnectionResponseAdapter.java",
+  "library1" : "java",
+  "library2" : "okhttp",
+  "question" : "Add object to context, function name getContent",
+  "response" : "Response.Constructed"
+}, {
+  "file" : "../../Compile/signpost/signpost-core/src/main/java/oauth/signpost/basic/HttpURLConnectionResponseAdapter.java",
+  "library1" : "java",
+  "library2" : "okhttp",
+  "question" : "Object name, function name getContent",
+  "response" : "resp"
+}, {
+  "file" : "../../Compile/signpost/signpost-core/src/main/java/oauth/signpost/basic/HttpURLConnectionResponseAdapter.java",
+  "library1" : "java",
+  "library2" : "okhttp",
+  "question" : "Add object to context, function name getStatusCode",
+  "response" : "Response.Constructed"
+}, {
+  "file" : "../../Compile/signpost/signpost-core/src/main/java/oauth/signpost/basic/HttpURLConnectionResponseAdapter.java",
+  "library1" : "java",
+  "library2" : "okhttp",
+  "question" : "Object name, function name getStatusCode",
+  "response" : "resp"
+}, {
+  "file" : "../../Compile/signpost/signpost-core/src/test/java/oauth/signpost/mocks/DefaultOAuthProviderMock.java",
+  "library1" : "java",
+  "library2" : "okhttp",
+  "question" : "Replacement for HttpConnection: HttpURLConnection at (line 19,col 5)",
+  "response" : "Builder: Request.Builder"
+}, {
+  "file" : "../../Compile/signpost/signpost-core/src/test/java/oauth/signpost/mocks/DefaultOAuthProviderMock.java",
+  "library1" : "java",
+  "library2" : "okhttp",
+  "question" : "Add object to context, function name mockConnection",
+  "response" : "Builder.hasURL"
+}, {
+  "file" : "../../Compile/signpost/signpost-core/src/test/java/oauth/signpost/mocks/DefaultOAuthProviderMock.java",
+  "library1" : "java",
+  "library2" : "okhttp",
+  "question" : "Object name, function name mockConnection",
+  "response" : "builder"
 } ]
