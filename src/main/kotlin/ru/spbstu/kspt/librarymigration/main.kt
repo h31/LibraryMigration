@@ -174,6 +174,11 @@ private class CodeElementsVisitor : VoidVisitorAdapter<CodeElements>() {
         arg.blockStmts.add(n);
         super.visit(n, arg)
     }
+
+    override fun visit(n: FieldDeclaration, arg: CodeElements) {
+        arg.classFields += n
+        super.visit(n, arg)
+    }
 }
 
 data class CodeElements(val classes: MutableList<ClassOrInterfaceDeclaration> = mutableListOf(),
@@ -183,7 +188,8 @@ data class CodeElements(val classes: MutableList<ClassOrInterfaceDeclaration> = 
                         val variableDeclarations: MutableList<VariableDeclarationExpr> = mutableListOf(),
                         val blockStmts: MutableList<BlockStmt> = mutableListOf(),
                         val nodes: MutableList<Node> = mutableListOf(),
-                        val codeEvents: MutableList<Node> = mutableListOf())
+                        val codeEvents: MutableList<Node> = mutableListOf(),
+                        val classFields: MutableList<FieldDeclaration> = mutableListOf())
 
 data class MethodDiff(val methodName: String,
                       val newInSrc: List<IndexedValue<Parameter>>,
