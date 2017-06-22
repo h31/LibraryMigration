@@ -142,8 +142,6 @@ private class CodeElementsVisitor : VoidVisitorAdapter<CodeElements>() {
 
     override fun visit(n: MethodCallExpr, arg: CodeElements) {
         arg.methodCalls.add(n);
-        arg.nodes.add(n);
-        arg.codeEvents.add(n)
         super.visit(n, arg)
     }
 
@@ -154,14 +152,11 @@ private class CodeElementsVisitor : VoidVisitorAdapter<CodeElements>() {
 
     override fun visit(n: ConstructorDeclaration, arg: CodeElements) {
         arg.methodDecls.add(MethodOrConstructorDeclaration(n));
-        arg.nodes.add(n);
         super.visit(n, arg)
     }
 
     override fun visit(n: ObjectCreationExpr, arg: CodeElements) {
         arg.objectCreation.add(n);
-        arg.nodes.add(n);
-        arg.codeEvents.add(n)
         super.visit(n, arg)
     }
 
@@ -170,13 +165,8 @@ private class CodeElementsVisitor : VoidVisitorAdapter<CodeElements>() {
         super.visit(n, arg)
     }
 
-    override fun visit(n: BlockStmt, arg: CodeElements) {
-        arg.blockStmts.add(n);
-        super.visit(n, arg)
-    }
-
     override fun visit(n: FieldDeclaration, arg: CodeElements) {
-        arg.classFields += n
+        arg.fieldDeclaration.add(n);
         super.visit(n, arg)
     }
 }
@@ -186,10 +176,7 @@ data class CodeElements(val classes: MutableList<ClassOrInterfaceDeclaration> = 
                         val methodCalls: MutableList<MethodCallExpr> = mutableListOf(),
                         val objectCreation: MutableList<ObjectCreationExpr> = mutableListOf(),
                         val variableDeclarations: MutableList<VariableDeclarationExpr> = mutableListOf(),
-                        val blockStmts: MutableList<BlockStmt> = mutableListOf(),
-                        val nodes: MutableList<Node> = mutableListOf(),
-                        val codeEvents: MutableList<Node> = mutableListOf(),
-                        val classFields: MutableList<FieldDeclaration> = mutableListOf())
+                        val fieldDeclaration: MutableList<FieldDeclaration> = mutableListOf())
 
 data class MethodDiff(val methodName: String,
                       val newInSrc: List<IndexedValue<Parameter>>,
@@ -365,10 +352,21 @@ class MigrationManager(val from: Library,
                     project = project)
 
             migration.doMigration()
-            migration.migrateClassMembers(codeElements)
+//            migration.migrateClassMembers(codeElements)
             migration.migrateFunctionArguments(methodDecl)
             migration.migrateReturnValue(methodDecl)
         }
+
+//        for (field in codeElements.fieldDeclaration) {
+//            if (field.variables.size != 1) {
+//                TODO()
+//            }
+//            val variable = field.variables.first()
+//            val localCodeElements = CodeElements(methodCalls = variable.getChildNodesByType(MethodCallExpr::class.java),
+//                    objectCreation = variable.getChildNodesByType(ObjectCreationExpr::class.java))
+//            val migration = Migration(from, to, localCodeElements, "<init>", file, invocations, project)
+//            migration.migrateClassField(field)
+//        }
 //    fixEntityTypes(codeElements, library1, library2)
     }
 

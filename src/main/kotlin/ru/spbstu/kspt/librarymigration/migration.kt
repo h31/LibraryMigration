@@ -306,7 +306,23 @@ class Migration(val library1: Library,
     }
 
     fun migrateClassField(field: FieldDeclaration) {
-        val methods = field.getChildNodesByType(MethodCallExpr::class.java) + field.getChildNodesByType(ObjectCreationExpr::class.java)
+        routeMaker.makeRoutes()
+        makeInsertRules()
+        if (globalRoute.size != 1) {
+            error("Incorrect replacement")
+        }
+//        calcIfNeedToMakeVariable()
+
+        for (route in globalRoute) {
+            replacements += when (route.edge) {
+                is CallEdge -> migrateMethodCall(route)
+                is ConstructorEdge -> migrateConstructorCall(route)
+                is LinkedEdge -> migrateLinkedEdge(route)
+                is AutoEdge -> Replacement(route.oldNode, listOf())
+                else -> TODO()
+            }
+        }
+        transformer.apply()
     }
 }
 
@@ -462,6 +478,12 @@ class RouteExtractor(val library1: Library,
                 }
                 val methodCall = codeElements.methodCalls.firstOrNull { call -> call.name.identifier == invocation.name && call.end.unpack()?.line == invocation.line }
                 if (methodCall == null) {
+                    val decl = codeElements.methodDecls.first { it.name() == invocation.callerName }
+                    if (invocation.line < decl.node.begin.get().line || invocation.line > decl.node.end.get().line) {
+                        logger.info("Outside of method declaration, skipping...")
+                        continue
+                    }
+
                     logger.error("Cannot find node for $invocation")
                     continue
                 }
@@ -483,6 +505,12 @@ class RouteExtractor(val library1: Library,
                 }
                 val constructorCall = codeElements.objectCreation.firstOrNull { objectCreation -> (objectCreation.type.toString() == invocation.simpleType()) && (objectCreation.end.get().line == invocation.line) }
                 if (constructorCall == null) {
+                    val decl = codeElements.methodDecls.first { it.name() == invocation.callerName }
+                    if (invocation.line < decl.node.begin.get().line || invocation.line > decl.node.end.get().line) {
+                        logger.info("Outside of method declaration, skipping...")
+                        continue
+                    }
+
                     error("Cannot find node for $invocation")
                 }
                 usedEdges += LocatedEdge(constructorEdge, constructorCall)
