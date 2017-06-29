@@ -19,6 +19,7 @@ object Logging {
     fun makeSLF4J(): Library {
         val loggerFactory = StateMachine("LoggerFactory")
         val logger = StateMachine("Logger")
+        val classReference = StateMachine("ClassReference")
 
         LinkedEdge(
                 dst = logger.getConstructedState(),
@@ -26,6 +27,7 @@ object Logging {
                         machine = loggerFactory,
                         src = loggerFactory.getInitState(),
                         methodName = "getLogger",
+                        param = listOf(EntityParam(classReference)),
                         isStatic = true
                 )
         )
@@ -37,17 +39,23 @@ object Logging {
                 methodName = "info"
         )
 
-        return Library("SLF4J", listOf(logger, loggerFactory), mapOf(logger to "org.slf4j.Logger", loggerFactory to "org.slf4j.LoggerFactory"))
+        return Library("SLF4J", listOf(logger, loggerFactory, classReference),
+                mapOf(
+                        logger to "org.slf4j.Logger",
+                        loggerFactory to "org.slf4j.LoggerFactory",
+                        classReference to "java.lang.Class"))
     }
 
     fun makeLog4j(): Library {
         val logger = StateMachine("Logger")
+        val classReference = StateMachine("ClassReference")
 
         CallEdge(
                 machine = logger,
                 src = logger.getInitState(),
                 dst = logger.getConstructedState(),
                 methodName = "getLogger",
+                param = listOf(EntityParam(classReference)),
                 isStatic = true
         )
 
@@ -58,6 +66,7 @@ object Logging {
                 methodName = "info"
         )
 
-        return Library("Log4j", listOf(logger), mapOf(logger to "org.apache.log4j.Logger"))
+        return Library("Log4j", listOf(logger, classReference),
+                mapOf(logger to "org.apache.log4j.Logger", classReference to "java.lang.Class"))
     }
 }
