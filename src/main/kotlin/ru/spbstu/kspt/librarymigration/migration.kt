@@ -249,22 +249,23 @@ class Migration(val library1: Library,
         return expr
     }
 
-    fun migrateClassMembers(codeElements: CodeElements) {
-        for (classDecl in codeElements.classes) {
-            val fields = classDecl.members.filterIsInstance<FieldDeclaration>()
-            for (field in fields.toList()) {
-                if (field.variables.size > 1) {
-                    continue
-                }
-                val fieldType = field.elementType.toString()
-                val machine = getMachineForType(fieldType, library1) ?: continue
-                val newType = getNewType(machine, library2, field)
-                if (newType != null) {
-                    field.variables.first().type = newType
-                } else {
-                    field.remove()
-                }
-            }
+    fun migrateClassField(field: FieldDeclaration) {
+        if (field.variables.size > 1) {
+            return
+        }
+        val variable = field.variables.single()
+        val fieldType = field.elementType.toString()
+        val machine = getMachineForType(fieldType, library1) ?: return
+        val newType = getNewType(machine, library2, field)
+        if (newType != null) {
+            variable.type = newType
+        } else {
+            field.remove()
+            return
+        }
+
+        if (variable.initializer.isPresent) {
+            migrateFieldInitializer()
         }
     }
 
@@ -305,7 +306,7 @@ class Migration(val library1: Library,
         return JavaParser.parseClassOrInterfaceType(newType)
     }
 
-    fun migrateClassFields(field: FieldDeclaration) {
+    fun migrateFieldInitializer() {
         routeMaker.makeRoutes()
         makeInsertRules()
         if (globalRoute.size != 1) {
@@ -322,7 +323,8 @@ class Migration(val library1: Library,
                 else -> TODO()
             }
         }
-        transformer.apply()
+        if (replacements.size != 1) TODO()
+        transformer.replaceFieldInitializer(replacements.single())
     }
 }
 
@@ -441,6 +443,13 @@ class Transformer(val replacements: List<Replacement>,
             newVariable.variables.first().setInitializer(initExpr)
         }
         return ExpressionStmt(newVariable)
+    }
+
+    fun replaceFieldInitializer(replacement: Replacement) {
+        val pendingExpression = replacement.pendingExpressions.last()
+        if (!pendingExpression.hasReturnValue) error("Incorrect replacement")
+        val parent = replacement.oldNode.parentNode.get() as? VariableDeclarator ?: throw IllegalArgumentException()
+        parent.setInitializer(pendingExpression.expression)
     }
 }
 

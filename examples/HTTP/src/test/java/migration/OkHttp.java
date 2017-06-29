@@ -16,6 +16,8 @@ import java.io.IOException;
  * Created by artyom on 03.11.16.
  */
 public class OkHttp {
+    OkHttpClient client = new OkHttpClient();
+
     @Test
     public void okhttp() throws IOException {
         OkHttpClient client = new OkHttpClient();

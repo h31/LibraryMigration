@@ -430,4 +430,10 @@
   "library2" : "okhttp",
   "question" : "Object name, function name mockConnection",
   "response" : "builder"
+}, {
+  "file" : "examples/HTTP/src/test/java/migration/OkHttp.java",
+  "library1" : "okhttp",
+  "library2" : "java",
+  "question" : "Replacement for Client: OkHttpClient at (line 19,col 5)",
+  "response" : "Remove"
 } ]

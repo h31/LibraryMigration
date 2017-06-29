@@ -352,21 +352,20 @@ class MigrationManager(val from: Library,
                     project = project)
 
             migration.doMigration()
-            migration.migrateClassMembers(codeElements)
             migration.migrateFunctionArguments(methodDecl)
             migration.migrateReturnValue(methodDecl)
         }
 
-//        for (field in codeElements.fieldDeclaration) {
-//            if (field.variables.size != 1) {
-//                TODO()
-//            }
-//            val variable = field.variables.first()
-//            val localCodeElements = CodeElements(methodCalls = variable.getChildNodesByType(MethodCallExpr::class.java),
-//                    objectCreation = variable.getChildNodesByType(ObjectCreationExpr::class.java))
-//            val migration = Migration(from, to, localCodeElements, "<init>", file, invocations, project)
-//            migration.migrateClassField(field)
-//        }
+        for (field in codeElements.fieldDeclaration) {
+            if (field.variables.size != 1) {
+                TODO()
+            }
+            val variable = field.variables.first()
+            val localCodeElements = CodeElements(methodCalls = variable.getChildNodesByType(MethodCallExpr::class.java),
+                    objectCreation = variable.getChildNodesByType(ObjectCreationExpr::class.java))
+            val migration = Migration(from, to, localCodeElements, "<init>", file, invocations, project)
+            migration.migrateClassField(field)
+        }
 //    fixEntityTypes(codeElements, library1, library2)
     }
 
