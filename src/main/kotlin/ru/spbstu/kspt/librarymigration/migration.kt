@@ -305,7 +305,7 @@ class Migration(val library1: Library,
         return JavaParser.parseClassOrInterfaceType(newType)
     }
 
-    fun migrateClassField(field: FieldDeclaration) {
+    fun migrateClassFields(field: FieldDeclaration) {
         routeMaker.makeRoutes()
         makeInsertRules()
         if (globalRoute.size != 1) {
@@ -523,7 +523,7 @@ class RouteExtractor(val library1: Library,
                 logger.info(edge.edge.label())
             }
             logger.info("---")
-            DOTVisualization().makePicture(library1, "extracted_" + functionName, usedEdgesCleanedUp.map { usage -> usage.edge })
+//            DOTVisualization().makePicture(library1, "extracted_" + functionName, usedEdgesCleanedUp.map { usage -> usage.edge })
         }
         return usedEdgesCleanedUp.distinct()
     }

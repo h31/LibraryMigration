@@ -352,7 +352,7 @@ class MigrationManager(val from: Library,
                     project = project)
 
             migration.doMigration()
-//            migration.migrateClassMembers(codeElements)
+            migration.migrateClassMembers(codeElements)
             migration.migrateFunctionArguments(methodDecl)
             migration.migrateReturnValue(methodDecl)
         }
