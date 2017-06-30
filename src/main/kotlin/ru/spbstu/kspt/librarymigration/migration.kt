@@ -306,10 +306,9 @@ class Migration(val library1: Library,
     fun migrateFieldInitializer() {
         routeMaker.makeRoutes()
         makeInsertRules()
-        if (globalRoute.size != 1) {
-            error("Incorrect replacement")
+        if (globalRoute.isEmpty()) {
+            return
         }
-//        calcIfNeedToMakeVariable()
 
         for (route in globalRoute) {
             replacements += when (route.edge) {
@@ -320,8 +319,9 @@ class Migration(val library1: Library,
                 else -> TODO()
             }
         }
-        if (replacements.size != 1) TODO()
-        transformer.replaceFieldInitializer(replacements.single())
+        val actualReplacements = replacements.filter { it.pendingExpressions.isNotEmpty() }
+        if (actualReplacements.size != 1) TODO()
+        transformer.replaceFieldInitializer(actualReplacements.single())
     }
 }
 

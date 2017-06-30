@@ -48,6 +48,7 @@ object Logging {
 
     fun makeLog4j(): Library {
         val logger = StateMachine("Logger")
+        val logManager = StateMachine("LogManager")
         val classReference = StateMachine("ClassReference")
 
         CallEdge(
@@ -59,6 +60,17 @@ object Logging {
                 isStatic = true
         )
 
+        LinkedEdge(
+                dst = logger.getConstructedState(),
+                edge = CallEdge(
+                        machine = logManager,
+                        src = logManager.getInitState(),
+                        methodName = "getLogger",
+                        param = listOf(EntityParam(classReference)),
+                        isStatic = true
+                )
+        )
+
         CallEdge(
                 machine = logger,
                 actions = listOf(Actions.info),
@@ -66,7 +78,10 @@ object Logging {
                 methodName = "info"
         )
 
-        return Library("Log4j", listOf(logger, classReference),
-                mapOf(logger to "org.apache.log4j.Logger", classReference to "java.lang.Class"))
+        return Library("Log4j", listOf(logger, classReference, logManager),
+                mapOf(
+                        logger to "org.apache.log4j.Logger",
+                        classReference to "java.lang.Class",
+                        logManager to "org.apache.log4j.LogManager"))
     }
 }
