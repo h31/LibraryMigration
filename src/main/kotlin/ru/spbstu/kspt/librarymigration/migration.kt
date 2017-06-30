@@ -4,10 +4,7 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties
 import com.github.javaparser.JavaParser
 import com.github.javaparser.ast.Node
 import com.github.javaparser.ast.NodeList
-import com.github.javaparser.ast.body.ConstructorDeclaration
-import com.github.javaparser.ast.body.FieldDeclaration
-import com.github.javaparser.ast.body.MethodDeclaration
-import com.github.javaparser.ast.body.VariableDeclarator
+import com.github.javaparser.ast.body.*
 import com.github.javaparser.ast.expr.*
 import com.github.javaparser.ast.stmt.BlockStmt
 import com.github.javaparser.ast.stmt.ExpressionStmt
@@ -446,10 +443,21 @@ class Transformer(val replacements: List<Replacement>,
     }
 
     fun replaceFieldInitializer(replacement: Replacement) {
-        val pendingExpression = replacement.pendingExpressions.last()
-        if (!pendingExpression.hasReturnValue) error("Incorrect replacement")
-        val parent = replacement.oldNode.parentNode.get() as? VariableDeclarator ?: throw IllegalArgumentException()
-        parent.setInitializer(pendingExpression.expression)
+        val oldNode = replacement.oldNode
+        if (replacement.pendingExpressions.none { it.makeVariable }) {
+            val pendingExpression = replacement.pendingExpressions.last()
+            if (!pendingExpression.hasReturnValue) error("Incorrect replacement")
+            val parent = oldNode.parentNode.get() as? VariableDeclarator ?: throw IllegalArgumentException()
+            parent.setInitializer(pendingExpression.expression)
+        } else {
+            if (oldNode.parentNode.get() !is VariableDeclarator) TODO()
+            val classDecl = oldNode.getAncestorOfType(ClassOrInterfaceDeclaration::class.java).get()
+            val declarator = oldNode.getAncestorOfType(VariableDeclarator::class.java).get()
+            declarator.setInitializer(null as Expression?)
+            val block = classDecl.addInitializer()
+            block.addStatement(AssignExpr(NameExpr(declarator.name), oldNode as Expression, AssignExpr.Operator.ASSIGN))
+            applyReplacement(replacement)
+        }
     }
 }
 
