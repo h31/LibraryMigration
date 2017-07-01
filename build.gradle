@@ -30,6 +30,7 @@ dependencies {
     compile 'com.fasterxml.jackson.module:jackson-module-kotlin:2.8.9'
     compile 'io.github.microutils:kotlin-logging:1.4.4'
     compile "org.gradle:gradle-tooling-api:${gradle.gradleVersion}"
+    compile 'org.zeroturnaround:zt-zip:1.11'
     compile group: 'org.jgrapht', name: 'jgrapht-core', version: '1.0.1'
     compile group: 'org.jgrapht', name: 'jgrapht-ext', version: '1.0.1'
     compile 'com.github.systemdir.gml:GMLWriterForYed:1.0.0'
