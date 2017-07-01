@@ -81,7 +81,9 @@ class DOTVisualization : Visualization {
         }
 
         val compiler = Mustache.compiler()
-        val template = compiler.compile(FileReader("graphviz.mustache"))
+        val classloader = Thread.currentThread().contextClassLoader
+        val reader = classloader.getResourceAsStream("graphviz.mustache").bufferedReader()
+        val template = compiler.compile(reader)
         return template.execute(mapOf("machines" to machines, "edges" to edges))
     }
 
