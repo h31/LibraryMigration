@@ -1,3 +1,4 @@
 [submodule "examples/instagram-java-scraper"]
 	path = examples/instagram-java-scraper
 	url = https://github.com/h31/instagram-java-scraper.git
+	branch = emulator

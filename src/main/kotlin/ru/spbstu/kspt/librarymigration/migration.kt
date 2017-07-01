@@ -399,10 +399,10 @@ class Transformer(val replacements: List<Replacement>,
             is ReturnStmt -> parent.setExpression(newExpr)
             is CastExpr -> parent.expression = newExpr
             is ExpressionStmt -> parent.expression = newExpr
-            is ConditionalExpr -> when {
-                parent.condition == oldExpr -> parent.condition = newExpr
-                parent.thenExpr == oldExpr -> parent.thenExpr = newExpr
-                parent.elseExpr == oldExpr -> parent.elseExpr = newExpr
+            is ConditionalExpr -> when (oldExpr) {
+                parent.condition -> parent.condition = newExpr
+                parent.thenExpr -> parent.thenExpr = newExpr
+                parent.elseExpr -> parent.elseExpr = newExpr
                 else -> TODO()
             }
             else -> error("Don't know how to insert into " + parent.toString())
