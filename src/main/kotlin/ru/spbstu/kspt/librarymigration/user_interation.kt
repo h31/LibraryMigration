@@ -83,7 +83,7 @@ class UserInteraction(val library1: String, val library2: String, val fileObj: F
     fun platformIndependentPath(): String {
         val relative = fileObj.relativeToOrSelf(File(".").absoluteFile).toString() // TODO: Dirty hack
         return if (FileSystems.getDefault().separator == "\\") {
-            relative.replace('/', '\\')
+            relative.replace('\\', '/')
         } else {
             relative
         }
