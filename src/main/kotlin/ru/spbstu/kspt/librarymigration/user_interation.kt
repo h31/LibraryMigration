@@ -5,6 +5,7 @@ import com.fasterxml.jackson.module.kotlin.readValue
 import com.fasterxml.jackson.module.kotlin.registerKotlinModule
 import java.io.File
 import java.io.IOException
+import java.nio.file.FileSystems
 
 /**
  * Created by artyom on 09.03.17.
@@ -30,7 +31,9 @@ object AnswerCache {
     }
 }
 
-class UserInteraction(val library1: String, val library2: String, val file: String) {
+class UserInteraction(val library1: String, val library2: String, val fileObj: File) {
+    val file = platformIndependentPath()
+
     fun makeDecision(question: String, cases: List<String>?): String {
         val answers = AnswerCache.answers
         val cachedAnswer = answers.firstOrNull { it.file == file && it.library1 == library1 && it.library2 == library2 && it.question == question }
@@ -76,6 +79,15 @@ class UserInteraction(val library1: String, val library2: String, val file: Stri
             }
         }
     }
+
+    fun platformIndependentPath(): String {
+        val relative = fileObj.relativeToOrSelf(File(".").absoluteFile).toString() // TODO: Dirty hack
+        return if (FileSystems.getDefault().separator == "\\") {
+            relative.replace('/', '\\')
+        } else {
+            relative
+        }
+    }
 }
 
 data class Answer(val file: String,
@@ -85,5 +97,5 @@ data class Answer(val file: String,
                   val response: String)
 
 fun main(args: Array<String>) {
-    println(UserInteraction("src", "dst", "path/to/file").makeDecision("Hi", listOf("1", "2")))
+    println(UserInteraction("src", "dst", File("path/to/file")).makeDecision("Hi", listOf("1", "2")))
 }

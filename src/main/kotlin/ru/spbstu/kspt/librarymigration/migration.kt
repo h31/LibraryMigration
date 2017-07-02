@@ -57,7 +57,7 @@ class Migration(val library1: Library,
 
     private val logger = KotlinLogging.logger {}
 
-    val ui = UserInteraction(library1.name, library2.name, sourceFile.relativeToOrSelf(File(".").absoluteFile).toString()) // TODO: Dirty hack
+    val ui = UserInteraction(library1.name, library2.name, sourceFile)
 
     val extractor = RouteExtractor(library1, codeElements, functionName, sourceFile, project)
     val routeMaker = RouteMaker(globalRoute, extractor, invocations, library1, library2, dependencies, ui, functionName)
