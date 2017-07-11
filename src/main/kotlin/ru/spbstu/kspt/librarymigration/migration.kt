@@ -144,11 +144,13 @@ class Migration(val library1: Library,
             val variableDeclarationReplacement = (step == steps.last()) && (oldVarName != null)
             val name = if (variableDeclarationReplacement) oldVarName else generateVariableName(step)
             val rule = rules[index]
-            val namedExpressions = newExpressions.map { when {
-                rule.makeStatement || variableDeclarationReplacement -> it.copy(provides = NameExpr(name), name = name, hasReturnValue = rule.hasReturnValue, makeVariable = true)
-                rule.hasReturnValue -> it.copy(provides = it.expression, hasReturnValue = true)
-                else -> it
-            } }
+            val namedExpressions = newExpressions.map {
+                when {
+                    rule.makeStatement || variableDeclarationReplacement -> it.copy(provides = NameExpr(name), name = name, hasReturnValue = rule.hasReturnValue, makeVariable = true)
+                    rule.hasReturnValue -> it.copy(provides = it.expression, hasReturnValue = true)
+                    else -> it
+                }
+            }
             logger.info("Received expressions: " + namedExpressions.toString())
             for (expr in namedExpressions) {
                 addToContext(expr)
@@ -201,16 +203,18 @@ class Migration(val library1: Library,
 
         val fetched = mutableListOf<Pair<String, Expression>>()
 
-        val args = edge.param.map { param -> when (param) {
-            is EntityParam -> checkNotNull(dependencies[param.machine])
-            is ActionParam -> {
-                val pair = routeMaker.srcProps.actionParams.first { param.propertyName == it.first }
-                fetched += pair
-                NameExpr(pair.second.toString())
+        val args = edge.param.map { param ->
+            when (param) {
+                is EntityParam -> checkNotNull(dependencies[param.machine])
+                is ActionParam -> {
+                    val pair = routeMaker.srcProps.actionParams.first { param.propertyName == it.first }
+                    fetched += pair
+                    NameExpr(pair.second.toString())
+                }
+                is ConstParam -> NameExpr(param.value)
+                else -> TODO()
             }
-            is ConstParam -> NameExpr(param.value)
-            else -> TODO()
-        } }
+        }
 
         for (pair in fetched) {
             routeMaker.srcProps.actionParams -= pair
@@ -246,12 +250,9 @@ class Migration(val library1: Library,
         return expr
     }
 
-    fun migrateClassField(field: FieldDeclaration) {
-        if (field.variables.size > 1) {
-            return
-        }
-        val variable = field.variables.single()
-        val fieldType = field.elementType.toString()
+    fun migrateClassField(field: FieldDeclaration, variable: VariableDeclarator) {
+        logger.info("Field: {}", variable.name)
+        val fieldType = variable.type.toString()
         val machine = getMachineForType(fieldType, library1) ?: return
         val newType = getNewType(machine, library2, field)
         if (newType != null) {
@@ -336,7 +337,7 @@ class Transformer(val replacements: List<Replacement>,
             applyReplacement(replacement)
         }
         for (stmt in removedStmts) {
-                (stmt.parentNode.unpack() as? BlockStmt)?.statements?.remove(stmt)
+            (stmt.parentNode.unpack() as? BlockStmt)?.statements?.remove(stmt)
         }
     }
 
@@ -455,7 +456,8 @@ class Transformer(val replacements: List<Replacement>,
             val declarator = oldNode.getAncestorOfType(VariableDeclarator::class.java).get()
             declarator.setInitializer(null as Expression?)
             val block = classDecl.addInitializer()
-            block.addStatement(AssignExpr(NameExpr(declarator.name), oldNode as Expression, AssignExpr.Operator.ASSIGN))
+            val fieldAccess = FieldAccessExpr(NameExpr("this"), NodeList(), declarator.name)
+            block.addStatement(AssignExpr(fieldAccess, oldNode as Expression, AssignExpr.Operator.ASSIGN))
             applyReplacement(replacement)
         }
     }
@@ -487,10 +489,11 @@ class RouteExtractor(val library1: Library,
                 val callEdge = edges.filterIsInstance<CallEdge>().firstOrNull { edge ->
                     edge.methodName == invocation.name &&
                             edge.machine.describesType(invocation.simpleType()) &&
+                            edge.param.size == invocation.args.size &&
                             if (edge.param.isNotEmpty() && edge.param.first() is ConstParam) (edge.param.first() as ConstParam).value == invocation.args.first() else true
                 }
                 if (callEdge == null) {
-//                    println("Cannot find edge for $invocation")
+                    println("Cannot find edge for $invocation")
                     continue
                 }
                 val methodCall = codeElements.methodCalls.firstOrNull { call -> call.name.identifier == invocation.name && call.end.unpack()?.line == invocation.line }
@@ -657,7 +660,7 @@ class RouteMaker(val globalRoute: MutableList<Route>,
         // check(actionsQueue.isEmpty())
         // addFinalizers() // TODO
     }
-    
+
     private fun fillContextWithInit() {
         context += library2.stateMachines.flatMap { machine -> machine.states }.filter(State::isInit).toMutableSet()
     }
@@ -763,5 +766,5 @@ class RouteMaker(val globalRoute: MutableList<Route>,
 
 fun <T> Optional<T>.unpack(): T? = orElse(null)
 
-fun <NodeT: Node> List<NodeT>.toNodeList() = NodeList.nodeList(this)
+fun <NodeT : Node> List<NodeT>.toNodeList() = NodeList.nodeList(this)
 

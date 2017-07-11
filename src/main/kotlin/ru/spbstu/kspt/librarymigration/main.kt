@@ -19,6 +19,8 @@ import mu.KotlinLogging
 import org.gradle.tooling.GradleConnector
 import org.gradle.tooling.ProjectConnection
 import org.gradle.tooling.model.eclipse.EclipseProject
+import org.slf4j.MDC
+import ru.spbstu.kspt.librarymigration.models.Logging
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.FileInputStream
@@ -42,10 +44,23 @@ fun main(args: Array<String>) {
 //            moduleDir = Paths.get("/home/artyom/Compile/acme4j/acme4j-client"))
     val project = MavenProject(projectDir = Paths.get("/home/artyom/Compile/signpost"),
             moduleDir = Paths.get("/home/artyom/Compile/signpost/signpost-core"))
-    migrate(project = project,
-            from = HttpModels.java,
-            to = HttpModels.okhttp
+    migrate(project = GradleProject(Paths.get("/home/artyom/Compile/schwan_kalah")),
+            from = Logging.makeLog4j(),
+            to = Logging.makeSLF4J(),
+            testPatcher = {path: Path ->
+                val testFile = path.resolve("build.gradle").toFile()
+                val lines = testFile.readLines()
+                val newContent = lines.filterNot { s -> s.contains("aspectj") }.joinToString("\n")
+                testFile.writeText(newContent)
+            }
     )
+    migrate(project = GradleProject(Paths.get("/home/artyom/Compile/migrated/schwan_kalah_migrated_Log4j_SLF4J")),
+            from = Logging.makeLog4j20(),
+            to = Logging.makeSLF4J())
+//    migrate(project = project,
+//            from = HttpModels.java,
+//            to = HttpModels.okhttp
+//    )
 }
 
 fun migrate(project: Project,
@@ -63,7 +78,7 @@ fun migrate(project: Project,
         error("Nothing to migrate")
     }
 
-    val invocations = parseInvocations(project.traceFile.toFile())
+    val invocations = parseInvocations(project.traceFile.toFile(), from)
 
     for ((source, cu) in pending) {
         logger.info("Migrating $source")
@@ -71,7 +86,7 @@ fun migrate(project: Project,
         CodeElementsVisitor().visit(cu, codeElements);
 
         manager.migrateFile(codeElements, source, invocations)
-        addImports(cu, to)
+        modifyImports(cu, from, to)
 
         val migratedCode = cu.toString()
         println(migratedCode);
@@ -85,14 +100,22 @@ fun migrate(project: Project,
 
 typealias GroupedInvocation = Map<String, Map<String, List<RouteExtractor.Invocation>>>
 
-private fun parseInvocations(traceFile: File): GroupedInvocation {
+private fun parseInvocations(traceFile: File, from: Library): GroupedInvocation {
     val invocations = ObjectMapper().registerKotlinModule().readValue<List<RouteExtractor.Invocation>>(traceFile)
-    val grouped = invocations.groupBy { it.filename }.mapValues { it.value.groupBy { it.callerName } } // TODO: groupingBy
+    val libraryTypes = from.allTypes()
+    val filtered = invocations.filter { libraryTypes.contains(it.type) }
+    val grouped = filtered.groupBy { it.filename }.mapValues { it.value.groupBy { it.callerName } } // TODO: groupingBy
     return grouped
 }
 
-private fun addImports(cu: CompilationUnit, library: Library) {
-    cu.imports.addAll((library.allTypes())
+private fun modifyImports(cu: CompilationUnit, from: Library, to: Library) {
+    val commonClasses = listOf("java.io.InputStream", "java.io.OutputStream", "java.io.BufferedReader",
+            "java.io.InputStreamReader", "java.util.stream.Collectors")
+
+    cu.imports.filter { it.name.toString() in from.allTypes() && it.name.toString() !in commonClasses }
+            .forEach { it.parentNode.get().remove(it) }
+
+    cu.imports.addAll((to.allTypes())
             .filter { type -> type.contains('.') }
             .filterNot { type -> type.contains('$') }
             .map { type -> ImportDeclaration(Name(type), false, false) })
@@ -221,7 +244,8 @@ class GradleProject(override val projectDir: Path) : Project {
 
     private fun runGradleTask(connection: ProjectConnection, taskName: String): Pair<Boolean, String> {
         val buildOutputStream = ByteArrayOutputStream()
-        val buildLauncher = connection.newBuild().forTasks(taskName).withArguments("-i").setStandardError(buildOutputStream)
+        val buildLauncher = connection.newBuild().forTasks(taskName).withArguments("-i")
+                .setStandardError(buildOutputStream).setStandardOutput(buildOutputStream)
         try {
             buildLauncher.run()
             return Pair(true, "")
@@ -232,7 +256,8 @@ class GradleProject(override val projectDir: Path) : Project {
 
     private fun runGradleTest(connection: ProjectConnection, testClassName: String): Pair<Boolean, String> {
         val buildOutputStream = ByteArrayOutputStream()
-        val buildLauncher = connection.newTestLauncher().withJvmTestClasses(testClassName).withArguments("-i").setStandardError(buildOutputStream)
+        val buildLauncher = connection.newTestLauncher().withJvmTestClasses(testClassName).withArguments("-i")
+                .setStandardError(buildOutputStream).setStandardOutput(buildOutputStream)
         try {
             buildLauncher.run()
             return Pair(true, "")
@@ -310,7 +335,12 @@ class MavenProject(override val projectDir: Path,
 class MigrationManager(val from: Library,
                        val to: Library,
                        val project: Project) {
-    private val migratedDir = project.projectDir.resolveSibling("migrated")
+    private val copy = project.projectDir.parent.fileName != Paths.get("migrated")
+    private val migratedDir = if (copy) {
+        project.projectDir.resolveSibling("migrated")
+    } else {
+        project.projectDir.parent
+    }
     val destDir = migratedDir.resolve("${project.projectDir.fileName}_migrated_${from.name}_${to.name}")
 
     init {
@@ -337,7 +367,9 @@ class MigrationManager(val from: Library,
     fun migrateFile(codeElements: CodeElements,
                     file: File,
                     invocations: GroupedInvocation) {
+        MDC.put("filename", file.name)
         for (methodDecl in codeElements.methodDecls) {
+            MDC.put("method", methodDecl.name())
             val methodLocalCodeElements = methodDecl.getCodeElements()
 
             val migration = Migration(
@@ -359,11 +391,16 @@ class MigrationManager(val from: Library,
                 TODO()
             }
             val variable = field.variables.first()
-            val localCodeElements = CodeElements(methodCalls = variable.getChildNodesByType(MethodCallExpr::class.java),
-                    objectCreation = variable.getChildNodesByType(ObjectCreationExpr::class.java))
+            MDC.put("method", variable.name.asString())
+            val localCodeElements = CodeElements(
+                    methodCalls = variable.getChildNodesByType(MethodCallExpr::class.java),
+                    objectCreation = variable.getChildNodesByType(ObjectCreationExpr::class.java),
+                    methodDecls = codeElements.methodDecls)
             val migration = Migration(from, to, localCodeElements, "<init>", file, invocations, project)
-            migration.migrateClassField(field)
+            migration.migrateClassField(field, variable)
         }
+        MDC.remove("filename")
+        MDC.remove("method")
 //    fixEntityTypes(codeElements, library1, library2)
     }
 

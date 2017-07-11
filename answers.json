@@ -436,4 +436,28 @@
   "library2" : "java",
   "question" : "Replacement for Client: OkHttpClient at (line 19,col 5)",
   "response" : "Remove"
+}, {
+  "file" : "../../Compile/migrated/schwan_kalah_migrated_Log4j_SLF4J/src/main/java/com/schwan/kalah/model/Kalah.java",
+  "library1" : "Log4j20",
+  "library2" : "SLF4J",
+  "question" : "Add object to context, function name <init>",
+  "response" : "ClassReference.Constructed"
+}, {
+  "file" : "../../Compile/migrated/schwan_kalah_migrated_Log4j_SLF4J/src/main/java/com/schwan/kalah/model/Kalah.java",
+  "library1" : "Log4j20",
+  "library2" : "SLF4J",
+  "question" : "Object name, function name <init>",
+  "response" : "Kalah.class"
+}, {
+  "file" : "../../Compile/migrated/schwan_kalah_migrated_Log4j_SLF4J/src/main/java/com/schwan/kalah/model/Player.java",
+  "library1" : "Log4j20",
+  "library2" : "SLF4J",
+  "question" : "Add object to context, function name <init>",
+  "response" : "ClassReference.Constructed"
+}, {
+  "file" : "../../Compile/migrated/schwan_kalah_migrated_Log4j_SLF4J/src/main/java/com/schwan/kalah/model/Player.java",
+  "library1" : "Log4j20",
+  "library2" : "SLF4J",
+  "question" : "Object name, function name <init>",
+  "response" : "Player.class"
 } ]
