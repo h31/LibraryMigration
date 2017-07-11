@@ -7,7 +7,7 @@ import ru.spbstu.kspt.librarymigration.*
  */
 
 object Logging {
-    val all: List<Library> by lazy { listOf(makeLog4j(), makeSLF4J()) }
+    val all: List<Library> by lazy { listOf(makeLog4j(), makeSLF4J(), makeLog4j20()) }
 
     object Actions {
         val info = Action("Info", withSideEffects = true)
@@ -37,6 +37,13 @@ object Logging {
                 actions = listOf(Actions.info),
                 param = listOf(ActionParam("Message")),
                 methodName = "info"
+        )
+
+        CallEdge(
+                machine = logger,
+                actions = listOf(Actions.debug),
+                param = listOf(ActionParam("Message")),
+                methodName = "debug"
         )
 
         return Library("SLF4J", listOf(logger, loggerFactory, classReference),
@@ -78,10 +85,74 @@ object Logging {
                 methodName = "info"
         )
 
+        CallEdge(
+                machine = logger,
+                actions = listOf(Actions.debug),
+                param = listOf(ActionParam("Message")),
+                methodName = "debug"
+        )
+
         return Library("Log4j", listOf(logger, classReference, logManager),
                 mapOf(
                         logger to "org.apache.log4j.Logger",
                         classReference to "java.lang.Class",
                         logManager to "org.apache.log4j.LogManager"))
+    }
+
+    fun makeLog4j20(): Library {
+        val logger = StateMachine("Logger")
+        val logManager = StateMachine("LogManager")
+        val classReference = StateMachine("ClassReference")
+
+        CallEdge(
+                machine = logger,
+                src = logger.getInitState(),
+                dst = logger.getConstructedState(),
+                methodName = "getLogger",
+                param = listOf(EntityParam(classReference)),
+                isStatic = true
+        )
+
+        LinkedEdge(
+                dst = logger.getConstructedState(),
+                edge = CallEdge(
+                        machine = logManager,
+                        src = logManager.getInitState(),
+                        methodName = "getLogger",
+                        param = listOf(EntityParam(classReference)),
+                        isStatic = true
+                )
+        )
+
+        LinkedEdge(
+                dst = logger.getConstructedState(),
+                edge = CallEdge(
+                        machine = logManager,
+                        src = logManager.getInitState(),
+                        methodName = "getLogger",
+                        param = listOf(),
+                        isStatic = true
+                )
+        )
+
+        CallEdge(
+                machine = logger,
+                actions = listOf(Actions.info),
+                param = listOf(ActionParam("Message")),
+                methodName = "info"
+        )
+
+        CallEdge(
+                machine = logger,
+                actions = listOf(Actions.debug),
+                param = listOf(ActionParam("Message")),
+                methodName = "debug"
+        )
+
+        return Library("Log4j20", listOf(logger, classReference, logManager),
+                mapOf(
+                        logger to "org.apache.logging.log4j.Logger",
+                        classReference to "java.lang.Class",
+                        logManager to "org.apache.logging.log4j.LogManager"))
     }
 }
