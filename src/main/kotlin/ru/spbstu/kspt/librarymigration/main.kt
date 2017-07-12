@@ -347,10 +347,7 @@ class MigrationManager(val from: Library,
         if (!Files.isDirectory(migratedDir)) Files.createDirectory(migratedDir)
 
         destDir.toFile().deleteRecursively()
-
-        Files.walk(project.projectDir).forEach { path ->
-            Files.copy(path, destDir.resolve(project.projectDir.relativize(path)))
-        }
+        project.projectDir.toFile().copyRecursively(destDir.toFile())
     }
 
 
