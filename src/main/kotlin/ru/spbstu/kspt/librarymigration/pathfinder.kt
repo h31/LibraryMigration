@@ -35,9 +35,9 @@ class PathFinder(val edges: Set<Edge>, val src: Set<State>, val initProps: Map<S
             }
             val model = pending.poll()
             if (aStar(model, goal, edges)) {
-                logger.info("Solution found, route:")
+                logger.debug("Solution found, route:")
                 for (link in model.path.withIndex()) {
-                    logger.info(link.index.toString() + ". " + link.value.label())
+                    logger.debug(link.index.toString() + ". " + link.value.label())
                 }
                 resultModel = model
                 return
@@ -53,7 +53,7 @@ class PathFinder(val edges: Set<Edge>, val src: Set<State>, val initProps: Map<S
         for ((model, requirements) in haveMissingRequirements) {
             val requiredModels = visited.filter { requirements.contains(it.state) }.filter { it.actions.isEmpty() } // TODO
             if (requiredModels.size == requirements.size) {
-                logger.info("Model ${model.state} received all dependencies ($requirements)")
+                logger.debug("Model ${model.state} received all dependencies ($requirements)")
                 val newModel = model.copy(actions = model.actions + requiredModels.flatMap { it.actions })
                 val newPath = model.path.toMutableList()
                 newPath.addAll(Math.max(newPath.size - 1, 0), requiredModels.flatMap { it.path })
@@ -162,7 +162,7 @@ class PathFinder(val edges: Set<Edge>, val src: Set<State>, val initProps: Map<S
             newModel.stateProps = current.stateProps + Pair(newModel.state.machine, newModel.props)
             newModel.context = current.context.filterNot { it.machine == edge.dst.machine || if (edge is CastEdge) it == edge.src else false }.toSet() + edge.dst
             if (requirements.isNotEmpty()) {
-                logger.info("Model ${newModel.state} + edge $edge have requirements: $requirements")
+                logger.debug("Model ${newModel.state} + edge $edge have requirements: $requirements")
                 haveMissingRequirements += Pair(newModel, requirements)
                 continue
             }

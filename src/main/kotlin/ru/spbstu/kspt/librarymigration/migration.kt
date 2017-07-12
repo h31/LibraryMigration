@@ -139,7 +139,7 @@ class Migration(val library1: Library,
     private fun applySteps(steps: List<Edge>, rules: List<EdgeInsertRules>, oldVarName: String?): List<PendingExpression> {
         val pendingExpr = mutableListOf<PendingExpression>()
         for ((index, step) in steps.withIndex()) {
-            logger.info("    Step: " + step.label())
+            logger.debug("    Step: " + step.label())
             val newExpressions: List<PendingExpression> = makeStep(step)
             val variableDeclarationReplacement = (step == steps.last()) && (oldVarName != null)
             val name = if (variableDeclarationReplacement) oldVarName else generateVariableName(step)
@@ -151,7 +151,7 @@ class Migration(val library1: Library,
                     else -> it
                 }
             }
-            logger.info("Received expressions: " + namedExpressions.toString())
+            logger.debug("Received expressions: " + namedExpressions.toString())
             for (expr in namedExpressions) {
                 addToContext(expr)
             }
@@ -493,14 +493,14 @@ class RouteExtractor(val library1: Library,
                             if (edge.param.isNotEmpty() && edge.param.first() is ConstParam) (edge.param.first() as ConstParam).value == invocation.args.first() else true
                 }
                 if (callEdge == null) {
-                    println("Cannot find edge for $invocation")
+                    logger.debug("Cannot find edge for $invocation")
                     continue
                 }
                 val methodCall = codeElements.methodCalls.firstOrNull { call -> call.name.identifier == invocation.name && call.end.unpack()?.line == invocation.line }
                 if (methodCall == null) {
                     val decl = codeElements.methodDecls.first { it.name() == invocation.callerName }
                     if (invocation.line < decl.node.begin.get().line || invocation.line > decl.node.end.get().line) {
-                        logger.info("Outside of method declaration, skipping...")
+                        logger.debug("Outside of method declaration, skipping...")
                         continue
                     }
 
@@ -527,7 +527,7 @@ class RouteExtractor(val library1: Library,
                 if (constructorCall == null) {
                     val decl = codeElements.methodDecls.first { it.name() == invocation.callerName }
                     if (invocation.line < decl.node.begin.get().line || invocation.line > decl.node.end.get().line) {
-                        logger.info("Outside of method declaration, skipping...")
+                        logger.debug("Outside of method declaration, skipping...")
                         continue
                     }
 
@@ -538,11 +538,11 @@ class RouteExtractor(val library1: Library,
         }
         val usedEdgesCleanedUp = usedEdges.distinct()
         if (usedEdgesCleanedUp.isNotEmpty()) {
-            logger.info("--- Used edges:")
+            logger.debug("--- Used edges:")
             for (edge in usedEdgesCleanedUp) {
-                logger.info(edge.edge.label())
+                logger.debug(edge.edge.label())
             }
-            logger.info("---")
+            logger.debug("---")
 //            DOTVisualization().makePicture(library1, "extracted_" + functionName, usedEdgesCleanedUp.map { usage -> usage.edge })
         }
         return usedEdgesCleanedUp.distinct()
@@ -567,10 +567,10 @@ class RouteExtractor(val library1: Library,
     }
 
     private fun printRoute(route: List<Edge>) {
-//        logger.info("Route from %s to %s: ".format(src.stateAndMachineName(),
+//        logger.debug("Route from %s to %s: ".format(src.stateAndMachineName(),
 //                dst.stateAndMachineName()))
         for (state in route.withIndex()) {
-            logger.info("%d: %s".format(state.index, state.value.label()))
+            logger.debug("%d: %s".format(state.index, state.value.label()))
         }
     }
 
@@ -620,11 +620,11 @@ class RouteMaker(val globalRoute: MutableList<Route>,
         fillContextWithInit()
         for (usage in path) {
             val edge = usage.edge
-            logger.info("Processing " + edge.label() + "... ")
+            logger.debug("Processing " + edge.label() + "... ")
             extractDependenciesFromNode(edge, usage.node)
             val actions = edge.actions
             if (edge.canBeSkipped()) {
-                logger.info("  Makes a loop, skipping")
+                logger.debug("  Makes a loop, skipping")
                 for (action in actions.filter { it.withSideEffects == false }) {
                     actionsQueue += action
                 }
@@ -683,7 +683,7 @@ class RouteMaker(val globalRoute: MutableList<Route>,
 
     private fun findRoute(src: Set<State>, dst: State?, actions: List<Action>, functionName: String): PathFinder.Model? {
         var states = src.filter { state -> library2.states().contains(state) }.toSet()
-        logger.info("  Searching route from ${states.joinToString(transform = State::stateAndMachineName)} to ${dst?.stateAndMachineName()} with ${actions.joinToString(transform = Action::name)}")
+        logger.debug("  Searching route from ${states.joinToString(transform = State::stateAndMachineName)} to ${dst?.stateAndMachineName()} with ${actions.joinToString(transform = Action::name)}")
         val edges = library2.stateMachines.flatMap(StateMachine::edges).toSet()
         var iteration = 0
         while (true) {
@@ -733,20 +733,20 @@ class RouteMaker(val globalRoute: MutableList<Route>,
 
     private fun addDependenciesToContext(deps: Map<State, Expression?>) {
         for ((dep, expr) in deps) {
-            logger.info("Machine ${dep.machine.label()} is now in state ${dep.label()}")
+            logger.debug("Machine ${dep.machine.label()} is now in state ${dep.label()}")
             if (context.contains(dep)) {
                 continue
             }
             addToContext(dep)
 
             if (expr != null) {
-                logger.info("Machine ${dep.machine.label()} can be accessed by expr \"$expr\"")
+                logger.debug("Machine ${dep.machine.label()} can be accessed by expr \"$expr\"")
                 dependencies[dep.machine] = expr
 
                 val autoDeps = library1.edges.filterIsInstance<AutoEdge>().filter { edge -> edge.src == dep }
                 for (autoDep in autoDeps) {
                     val dstMachine = autoDep.dst.machine
-                    logger.info("Additionally machine ${dstMachine.label()} can be accessed by expr \"$expr\"")
+                    logger.debug("Additionally machine ${dstMachine.label()} can be accessed by expr \"$expr\"")
                     addToContext(autoDep.dst)
                     dependencies[dstMachine] = expr
                 }
