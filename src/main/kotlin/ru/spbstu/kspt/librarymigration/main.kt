@@ -35,32 +35,6 @@ import java.nio.file.Paths
 
 fun main(args: Array<String>) {
     makePictures(HttpModels.all())
-
-//    migrate(projectDir = Paths.get("examples/instagram-java-scraper"),
-//            from = models["okhttp"]!!,
-//            to = models["java"]!!
-//    )
-//    val project = MavenProject(projectDir = Paths.get("/home/artyom/Compile/acme4j"),
-//            moduleDir = Paths.get("/home/artyom/Compile/acme4j/acme4j-client"))
-    val project = MavenProject(projectDir = Paths.get("/home/artyom/Compile/signpost"),
-            moduleDir = Paths.get("/home/artyom/Compile/signpost/signpost-core"))
-    migrate(project = GradleProject(Paths.get("/home/artyom/Compile/schwan_kalah")),
-            from = Logging.makeLog4j(),
-            to = Logging.makeSLF4J(),
-            testPatcher = {path: Path ->
-                val testFile = path.resolve("build.gradle").toFile()
-                val lines = testFile.readLines()
-                val newContent = lines.filterNot { s -> s.contains("aspectj") }.joinToString("\n")
-                testFile.writeText(newContent)
-            }
-    )
-    migrate(project = GradleProject(Paths.get("/home/artyom/Compile/migrated/schwan_kalah_migrated_Log4j_SLF4J")),
-            from = Logging.makeLog4j20(),
-            to = Logging.makeSLF4J())
-//    migrate(project = project,
-//            from = HttpModels.java,
-//            to = HttpModels.okhttp
-//    )
 }
 
 fun migrate(project: Project,
