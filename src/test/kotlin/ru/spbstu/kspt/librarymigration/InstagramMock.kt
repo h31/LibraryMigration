@@ -86,31 +86,19 @@ class InstagramMock : AbstractHandler() {
         baseRequest.isHandled = true;
     }
 
+    class LoggedRequest {
+        var url: HttpURI = HttpURI()
+        var reqHeaders: Map<String, String> = mutableMapOf()
+        var respHeaders: Map<String, String> = mutableMapOf()
+        var code: Int = 0
+        var response: String = ""
+        var requestContent: String = ""
+        var method: String = ""
+    }
+
+    enum class ReaderState {
+        REQ_HEADERS, RESP_HEADERS, START, REQ_CONTENT, RESP_CONTENT
+    }
+
+    fun <T> List<T>.toPair(): Pair<T, T> = Pair(get(0), get(1))
 }
-
-class LoggedRequest {
-    var url: HttpURI = HttpURI()
-    var reqHeaders: Map<String, String> = mutableMapOf()
-    var respHeaders: Map<String, String> = mutableMapOf()
-    var code: Int = 0
-    var response: String = ""
-    var requestContent: String = ""
-    var method: String = ""
-}
-
-enum class ReaderState {
-    REQ_HEADERS, RESP_HEADERS, START, REQ_CONTENT, RESP_CONTENT
-}
-
-fun main(args: Array<String>) {
-    val mock = InstagramMock()
-    mock.read()
-
-    val server = Server(8010)
-    server.handler = mock;
-
-    server.start();
-    server.join();
-}
-
-fun <T> List<T>.toPair(): Pair<T, T> = Pair(get(0), get(1))
