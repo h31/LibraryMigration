@@ -1,5 +1,6 @@
 package ru.spbstu.kspt.librarymigration
 
+import ch.qos.logback.classic.Level
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.readValue
 import com.fasterxml.jackson.module.kotlin.registerKotlinModule
@@ -15,12 +16,15 @@ import com.github.javaparser.symbolsolver.resolution.typesolvers.CombinedTypeSol
 import com.github.javaparser.symbolsolver.resolution.typesolvers.JarTypeSolver
 import com.github.javaparser.symbolsolver.resolution.typesolvers.JavaParserTypeSolver
 import com.github.javaparser.symbolsolver.resolution.typesolvers.ReflectionTypeSolver
+import com.xenomachina.argparser.ArgParser
+import com.xenomachina.argparser.default
+import com.xenomachina.argparser.mainBody
 import mu.KotlinLogging
 import org.gradle.tooling.GradleConnector
 import org.gradle.tooling.ProjectConnection
 import org.gradle.tooling.model.eclipse.EclipseProject
+import org.slf4j.LoggerFactory
 import org.slf4j.MDC
-import ru.spbstu.kspt.librarymigration.models.Logging
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.FileInputStream
@@ -33,15 +37,47 @@ import java.nio.file.Paths
  * Created by aleksyuk on 4/7/16.
  */
 
-fun main(args: Array<String>) {
+fun main(args: Array<String>) = mainBody("LibraryMigration") {
     makePictures(HttpModels.all())
+    val migrationArgs = MigrationArgs(args)
+
+    if (!migrationArgs.debug) {
+        val log = LoggerFactory.getLogger(ch.qos.logback.classic.Logger.ROOT_LOGGER_NAME) as ch.qos.logback.classic.Logger
+        log.level = Level.INFO
+    }
+
+    migrate(project = migrationArgs.buildTool(),
+            from = migrationArgs.sourceLibrary,
+            to = migrationArgs.destinationLibrary,
+            runTests = migrationArgs.runTests
+    )
+    return@mainBody
+}
+
+class MigrationArgs(args: Array<String>) {
+    val parser: ArgParser = ArgParser(args)
+
+    val projectDir by parser.positional("SRC", help = "source project directory") { Paths.get(this) }
+
+    val buildTool by parser.mapping(
+            "--gradle" to { GradleProject(projectDir) },
+            "--maven" to { MavenProject(projectDir, projectDir) },
+            help = "build tool used by the project, either Maven or Gradle (default: Gradle)").default { GradleProject(projectDir) }
+
+    val sourceLibrary by parser.storing("-f", "--from", help = "source library") { HttpModels.byName(this) }
+    val destinationLibrary by parser.storing("-t", "--to", help = "destination library") { HttpModels.byName(this) }
+
+    val runTests by parser.flagging("-r", "--run-tests", help = "if set, run tests after migration").default(false)
+
+    val debug by parser.flagging("-d", "--debug", help = "enable debug logging").default(false)
 }
 
 fun migrate(project: Project,
             from: Library,
             to: Library,
             testPatcher: (Path) -> Unit = {},
-            testClassName: String? = null): Boolean {
+            testClassName: String? = null,
+            runTests: Boolean = true): Boolean {
     val manager = MigrationManager(project = project,
             from = from,
             to = to)
@@ -63,13 +99,14 @@ fun migrate(project: Project,
         modifyImports(cu, from, to)
 
         val migratedCode = cu.toString()
-        println(migratedCode);
+        logger.debug("Migrated code: $migratedCode")
 
         val relativePath = project.projectDir.relativize(source.toPath())
         Files.write(manager.destDir.resolve(relativePath), migratedCode.toByteArray())
     }
     testPatcher(manager.destDir)
-    return manager.checkMigrationCorrectness(testClassName)
+    val result = if (runTests) manager.checkMigrationCorrectness(testClassName) else true
+    return result
 }
 
 typealias GroupedInvocation = Map<String, Map<String, List<RouteExtractor.Invocation>>>

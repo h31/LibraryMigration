@@ -11,6 +11,7 @@ object HttpModels {
 
     fun all() = listOf(java, apache, okhttp)
     fun withName() = all().associateBy(Library::name)
+    fun byName(name: String) = all().single { library -> library.name == name }
 }
 
 object Actions {
