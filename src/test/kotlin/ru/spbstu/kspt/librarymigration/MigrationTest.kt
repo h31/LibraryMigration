@@ -126,7 +126,7 @@ class MigrationTest {
                 to = java
         ))
         println("And again...")
-        Assert.assertTrue(migrate(project = GradleProject(examples.resolve("migrated/migrated/HTTP_migrated_java_apache_migrated_apache_java")),
+        Assert.assertTrue(migrate(project = GradleProject(examples.resolve("migrated/HTTP_migrated_java_apache_migrated_apache_java")),
                 from = java,
                 to = apache
         ))
