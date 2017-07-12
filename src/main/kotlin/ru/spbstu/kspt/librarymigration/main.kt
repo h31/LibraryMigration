@@ -99,7 +99,7 @@ fun migrate(project: Project,
         modifyImports(cu, from, to)
 
         val migratedCode = cu.toString()
-        logger.debug("Migrated code: $migratedCode")
+        logger.debug("Migrated code for $source: \n$migratedCode")
 
         val relativePath = project.projectDir.relativize(source.toPath())
         Files.write(manager.destDir.resolve(relativePath), migratedCode.toByteArray())
