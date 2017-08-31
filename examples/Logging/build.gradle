@@ -11,8 +11,9 @@ mainClassName = "Main"
 dependencies {
     compile group: 'commons-io', name: 'commons-io', version: '2.5'
     compile 'log4j:log4j:1.2.17'
-    compile 'org.slf4j:slf4j-log4j12:1.7.25'
+//    compile 'org.slf4j:slf4j-log4j12:1.7.25'
     compile 'com.fasterxml.jackson.core:jackson-databind:2.8.6'
+    compile 'ch.qos.logback:logback-classic:1.2.3'
     testCompile 'junit:junit:4.12'
 }
 
