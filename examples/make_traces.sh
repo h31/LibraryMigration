@@ -10,8 +10,10 @@ then
 fi
 cp ../log.json.instagram log.json
 
-cd ../
-
-cd HTTP/
+cd ../HTTP/
 ./gradlew clean test
+
+cd ../Logging/
+./gradlew clean test
+
 cd ${src_dir}
