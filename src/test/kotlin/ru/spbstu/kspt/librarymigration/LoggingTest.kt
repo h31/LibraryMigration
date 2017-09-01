@@ -14,7 +14,7 @@ class LoggingTest {
     val slf4j = Logging.makeSLF4J()
     val log4j20 = Logging.makeLog4j20()
 
-    @Test
+//    @Test
     fun testKalah() {
         migrate(project = GradleProject(Paths.get("/home/artyom/Compile/schwan_kalah")),
                 from = log4j,
