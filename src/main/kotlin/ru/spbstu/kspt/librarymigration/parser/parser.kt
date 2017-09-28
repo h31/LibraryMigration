@@ -1,11 +1,11 @@
-package ru.spbstu.kspt.librarymigration
+package ru.spbstu.kspt.librarymigration.parser
 
 import org.antlr.v4.runtime.CharStreams
 import org.antlr.v4.runtime.CommonTokenStream
+import ru.spbstu.kspt.librarymigration.*
 import ru.spbstu.kspt.librarymigration.modelreader.LibraryModelBaseVisitor
 import ru.spbstu.kspt.librarymigration.modelreader.LibraryModelLexer
 import ru.spbstu.kspt.librarymigration.modelreader.LibraryModelParser
-import ru.spbstu.kspt.librarymigration.modelreader.LibraryModelVisitor
 
 /**
  * Created by artyom on 13.07.17.
