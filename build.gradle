@@ -27,20 +27,20 @@ dependencies {
     compile "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
     compile "org.jetbrains.kotlin:kotlin-reflect:$kotlin_version"
     compile 'com.samskivert:jmustache:1.13'
-    compile 'com.github.javaparser:javaparser-core:3.2.8'
-    compile 'com.github.javaparser:java-symbol-solver-core:0.5.5'
+    compile 'com.github.javaparser:javaparser-core:3.4.1'
+    compile 'com.github.javaparser:java-symbol-solver-core:0.6.0'
     compile 'ch.qos.logback:logback-classic:1.2.3'
-    compile 'com.fasterxml.jackson.core:jackson-databind:2.8.9'
-    compile 'com.fasterxml.jackson.module:jackson-module-kotlin:2.8.9'
-    compile 'io.github.microutils:kotlin-logging:1.4.4'
+    compile 'com.fasterxml.jackson.core:jackson-databind:2.9.1'
+    compile 'com.fasterxml.jackson.module:jackson-module-kotlin:2.9.1'
+    compile 'io.github.microutils:kotlin-logging:1.4.6'
     compile "org.gradle:gradle-tooling-api:${gradle.gradleVersion}"
     compile 'com.xenomachina:kotlin-argparser:2.0.3'
-    compile 'org.zeroturnaround:zt-zip:1.11'
+    compile 'org.zeroturnaround:zt-zip:1.12'
     compile group: 'org.jgrapht', name: 'jgrapht-core', version: '1.0.1'
     compile group: 'org.jgrapht', name: 'jgrapht-ext', version: '1.0.1'
-    compile 'com.github.systemdir.gml:GMLWriterForYed:1.0.0'
+    compile 'com.github.systemdir.gml:GMLWriterForYed:2.0.0'
     testCompile 'junit:junit:4.12'
-    testCompile 'org.eclipse.jetty:jetty-server:9.4.6.v20170531'
+    testCompile 'org.eclipse.jetty:jetty-server:9.4.7.v20170914'
 }
 
 idea {
