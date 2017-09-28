@@ -1,5 +1,9 @@
 grammar LibraryModel;
 
+@header {
+package ru.spbstu.kspt.librarymigration.modelreader;
+}
+
 start
    :   'library' libraryName '{' description '}' EOF
    ;
@@ -9,10 +13,10 @@ description
    ;
 
 section
-   :   typesSection
+   :   (typesSection
    |   convertersSection
    |   automatonDescription
-   |   funDecl
+   |   funDecl)
    ;
 
 typesSection
@@ -32,7 +36,19 @@ codeType
    ;
 
 convertersSection
-   :   'converters' '{' '}'
+   :   'converters' '{' converter+ '}'
+   ;
+
+converter
+   :   destEntity '<-' converterExpression ';'
+   ;
+
+destEntity
+   :   Identifier
+   ;
+
+converterExpression
+   :   (Identifier|'('|')'|'"'|'<'|'>'|'.'|','|'/'|'\\'|'-')*
    ;
 
 automatonDescription
@@ -68,18 +84,22 @@ automatonName
    ;
 
 funDecl
-   :   'fun' funName ('.' funName)* '(' funArgs? ')' (':' funReturnType)? (';' | '{' funProperties* '}')
+   :   'fun' funName ('.' methodName)? '(' funArgs? ')' (':' funReturnType)? (';' | '{' funProperties* '}')
    ;
 
 funProperties
    :   actionDecl
    |   'requires' ';'
    |   'when' ';'
-   |   'property' ';'
+   |   propertyDecl
    ;
 
 actionDecl
    :   'action' actionName '(' (','? Identifier)* ')' ';'
+   ;
+
+propertyDecl
+   :   'property' '"' Identifier '"' '=' '"' Identifier '"' ';'
    ;
 
 actionName
@@ -89,6 +109,11 @@ actionName
 funName
    :   Identifier
    ;
+
+methodName
+   :   Identifier
+   ;
+
 
 funArgs
    :   funArg (',' funArg)*
