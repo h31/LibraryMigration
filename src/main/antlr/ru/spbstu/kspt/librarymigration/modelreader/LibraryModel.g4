@@ -9,15 +9,18 @@ start
    ;
 
 description
-   :   section+
+   :   (typesSection
+          |   convertersSection
+          |   automatonDescription
+          |   funDecl)+
    ;
 
-section
-   :   (typesSection
-   |   convertersSection
-   |   automatonDescription
-   |   funDecl)
-   ;
+//section
+//   :   (typesSection
+//   |   convertersSection
+//   |   automatonDescription
+//   |   funDecl)
+//   ;
 
 typesSection
    :   'types' '{' typeDecl+ '}'
