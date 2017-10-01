@@ -16,6 +16,8 @@ jobs:
 
       - run: ./gradlew dependencies
 
+      - run: ./gradlew generateGrammarSource
+
       - run: examples/make_traces.sh
 
       - run: rm -f  /home/circleci/.gradle/caches/modules-2/modules-2.lock
