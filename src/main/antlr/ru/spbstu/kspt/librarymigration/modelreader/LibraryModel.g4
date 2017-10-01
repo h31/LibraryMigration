@@ -87,7 +87,7 @@ automatonName
    ;
 
 funDecl
-   :   'fun' funName ('.' methodName)? '(' funArgs? ')' (':' funReturnType)? (';' | '{' funProperties* '}')
+   :   'fun' entityName '.' funName '(' funArgs? ')' (':' funReturnType)? (';' | '{' funProperties* '}')
    ;
 
 funProperties
@@ -109,11 +109,11 @@ actionName
    :   Identifier
    ;
 
-funName
+entityName
    :   Identifier
    ;
 
-methodName
+funName
    :   Identifier
    ;
 
@@ -123,14 +123,14 @@ funArgs
    ;
 
 funArg
-   :   argName ':' argValue
+   :   argName ':' argType
    ;
 
 argName
    : Identifier
    ;
 
-argValue
+argType
    : Identifier
    ;
 

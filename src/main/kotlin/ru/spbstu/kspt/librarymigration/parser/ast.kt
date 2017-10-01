@@ -18,10 +18,12 @@ data class Automaton(val name: String,
 
 data class Type(val semanticType: String, val codeType: String) : Node
 
-data class Converter(val name: String) : Node
+data class Converter(val entity: String, val expression: String) : Node
 
-data class FunctionDecl(val name: String) : Node
+data class FunctionDecl(val entity: String, val name: String, val args: List<FunctionArgument>) : Node
+
+data class FunctionArgument(val name: String, val type: String) : Node
 
 data class State(val name: String) : Node
 
-data class Shift(val from: String, val to: String) : Node
+data class Shift(val from: String, val to: String, val functions: List<String>) : Node
