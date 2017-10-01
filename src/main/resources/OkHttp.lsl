@@ -15,6 +15,8 @@ library OkHttp {
    FormBodyBuilder (okhttp3.FormBody$Builder);
    RequestParamName (String);
    RequestParamValue (String);
+   RequestHeaderName (String);
+   RequestHeaderValue (String);
    ResponseHeaderName (String);
    ResponseHeaderValue (String);
    ContentType (String);

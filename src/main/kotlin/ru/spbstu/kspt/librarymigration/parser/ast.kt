@@ -20,7 +20,11 @@ data class Type(val semanticType: String, val codeType: String) : Node
 
 data class Converter(val entity: String, val expression: String) : Node
 
-data class FunctionDecl(val entity: String, val name: String, val args: List<FunctionArgument>) : Node
+data class FunctionDecl(val entity: String, val name: String,
+                        val args: List<FunctionArgument>,
+                        val actions: List<Action>) : Node
+
+data class Action(val name: String, val args: List<String>) : Node
 
 data class FunctionArgument(val name: String, val type: String) : Node
 
