@@ -12,7 +12,7 @@ jobs:
       - checkout
 
       - restore_cache:
-          key: LibraryMigration-{{ checksum "build.gradle" }}
+          key: LibraryMigration-{{ arch }}-{{ checksum "build.gradle" }}
 
       - run: ./gradlew dependencies
 
