@@ -7,27 +7,23 @@ import ru.spbstu.kspt.librarymigration.modelreader.LibraryModelBaseVisitor
 import ru.spbstu.kspt.librarymigration.modelreader.LibraryModelLexer
 import ru.spbstu.kspt.librarymigration.modelreader.LibraryModelParser
 import ru.spbstu.kspt.librarymigration.prettyPrinter
+import java.io.InputStream
 
 /**
  * Created by artyom on 13.07.17.
  */
 class ModelParser {
-    fun parse() {
-        val stream = javaClass.classLoader.getResourceAsStream("OkHttp.lsl")
+    fun parse(stream: InputStream): Library {
         val charStream = CharStreams.fromStream(stream)
         val lexer = LibraryModelLexer(charStream)
         val tokenStream = CommonTokenStream(lexer)
         val parser = LibraryModelParser(tokenStream)
-
         val start = parser.start()
-        println("Hello World!")
 
-        val library = LibraryModelReader().visit(start) as Library
-        println("Hello World!")
-
-        val lib = Postprocessor().process(library)
-        println(prettyPrinter(lib.toString()))
+        return LibraryModelReader().visit(start) as Library
     }
+
+    fun postprocess(library: Library) = Postprocessor().process(library)
 }
 
 class LibraryModelReader : LibraryModelBaseVisitor<Node>() {
@@ -87,5 +83,4 @@ class LibraryModelReader : LibraryModelBaseVisitor<Node>() {
 }
 
 fun main(args: Array<String>) {
-    ModelParser().parse()
 }

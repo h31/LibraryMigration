@@ -1,6 +1,7 @@
 package ru.spbstu.kspt.librarymigration.parser
 
 import ru.spbstu.kspt.librarymigration.*
+import ru.spbstu.kspt.librarymigration.Action
 import ru.spbstu.kspt.librarymigration.State
 
 class Postprocessor {
@@ -39,9 +40,11 @@ class Postprocessor {
 
     fun encodeFunction(machine: StateMachine, functionDecl: FunctionDecl, shift: Shift): Edge {
         val dst = if (shift.to == "self") shift.from else shift.to
+        val actionParams = functionDecl.actions.flatMap { it.args }.map { ActionParam(it) }
         return CallEdge(machine = machine, src = machine.stateByName(shift.from),
                 dst = machine.stateByName(dst), methodName = functionDecl.name,
-                param = functionDecl.args.map { EntityParam(machine = checkNotNull(machines[it.type])) })
+                param = functionDecl.args.map { EntityParam(machine = checkNotNull(machines[it.type])) } + actionParams,
+                actions = functionDecl.actions.map { ru.spbstu.kspt.librarymigration.Action(name = it.name) })
     }
 
     fun StateMachine.stateByName(name: String): State {
