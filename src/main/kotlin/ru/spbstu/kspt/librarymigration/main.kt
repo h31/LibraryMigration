@@ -10,19 +10,12 @@ import com.github.javaparser.ast.ImportDeclaration
 import com.github.javaparser.ast.body.*
 import com.github.javaparser.ast.expr.*
 import com.github.javaparser.ast.visitor.VoidVisitorAdapter
-import com.github.javaparser.symbolsolver.javaparsermodel.JavaParserFacade
-import com.github.javaparser.symbolsolver.model.resolution.TypeSolver
-import com.github.javaparser.symbolsolver.resolution.typesolvers.CombinedTypeSolver
-import com.github.javaparser.symbolsolver.resolution.typesolvers.JarTypeSolver
-import com.github.javaparser.symbolsolver.resolution.typesolvers.JavaParserTypeSolver
-import com.github.javaparser.symbolsolver.resolution.typesolvers.ReflectionTypeSolver
 import com.xenomachina.argparser.ArgParser
 import com.xenomachina.argparser.default
 import com.xenomachina.argparser.mainBody
 import mu.KotlinLogging
 import org.gradle.tooling.GradleConnector
 import org.gradle.tooling.ProjectConnection
-import org.gradle.tooling.model.eclipse.EclipseProject
 import org.slf4j.LoggerFactory
 import org.slf4j.MDC
 import java.io.ByteArrayOutputStream
@@ -305,33 +298,6 @@ class GradleProject(override val projectDir: Path) : Project {
             logger.error(testOutput)
             throw Exception("Migrated code doesn't work properly: " + testOutput)
         }
-    }
-
-    fun getTypeSolver(): TypeSolver {
-        val combinedTypeSolver = CombinedTypeSolver()
-        combinedTypeSolver.add(ReflectionTypeSolver())
-
-        val connection = connector.forProjectDirectory(projectDir.toFile()).connect()
-        val model = connection.model(EclipseProject::class.java).get()
-        for (dependency in model.classpath.all) {
-            println(dependency.file)
-            combinedTypeSolver.add(JarTypeSolver.getJarTypeSolver(dependency.file.absolutePath))
-        }
-        for (source in model.sourceDirectories.all) {
-            println(source.directory)
-            combinedTypeSolver.add(JavaParserTypeSolver(source.directory))
-        }
-//        val model2 = connection.model(org.gradle.tooling.model.DomainObjectSet<ExternalDependency>::class.java).get()
-//        val model3 = connection.model(org.gradle.tooling.model.Dependency::class.java).get()
-
-//        combinedTypeSolver.add(JavaParserTypeSolver(File("src/test/resources/javaparser_src/proper_source")))
-//        combinedTypeSolver.add(JavaParserTypeSolver(File("src/test/resources/javaparser_src/generated")))
-
-        return combinedTypeSolver
-    }
-
-    val javaParserFacade: JavaParserFacade by lazy {
-        JavaParserFacade.get(getTypeSolver())
     }
 }
 
