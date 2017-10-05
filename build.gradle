@@ -39,6 +39,7 @@ dependencies {
     compile group: 'org.jgrapht', name: 'jgrapht-core', version: '1.0.1'
     compile group: 'org.jgrapht', name: 'jgrapht-ext', version: '1.0.1'
     compile 'com.github.systemdir.gml:GMLWriterForYed:2.0.0'
+    compile 'org.apache.maven.shared:maven-invoker:3.0.0'
     testCompile 'junit:junit:4.12'
     testCompile 'org.eclipse.jetty:jetty-server:9.4.7.v20170914'
 }

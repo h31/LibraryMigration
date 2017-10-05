@@ -25,6 +25,12 @@ import java.nio.charset.Charset
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
+import org.apache.maven.shared.invoker.DefaultInvoker
+import java.util.Collections.singletonList
+import org.apache.maven.shared.invoker.DefaultInvocationRequest
+import org.apache.maven.shared.invoker.InvocationRequest
+
+
 
 /**
  * Created by aleksyuk on 4/7/16.
@@ -306,7 +312,15 @@ class MavenProject(override val projectDir: Path,
     override val traceFile: Path = moduleDir.resolve("log.json")
     override val answersFile: Path = projectDir.resolve("answers.json")
 
-    override fun checkMigrationCorrectness(testDir: Path, testClassName: String?): Boolean = true
+    override fun checkMigrationCorrectness(testDir: Path, testClassName: String?): Boolean {
+        val request = DefaultInvocationRequest()
+        request.pomFile = testDir.resolve("pom.xml").toFile()
+        request.goals = listOf("test")
+
+        val invoker = DefaultInvoker()
+        val result = invoker.execute(request)
+        return result.exitCode == 0
+    }
 }
 
 class MigrationManager(val from: Library,
