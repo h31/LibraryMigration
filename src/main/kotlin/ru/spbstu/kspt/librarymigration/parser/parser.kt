@@ -13,7 +13,7 @@ import java.io.InputStream
  * Created by artyom on 13.07.17.
  */
 class ModelParser {
-    fun parse(stream: InputStream): Library {
+    fun parse(stream: InputStream): LibraryDecl {
         val charStream = CharStreams.fromStream(stream)
         val lexer = LibraryModelLexer(charStream)
         val tokenStream = CommonTokenStream(lexer)
@@ -23,18 +23,18 @@ class ModelParser {
         return LibraryModelReader().visitStart(start)
     }
 
-    fun postprocess(library: Library) = Postprocessor().process(library)
+    fun postprocess(libraryDecl: LibraryDecl) = Postprocessor().process(libraryDecl)
 }
 
 class LibraryModelReader : LibraryModelBaseVisitor<Node>() {
-    override fun visitStart(ctx: LibraryModelParser.StartContext): Library {
+    override fun visitStart(ctx: LibraryModelParser.StartContext): LibraryDecl {
         val libraryName = ctx.libraryName().Identifier().text
         val desc = ctx.description()
         val automata = desc.automatonDescription().map { visitAutomatonDescription(it) }
         val typeList = desc.typesSection().single().typeDecl().map { visitTypeDecl(it) }
         val converters = desc.convertersSection().single().converter().map { visitConverter(it) }
         val functions = desc.funDecl().map { visitFunDecl(it) }
-        return Library(name = libraryName, automata = automata, types = typeList,
+        return LibraryDecl(name = libraryName, automata = automata, types = typeList,
                 converters = converters, functions = functions)
     }
 
@@ -47,11 +47,11 @@ class LibraryModelReader : LibraryModelBaseVisitor<Node>() {
     override fun visitTypeDecl(ctx: LibraryModelParser.TypeDeclContext): Type =
             Type(semanticType = ctx.semanticType().text, codeType = ctx.codeType().text)
 
-    override fun visitStateDecl(ctx: LibraryModelParser.StateDeclContext): State =
-            State(name = ctx.stateName().text)
+    override fun visitStateDecl(ctx: LibraryModelParser.StateDeclContext): StateDecl =
+            StateDecl(name = ctx.stateName().text)
 
-    override fun visitShiftDecl(ctx: LibraryModelParser.ShiftDeclContext): Shift =
-            Shift(from = ctx.srcState().text, to = ctx.dstState().text,
+    override fun visitShiftDecl(ctx: LibraryModelParser.ShiftDeclContext): ShiftDecl =
+            ShiftDecl(from = ctx.srcState().text, to = ctx.dstState().text,
                     functions = ctx.funName().map { it.text })
 
     override fun visitConverter(ctx: LibraryModelParser.ConverterContext): Converter =
@@ -59,13 +59,13 @@ class LibraryModelReader : LibraryModelBaseVisitor<Node>() {
 
     override fun visitFunDecl(ctx: LibraryModelParser.FunDeclContext): FunctionDecl {
         val args = ctx.funArgs().funArg().map { visitFunArg(it) }
-        val actions = ctx.funProperties().map { visit(it) }.filterIsInstance<Action>()
+        val actions = ctx.funProperties().map { visit(it) }.filterIsInstance<ActionDecl>()
         return FunctionDecl(entity = ctx.entityName().text, name = ctx.funName().text,
                 args = args, actions = actions)
     }
 
     override fun visitActionDecl(ctx: LibraryModelParser.ActionDeclContext): Node {
-        return Action(name = ctx.actionName().text, args = ctx.Identifier().map { it.text })
+        return ActionDecl(name = ctx.actionName().text, args = ctx.Identifier().map { it.text })
     }
 
     override fun visitFunArg(ctx: LibraryModelParser.FunArgContext): FunctionArgument =

@@ -2,7 +2,7 @@ package ru.spbstu.kspt.librarymigration.parser
 
 interface Node
 
-data class Library(val name: String,
+data class LibraryDecl(val name: String,
                    val automata: List<Automaton>,
                    val types: List<Type>,
                    val converters: List<Converter>,
@@ -13,8 +13,8 @@ open class NodeList<T>(val list: List<T>) : Node, List<T> by list
 //class TypeList(list: List<Node>) : NodeList(list)
 
 data class Automaton(val name: String,
-                     val states: List<State>,
-                     val shifts: List<Shift>) : Node
+                     val states: List<StateDecl>,
+                     val shifts: List<ShiftDecl>) : Node
 
 data class Type(val semanticType: String, val codeType: String) : Node
 
@@ -22,12 +22,12 @@ data class Converter(val entity: String, val expression: String) : Node
 
 data class FunctionDecl(val entity: String, val name: String,
                         val args: List<FunctionArgument>,
-                        val actions: List<Action>) : Node
+                        val actions: List<ActionDecl>) : Node
 
-data class Action(val name: String, val args: List<String>) : Node
+data class ActionDecl(val name: String, val args: List<String>) : Node
 
 data class FunctionArgument(val name: String, val type: String) : Node
 
-data class State(val name: String) : Node
+data class StateDecl(val name: String) : Node
 
-data class Shift(val from: String, val to: String, val functions: List<String>) : Node
+data class ShiftDecl(val from: String, val to: String, val functions: List<String>) : Node
