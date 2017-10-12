@@ -20,51 +20,46 @@ class ModelParser {
         val parser = LibraryModelParser(tokenStream)
         val start = parser.start()
 
-        return LibraryModelReader().visit(start) as Library
+        return LibraryModelReader().visitStart(start)
     }
 
     fun postprocess(library: Library) = Postprocessor().process(library)
 }
 
 class LibraryModelReader : LibraryModelBaseVisitor<Node>() {
-    override fun visitStart(ctx: LibraryModelParser.StartContext): Node {
+    override fun visitStart(ctx: LibraryModelParser.StartContext): Library {
         val libraryName = ctx.libraryName().Identifier().text
-        val automata = ctx.description().automatonDescription().visit<Automaton>()
-        val typeList = ctx.description().typesSection().single().typeDecl().visit<Type>()
-        val converters = ctx.description().convertersSection().single().converter().visit<Converter>()
-        val functions = ctx.description().funDecl().visit<FunctionDecl>()
+        val desc = ctx.description()
+        val automata = desc.automatonDescription().map { visitAutomatonDescription(it) }
+        val typeList = desc.typesSection().single().typeDecl().map { visitTypeDecl(it) }
+        val converters = desc.convertersSection().single().converter().map { visitConverter(it) }
+        val functions = desc.funDecl().map { visitFunDecl(it) }
         return Library(name = libraryName, automata = automata, types = typeList,
                 converters = converters, functions = functions)
     }
 
-    override fun visitAutomatonDescription(ctx: LibraryModelParser.AutomatonDescriptionContext): Node {
-        val states = ctx.stateDecl().visit<State>()
-        val shifts = ctx.shiftDecl().visit<Shift>()
+    override fun visitAutomatonDescription(ctx: LibraryModelParser.AutomatonDescriptionContext): Automaton {
+        val states = ctx.stateDecl().map { visitStateDecl(it) }
+        val shifts = ctx.shiftDecl().map { visitShiftDecl(it) }
         return Automaton(name = ctx.automatonName().text, states = states, shifts = shifts)
     }
 
     override fun visitTypeDecl(ctx: LibraryModelParser.TypeDeclContext): Type =
             Type(semanticType = ctx.semanticType().text, codeType = ctx.codeType().text)
 
-//    override fun visitTypesSection(ctx: LibraryModelParser.TypesSectionContext): Node =
-//            ctx.typeDecl().visit()
-//
-//    override fun visitConvertersSection(ctx: LibraryModelParser.ConvertersSectionContext): Node =
-//            ctx.converter().visit()
-
-    override fun visitStateDecl(ctx: LibraryModelParser.StateDeclContext): Node =
+    override fun visitStateDecl(ctx: LibraryModelParser.StateDeclContext): State =
             State(name = ctx.stateName().text)
 
-    override fun visitShiftDecl(ctx: LibraryModelParser.ShiftDeclContext): Node =
+    override fun visitShiftDecl(ctx: LibraryModelParser.ShiftDeclContext): Shift =
             Shift(from = ctx.srcState().text, to = ctx.dstState().text,
                     functions = ctx.funName().map { it.text })
 
-    override fun visitConverter(ctx: LibraryModelParser.ConverterContext): Node =
+    override fun visitConverter(ctx: LibraryModelParser.ConverterContext): Converter =
             Converter(entity = ctx.destEntity().text, expression = ctx.converterExpression().text)
 
-    override fun visitFunDecl(ctx: LibraryModelParser.FunDeclContext): Node {
-        val args = ctx.funArgs().funArg().visit<FunctionArgument>()
-        val actions = ctx.funProperties().visit<Node>().filterIsInstance<Action>()
+    override fun visitFunDecl(ctx: LibraryModelParser.FunDeclContext): FunctionDecl {
+        val args = ctx.funArgs().funArg().map { visitFunArg(it) }
+        val actions = ctx.funProperties().map { visit(it) }.filterIsInstance<Action>()
         return FunctionDecl(entity = ctx.entityName().text, name = ctx.funName().text,
                 args = args, actions = actions)
     }
@@ -73,13 +68,8 @@ class LibraryModelReader : LibraryModelBaseVisitor<Node>() {
         return Action(name = ctx.actionName().text, args = ctx.Identifier().map { it.text })
     }
 
-    override fun visitFunArg(ctx: LibraryModelParser.FunArgContext): Node =
+    override fun visitFunArg(ctx: LibraryModelParser.FunArgContext): FunctionArgument =
             FunctionArgument(name = ctx.argName().text, type = ctx.argType().text)
-
-    fun <T> List<ParserRuleContext>.visit(): List<T> = map { visit(it) } as List<T>
-    fun List<ParserRuleContext>.visitAndPack(): NodeList = NodeList(map { visit(it) })
-    fun <T> NodeList.unpack() = list as List<T>
-//    fun List<LibraryModelParser.TypeDeclContext>.visit() = TypeList(map { visit(it) })
 }
 
 fun main(args: Array<String>) {

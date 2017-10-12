@@ -8,7 +8,7 @@ data class Library(val name: String,
                    val converters: List<Converter>,
                    val functions: List<FunctionDecl>): Node
 
-open class NodeList(val list: List<Node>) : Node, List<Node> by list
+open class NodeList<T>(val list: List<T>) : Node, List<T> by list
 
 //class TypeList(list: List<Node>) : NodeList(list)
 

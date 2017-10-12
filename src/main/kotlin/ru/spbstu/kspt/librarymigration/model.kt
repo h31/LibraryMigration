@@ -34,7 +34,15 @@ data class Library(val name: String,
 
     fun simpleType(type: String) = type.substringAfterLast('.').replace('$', '.')
 
-    fun getType(machine: StateMachine, props: Map<String, Any>?): String = if (props != null) typeGenerator(machine, props) ?: machineSimpleTypes[machine] ?: TODO() else machineSimpleTypes[machine] ?: TODO()
+    fun getType(machine: StateMachine, props: Map<String, Any>?): String {
+        if (props != null) {
+            val generatedType = typeGenerator(machine, props)
+            if (generatedType != null) {
+                return generatedType
+            }
+        }
+        return machineSimpleTypes[machine] ?: TODO()
+    }
 
     fun allTypes() = machineTypes.values + additionalTypes
 
