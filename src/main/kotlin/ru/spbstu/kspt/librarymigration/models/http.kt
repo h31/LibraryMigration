@@ -1,4 +1,6 @@
-package ru.spbstu.kspt.librarymigration
+package ru.spbstu.kspt.librarymigration.models
+
+import ru.spbstu.kspt.librarymigration.*
 
 /**
  * Created by artyom on 05.07.16.
@@ -308,7 +310,7 @@ fun makeApache(): Library {
             )
             ),
             actions = listOf(Actions.usePost),
-            propertyModifier = { props -> props + Pair("method", "POST")}
+            propertyModifier = { props -> props + Pair("method", "POST") }
     )
 
     CallEdge(

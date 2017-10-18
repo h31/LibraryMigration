@@ -6,6 +6,7 @@ import org.gradle.tooling.GradleConnector
 import org.junit.Assert
 import org.junit.Test
 import org.zeroturnaround.zip.ZipUtil
+import ru.spbstu.kspt.librarymigration.models.HttpModels
 import java.io.File
 import java.net.URL
 import java.nio.file.Path
