@@ -186,7 +186,7 @@ class PathFinder(val edges: Set<Edge>, val src: Set<State>, val initProps: Map<S
 
 class PropsContext {
     var stateProps: Map<StateMachine, Map<String, Any>> = mapOf()
-    var actionParams: List<Pair<String, Expression>> = listOf()
+    val actionParams: MutableList<Pair<String, Expression>> = mutableListOf()
     var actions: List<Action> = listOf()
 
     var logger = LoggerFactory.getLogger(PropsContext::class.java)

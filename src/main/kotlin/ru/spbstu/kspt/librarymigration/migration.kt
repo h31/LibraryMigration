@@ -201,23 +201,17 @@ class Migration(val library1: Library,
             checkNotNull(dependencies[edge.machine])
         }
 
-        val fetched = mutableListOf<Pair<String, Expression>>()
-
         val args = edge.param.map { param ->
             when (param) {
                 is EntityParam -> checkNotNull(dependencies[param.machine])
                 is ActionParam -> {
                     val pair = routeMaker.srcProps.actionParams.first { param.propertyName == it.first }
-                    fetched += pair
+                    routeMaker.srcProps.actionParams.remove(pair)
                     NameExpr(pair.second.toString())
                 }
                 is ConstParam -> NameExpr(param.value)
                 else -> TODO()
             }
-        }
-
-        for (pair in fetched) {
-            routeMaker.srcProps.actionParams -= pair
         }
 
         return CallExpressionParams(scope, args)
